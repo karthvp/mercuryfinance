@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mercury</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: linear-gradient(160deg, #0a0f1a 0%, #0d1929 40%, #0f1d2f 100%); min-height: 100vh; }
+    #root { min-height: 100vh; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); }
+    ::-webkit-scrollbar-thumb { background: rgba(212,175,55,0.25); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(212,175,55,0.4); }
+    input:focus, select:focus { border-color: rgba(212,175,55,0.5) !important; outline: none; }
+    option { background: #0d1929; color: #f5f5f0; }
+    ::selection { background: rgba(212,175,55,0.3); color: #fff; }
+    .loading-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; color: #d4af37; }
+    .loading-spinner { width: 40px; height: 40px; border: 3px solid rgba(212,175,55,0.2); border-top-color: #d4af37; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 1rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div id="root"><div class="loading-screen"><div class="loading-spinner"></div><span>Loading Mercury...</span></div></div>
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, Fragment, useCallback, useRef } = React;
+
+    // Data version for migration support
+    const DATA_VERSION = 1;
+
+    // API functions for server persistence
+    const api = {
+      async loadData() {
+        const res = await fetch('/api/data');
+        if (!res.ok) throw new Error('Failed to load data');
+        return res.json();
+      },
+      async saveData(data) {
+        const res = await fetch('/api/data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        if (!res.ok) throw new Error('Failed to save data');
+        return res.json();
+      },
+      async updateField(field, value) {
+        const res = await fetch(`/api/data/${field}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ value })
+        });
+        if (!res.ok) throw new Error('Failed to update field');
+        return res.json();
+      }
+    };
+
+    const formatCurrency = (amount) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(amount);
+    const formatDate = (date) => date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const formatFullDate = (date) => date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const getDayOfWeek = (date) => date.toLocaleDateString('en-US', { weekday: 'short' });
+    const getDayOfWeekIndex = (date) => date.getDay();
+    const isWeekday = (date) => { const day = date.getDay(); return day !== 0 && day !== 6; };
+
+    const getLastWeekdayOnOrBefore = (year, month, targetDay) => {
+      let date = new Date(year, month, targetDay);
+      while (!isWeekday(date)) date.setDate(date.getDate() - 1);
+      return date.getDate();
+    };
+
+    const getLastDayOfMonth = (year, month) => new Date(year, month + 1, 0).getDate();
+    const getLastWeekdayOfMonth = (year, month) => getLastWeekdayOnOrBefore(year, month, getLastDayOfMonth(year, month));
+    const isLeapYear = (year) => (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+    const getDaysInYear = (year) => isLeapYear(year) ? 366 : 365;
+
+    const generateDatesForYear = (year) => {
+      const dates = [];
+      const daysInYear = getDaysInYear(year);
+      const startDate = new Date(year, 0, 1);
+      for (let i = 0; i < daysInYear; i++) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + i);
+        dates.push(date);
+      }
+      return dates;
+    };
+
+    const getCurrentYear = () => new Date().getFullYear();
+
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+    const Icons = {
+      Dashboard: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>,
+      Calendar: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+      Money: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
+      Expense: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>,
+      Plus: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+      Trash: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
+      Edit: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
+      Check: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>,
+      X: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+      TrendUp: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
+      Save: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>,
+      Download: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
+      Upload: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>,
+      Database: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>,
+      OneTime: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>,
+      Recurring: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>,
+      Warning: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+      Cloud: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>,
+    };
+
+    function FinancialTracker() {
+      const today = new Date();
+      const realCurrentYear = getCurrentYear();
+
+      // Loading state
+      const [isLoading, setIsLoading] = useState(true);
+      const [loadError, setLoadError] = useState(null);
+
+      // Data state
+      const [activeYear, setActiveYear] = useState(realCurrentYear);
+      const [dashboardYear, setDashboardYear] = useState(realCurrentYear);
+      const [archivedYears, setArchivedYears] = useState([]);
+      const [initialBalances, setInitialBalances] = useState({ [realCurrentYear]: 5000 });
+      const [payrolls, setPayrolls] = useState([]);
+      const [recurringExpenses, setRecurringExpenses] = useState([]);
+      const [oneOffExpenses, setOneOffExpenses] = useState([]);
+      const [balanceOverrides, setBalanceOverrides] = useState({});
+      const [lastBackup, setLastBackup] = useState(null);
+
+      // UI state
+      const [activeView, setActiveView] = useState('dashboard');
+      const [editingCell, setEditingCell] = useState(null);
+      const [editValue, setEditValue] = useState('');
+      const [scrollToMonth, setScrollToMonth] = useState(today.getMonth());
+      const [saveIndicator, setSaveIndicator] = useState(false);
+      const [showDataManager, setShowDataManager] = useState(false);
+
+      const [newPayroll, setNewPayroll] = useState({ name: '', amount: '', frequency: 'semimonthly', startDay: 1, dayOfWeek: 5 });
+      const [newRecurringExpense, setNewRecurringExpense] = useState({ name: '', amount: '', frequency: 'monthly', dayOfMonth: 1, dayOfWeek: 5, month: 0, day: 1 });
+      const [newOneOffExpense, setNewOneOffExpense] = useState({ name: '', amount: '', date: '' });
+      const [showPayrollForm, setShowPayrollForm] = useState(false);
+      const [showRecurringExpenseForm, setShowRecurringExpenseForm] = useState(false);
+      const [showOneOffExpenseForm, setShowOneOffExpenseForm] = useState(false);
+      const [addOneOffFromCalendar, setAddOneOffFromCalendar] = useState(null);
+
+      // Save timeout ref for debouncing
+      const saveTimeoutRef = useRef(null);
+
+      // Load initial data from server
+      useEffect(() => {
+        api.loadData()
+          .then(data => {
+            if (data.initialBalances) setInitialBalances(data.initialBalances);
+            if (data.payrolls) setPayrolls(data.payrolls);
+            if (data.recurringExpenses) setRecurringExpenses(data.recurringExpenses);
+            if (data.oneOffExpenses) setOneOffExpenses(data.oneOffExpenses);
+            if (data.balanceOverrides) setBalanceOverrides(data.balanceOverrides);
+            if (data.currentYear) {
+              setActiveYear(data.currentYear);
+              setDashboardYear(data.currentYear);
+            }
+            if (data.archivedYears) setArchivedYears(data.archivedYears);
+            if (data.lastBackup) setLastBackup(data.lastBackup);
+            setIsLoading(false);
+          })
+          .catch(err => {
+            console.error('Failed to load data:', err);
+            setLoadError(err.message);
+            setIsLoading(false);
+          });
+      }, []);
+
+      // Debounced save to server
+      const saveToServer = useCallback(() => {
+        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = setTimeout(() => {
+          const data = {
+            version: DATA_VERSION,
+            initialBalances,
+            payrolls,
+            recurringExpenses,
+            oneOffExpenses,
+            balanceOverrides,
+            currentYear: activeYear,
+            archivedYears,
+            lastBackup
+          };
+          api.saveData(data)
+            .then(() => {
+              setSaveIndicator(true);
+              setTimeout(() => setSaveIndicator(false), 1500);
+            })
+            .catch(err => console.error('Save failed:', err));
+        }, 500);
+      }, [initialBalances, payrolls, recurringExpenses, oneOffExpenses, balanceOverrides, activeYear, archivedYears, lastBackup]);
+
+      // Save whenever data changes
+      useEffect(() => {
+        if (!isLoading) saveToServer();
+      }, [initialBalances, payrolls, recurringExpenses, oneOffExpenses, balanceOverrides, activeYear, archivedYears]);
+
+      const datesForYear = useMemo(() => generateDatesForYear(activeYear), [activeYear]);
+      const availableYears = useMemo(() => Array.from(new Set([activeYear, ...archivedYears])).sort((a, b) => b - a), [activeYear, archivedYears]);
+
+      // Check if backup is needed (more than 7 days old or never done)
+      const needsBackup = useMemo(() => {
+        if (!lastBackup) return true;
+        const daysSinceBackup = (Date.now() - new Date(lastBackup).getTime()) / (1000 * 60 * 60 * 24);
+        return daysSinceBackup > 7;
+      }, [lastBackup]);
+
+      // Export all data to JSON file
+      const exportData = useCallback(() => {
+        const data = {
+          version: DATA_VERSION,
+          exportDate: new Date().toISOString(),
+          data: {
+            initialBalances,
+            payrolls,
+            recurringExpenses,
+            oneOffExpenses,
+            balanceOverrides,
+            currentYear: activeYear,
+            archivedYears,
+          }
+        };
+
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `mercury-data-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        const now = new Date().toISOString();
+        setLastBackup(now);
+      }, [initialBalances, payrolls, recurringExpenses, oneOffExpenses, balanceOverrides, activeYear, archivedYears]);
+
+      // Import data from JSON file
+      const importData = useCallback((event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const imported = JSON.parse(e.target.result);
+
+            if (!imported.data) {
+              alert('Invalid data file format');
+              return;
+            }
+
+            const { data } = imported;
+
+            if (!confirm('This will replace all current data. Are you sure?')) {
+              return;
+            }
+
+            if (data.initialBalances) setInitialBalances(data.initialBalances);
+            if (data.payrolls) setPayrolls(data.payrolls);
+            if (data.recurringExpenses) setRecurringExpenses(data.recurringExpenses);
+            if (data.oneOffExpenses) setOneOffExpenses(data.oneOffExpenses);
+            if (data.balanceOverrides) setBalanceOverrides(data.balanceOverrides);
+            if (data.currentYear) {
+              setActiveYear(data.currentYear);
+              setDashboardYear(data.currentYear);
+            }
+            if (data.archivedYears) setArchivedYears(data.archivedYears);
+
+            alert('Data imported successfully!');
+          } catch (err) {
+            alert('Error reading file: ' + err.message);
+          }
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+      }, []);
+
+      const financialData = useMemo(() => {
+        const data = [];
+        const initialBalance = initialBalances[activeYear] || 5000;
+        let runningBalance = initialBalance;
+
+        datesForYear.forEach((date) => {
+          const dateKey = date.toISOString().split('T')[0];
+          const dayOfMonth = date.getDate();
+          const dayOfWeekIdx = getDayOfWeekIndex(date);
+          const month = date.getMonth();
+          const year = date.getFullYear();
+
+          let startingBalance = balanceOverrides[dateKey] !== undefined ? balanceOverrides[dateKey] : runningBalance;
+
+          let payrollAmount = 0;
+          const payrollDetails = [];
+
+          payrolls.forEach(payroll => {
+            let isPayday = false;
+            if (payroll.frequency === 'monthly' && dayOfMonth === payroll.startDay) isPayday = true;
+            else if (payroll.frequency === 'biweekly') {
+              const startDate = new Date(payroll.startYear || activeYear, 0, payroll.startDay);
+              const diffDays = Math.floor((date - startDate) / (1000 * 60 * 60 * 24));
+              if (diffDays >= 0 && diffDays % 14 === 0) isPayday = true;
+            } else if (payroll.frequency === 'weekly') {
+              const startDate = new Date(payroll.startYear || activeYear, 0, payroll.startDay);
+              const diffDays = Math.floor((date - startDate) / (1000 * 60 * 60 * 24));
+              if (diffDays >= 0 && diffDays % 7 === 0) isPayday = true;
+            } else if (payroll.frequency === 'semimonthly') {
+              const lastWeekdayBefore15th = getLastWeekdayOnOrBefore(year, month, 15);
+              const lastWeekdayOfMonth = getLastWeekdayOfMonth(year, month);
+              if (dayOfMonth === lastWeekdayBefore15th || dayOfMonth === lastWeekdayOfMonth) isPayday = true;
+            } else if (payroll.frequency === 'last-weekday-15th') {
+              if (dayOfMonth === getLastWeekdayOnOrBefore(year, month, 15)) isPayday = true;
+            } else if (payroll.frequency === 'last-weekday-eom') {
+              if (dayOfMonth === getLastWeekdayOfMonth(year, month)) isPayday = true;
+            }
+            if (isPayday) { payrollAmount += payroll.amount; payrollDetails.push(payroll); }
+          });
+
+          startingBalance += payrollAmount;
+
+          let recurringExpenseAmount = 0;
+          const recurringExpenseDetails = [];
+
+          recurringExpenses.forEach(expense => {
+            let isDue = false;
+            if (expense.frequency === 'monthly' && expense.dayOfMonth === dayOfMonth) isDue = true;
+            else if (expense.frequency === 'weekly' && expense.dayOfWeek === dayOfWeekIdx) isDue = true;
+            else if (expense.frequency === 'yearly' && expense.month === month && expense.day === dayOfMonth) isDue = true;
+            if (isDue) { recurringExpenseAmount += expense.amount; recurringExpenseDetails.push({ ...expense, isRecurring: true }); }
+          });
+
+          let oneOffExpenseAmount = 0;
+          const oneOffExpenseDetails = [];
+          oneOffExpenses.forEach(expense => {
+            if (expense.date === dateKey) { oneOffExpenseAmount += expense.amount; oneOffExpenseDetails.push({ ...expense, isRecurring: false }); }
+          });
+
+          const totalExpenses = recurringExpenseAmount + oneOffExpenseAmount;
+          const allExpenseDetails = [...recurringExpenseDetails, ...oneOffExpenseDetails];
+          const endingBalance = startingBalance - totalExpenses;
+
+          data.push({
+            date, dateKey, dayOfWeek: getDayOfWeek(date), dayOfWeekIdx, dayOfMonth, month, year,
+            startingBalance, endingBalance, expenses: totalExpenses,
+            recurringExpenses: recurringExpenseAmount, oneOffExpenses: oneOffExpenseAmount,
+            expenseDetails: allExpenseDetails, recurringExpenseDetails, oneOffExpenseDetails,
+            payrollAmount, payrollDetails,
+            isOverridden: balanceOverrides[dateKey] !== undefined,
+            isPast: date < today, isToday: date.toDateString() === today.toDateString(),
+          });
+
+          runningBalance = endingBalance;
+        });
+
+        return data;
+      }, [datesForYear, activeYear, initialBalances, payrolls, recurringExpenses, oneOffExpenses, balanceOverrides]);
+
+      const stats = useMemo(() => {
+        const yearData = dashboardYear === activeYear ? financialData : (() => {
+          const dates = generateDatesForYear(dashboardYear);
+          const initialBalance = initialBalances[dashboardYear] || 5000;
+          let runningBalance = initialBalance;
+          const data = [];
+
+          dates.forEach((date) => {
+            const dateKey = date.toISOString().split('T')[0];
+            const dayOfMonth = date.getDate();
+            const dayOfWeekIdx = getDayOfWeekIndex(date);
+            const month = date.getMonth();
+            const year = date.getFullYear();
+
+            let startingBalance = balanceOverrides[dateKey] !== undefined ? balanceOverrides[dateKey] : runningBalance;
+
+            let payrollAmount = 0;
+            payrolls.forEach(payroll => {
+              let isPayday = false;
+              if (payroll.frequency === 'monthly' && dayOfMonth === payroll.startDay) isPayday = true;
+              else if (payroll.frequency === 'biweekly') {
+                const startDate = new Date(payroll.startYear || dashboardYear, 0, payroll.startDay);
+                const diffDays = Math.floor((date - startDate) / (1000 * 60 * 60 * 24));
+                if (diffDays >= 0 && diffDays % 14 === 0) isPayday = true;
+              } else if (payroll.frequency === 'weekly') {
+                const startDate = new Date(payroll.startYear || dashboardYear, 0, payroll.startDay);
+                const diffDays = Math.floor((date - startDate) / (1000 * 60 * 60 * 24));
+                if (diffDays >= 0 && diffDays % 7 === 0) isPayday = true;
+              } else if (payroll.frequency === 'semimonthly') {
+                const lastWeekdayBefore15th = getLastWeekdayOnOrBefore(year, month, 15);
+                const lastWeekdayOfMonth = getLastWeekdayOfMonth(year, month);
+                if (dayOfMonth === lastWeekdayBefore15th || dayOfMonth === lastWeekdayOfMonth) isPayday = true;
+              } else if (payroll.frequency === 'last-weekday-15th') {
+                if (dayOfMonth === getLastWeekdayOnOrBefore(year, month, 15)) isPayday = true;
+              } else if (payroll.frequency === 'last-weekday-eom') {
+                if (dayOfMonth === getLastWeekdayOfMonth(year, month)) isPayday = true;
+              }
+              if (isPayday) payrollAmount += payroll.amount;
+            });
+
+            startingBalance += payrollAmount;
+
+            let recurringExp = 0;
+            recurringExpenses.forEach(expense => {
+              let isDue = false;
+              if (expense.frequency === 'monthly' && expense.dayOfMonth === dayOfMonth) isDue = true;
+              else if (expense.frequency === 'weekly' && expense.dayOfWeek === dayOfWeekIdx) isDue = true;
+              else if (expense.frequency === 'yearly' && expense.month === month && expense.day === dayOfMonth) isDue = true;
+              if (isDue) recurringExp += expense.amount;
+            });
+
+            let oneOffExp = 0;
+            oneOffExpenses.forEach(expense => { if (expense.date === dateKey) oneOffExp += expense.amount; });
+
+            const totalExpenses = recurringExp + oneOffExp;
+            const endingBalance = startingBalance - totalExpenses;
+
+            data.push({ date, dateKey, startingBalance, endingBalance, expenses: totalExpenses, recurringExpenses: recurringExp, oneOffExpenses: oneOffExp, payrollAmount, isPast: date < today });
+            runningBalance = endingBalance;
+          });
+
+          return data;
+        })();
+
+        const pastDays = yearData.filter(d => d.isPast);
+        const futureDays = yearData.filter(d => !d.isPast);
+
+        return {
+          initialBalance: initialBalances[dashboardYear] || 5000,
+          endOfYearBalance: yearData[yearData.length - 1]?.endingBalance || 0,
+          lowestBalance: Math.min(...yearData.map(d => d.endingBalance)),
+          lowestBalanceDate: yearData.find(d => d.endingBalance === Math.min(...yearData.map(x => x.endingBalance)))?.date,
+          historicalRecurringExpensesPaid: pastDays.reduce((sum, d) => sum + d.recurringExpenses, 0),
+          historicalOneOffExpensesPaid: pastDays.reduce((sum, d) => sum + d.oneOffExpenses, 0),
+          historicalTotalExpensesPaid: pastDays.reduce((sum, d) => sum + d.expenses, 0),
+          historicalPayrollReceived: pastDays.reduce((sum, d) => sum + d.payrollAmount, 0),
+          forecastedRecurringExpenses: futureDays.reduce((sum, d) => sum + d.recurringExpenses, 0),
+          forecastedOneOffExpenses: futureDays.reduce((sum, d) => sum + d.oneOffExpenses, 0),
+          forecastedTotalExpenses: futureDays.reduce((sum, d) => sum + d.expenses, 0),
+          forecastedPayroll: futureDays.reduce((sum, d) => sum + d.payrollAmount, 0),
+          totalRecurringExpensesForYear: yearData.reduce((sum, d) => sum + d.recurringExpenses, 0),
+          totalOneOffExpensesForYear: yearData.reduce((sum, d) => sum + d.oneOffExpenses, 0),
+          totalExpensesForYear: yearData.reduce((sum, d) => sum + d.expenses, 0),
+          totalPayrollForYear: yearData.reduce((sum, d) => sum + d.payrollAmount, 0),
+          netAnnual: yearData.reduce((sum, d) => sum + d.payrollAmount, 0) - yearData.reduce((sum, d) => sum + d.expenses, 0),
+        };
+      }, [financialData, dashboardYear, activeYear, initialBalances, payrolls, recurringExpenses, oneOffExpenses, balanceOverrides]);
+
+      const handleOverrideBalance = (dateKey, newBalance) => { setBalanceOverrides(prev => ({ ...prev, [dateKey]: parseFloat(newBalance) })); setEditingCell(null); };
+      const clearOverride = (dateKey) => { setBalanceOverrides(prev => { const n = { ...prev }; delete n[dateKey]; return n; }); };
+      const addPayroll = () => { if (newPayroll.name && newPayroll.amount) { setPayrolls(prev => [...prev, { id: Date.now(), name: newPayroll.name, amount: parseFloat(newPayroll.amount), frequency: newPayroll.frequency, startDay: parseInt(newPayroll.startDay), dayOfWeek: parseInt(newPayroll.dayOfWeek), startYear: activeYear }]); setNewPayroll({ name: '', amount: '', frequency: 'semimonthly', startDay: 1, dayOfWeek: 5 }); setShowPayrollForm(false); } };
+      const deletePayroll = (id) => { setPayrolls(prev => prev.filter(p => p.id !== id)); };
+      const addRecurringExpense = () => { if (newRecurringExpense.name && newRecurringExpense.amount) { setRecurringExpenses(prev => [...prev, { id: Date.now(), name: newRecurringExpense.name, amount: parseFloat(newRecurringExpense.amount), frequency: newRecurringExpense.frequency, dayOfMonth: parseInt(newRecurringExpense.dayOfMonth), dayOfWeek: parseInt(newRecurringExpense.dayOfWeek), month: parseInt(newRecurringExpense.month), day: parseInt(newRecurringExpense.day) }]); setNewRecurringExpense({ name: '', amount: '', frequency: 'monthly', dayOfMonth: 1, dayOfWeek: 5, month: 0, day: 1 }); setShowRecurringExpenseForm(false); } };
+      const deleteRecurringExpense = (id) => { setRecurringExpenses(prev => prev.filter(e => e.id !== id)); };
+      const addOneOffExpense = () => { if (newOneOffExpense.name && newOneOffExpense.amount && newOneOffExpense.date) { setOneOffExpenses(prev => [...prev, { id: Date.now(), name: newOneOffExpense.name, amount: parseFloat(newOneOffExpense.amount), date: newOneOffExpense.date }]); setNewOneOffExpense({ name: '', amount: '', date: '' }); setShowOneOffExpenseForm(false); setAddOneOffFromCalendar(null); } };
+      const deleteOneOffExpense = (id) => { setOneOffExpenses(prev => prev.filter(e => e.id !== id)); };
+      const openOneOffFormForDate = (dateKey) => { setNewOneOffExpense({ name: '', amount: '', date: dateKey }); setAddOneOffFromCalendar(dateKey); setShowOneOffExpenseForm(true); };
+      const updateInitialBalance = (year, value) => { setInitialBalances(prev => ({ ...prev, [year]: parseFloat(value) || 0 })); };
+      const clearAllData = () => { if (confirm('Clear all data? Export a backup first!')) { setInitialBalances({ [activeYear]: 5000 }); setPayrolls([]); setRecurringExpenses([]); setOneOffExpenses([]); setBalanceOverrides({}); setArchivedYears([]); } };
+
+      const frequencyLabels = { 'weekly': 'Weekly', 'biweekly': 'Biweekly', 'monthly': 'Monthly', 'semimonthly': 'Semi-monthly (15th & EOM)', 'last-weekday-15th': 'Last weekday before 15th', 'last-weekday-eom': 'Last weekday of month', 'yearly': 'Yearly' };
+      const getExpenseFrequencyLabel = (expense) => { if (expense.frequency === 'weekly') return `Weekly on ${dayNames[expense.dayOfWeek]}s`; if (expense.frequency === 'monthly') return `Monthly on day ${expense.dayOfMonth}`; if (expense.frequency === 'yearly') return `Yearly on ${months[expense.month]} ${expense.day}`; return expense.frequency; };
+
+      const styles = {
+        container: { minHeight: '100vh', background: 'linear-gradient(160deg, #0a0f1a 0%, #0d1929 40%, #0f1d2f 100%)', fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif', color: '#f5f5f0' },
+        header: { background: 'rgba(10, 15, 26, 0.85)', borderBottom: '1px solid rgba(212, 175, 55, 0.15)', padding: '1rem 2rem', position: 'sticky', top: 0, zIndex: 100, backdropFilter: 'blur(24px)' },
+        headerContent: { maxWidth: '1600px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' },
+        logo: { display: 'flex', alignItems: 'center', gap: '0.75rem' },
+        logoIcon: { width: '40px', height: '40px', background: 'linear-gradient(135deg, #d4af37, #c9a227, #b8860b)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 24px rgba(212, 175, 55, 0.25)' },
+        logoText: { fontSize: '1.5rem', fontWeight: '600', fontFamily: '"Playfair Display", serif', background: 'linear-gradient(135deg, #d4af37, #f4e4ba)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '0.02em' },
+        yearBadge: { padding: '0.25rem 0.75rem', background: 'rgba(212, 175, 55, 0.1)', border: '1px solid rgba(212, 175, 55, 0.25)', borderRadius: '20px', fontSize: '0.75rem', color: '#d4af37', fontWeight: '500', letterSpacing: '0.05em' },
+        headerActions: { display: 'flex', alignItems: 'center', gap: '0.75rem' },
+        dataButton: (warning = false) => ({ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: warning ? 'rgba(212, 175, 55, 0.1)' : 'rgba(255, 255, 255, 0.03)', border: `1px solid ${warning ? 'rgba(212, 175, 55, 0.3)' : 'rgba(255, 255, 255, 0.08)'}`, borderRadius: '8px', color: warning ? '#d4af37' : '#a0a0a0', fontSize: '0.8125rem', fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.3s ease' }),
+        saveIndicator: { display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.375rem 0.625rem', background: 'rgba(76, 175, 80, 0.1)', border: '1px solid rgba(76, 175, 80, 0.2)', borderRadius: '6px', fontSize: '0.6875rem', color: '#4caf50', opacity: saveIndicator ? 1 : 0, transition: 'opacity 0.3s ease' },
+        cloudIndicator: { display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.375rem 0.625rem', background: 'rgba(212, 175, 55, 0.1)', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '6px', fontSize: '0.6875rem', color: '#d4af37' },
+        nav: { display: 'flex', gap: '0.5rem' },
+        navButton: (isActive) => ({ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.625rem 1.25rem', background: isActive ? 'rgba(212, 175, 55, 0.1)' : 'transparent', border: isActive ? '1px solid rgba(212, 175, 55, 0.25)' : '1px solid transparent', borderRadius: '8px', color: isActive ? '#d4af37' : '#808080', fontSize: '0.875rem', fontWeight: '500', cursor: 'pointer', transition: 'all 0.3s ease', fontFamily: 'inherit' }),
+        main: { maxWidth: '1600px', margin: '0 auto', padding: '2rem' },
+        backupBanner: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', padding: '1rem 1.5rem', background: 'rgba(212, 175, 55, 0.08)', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '12px', marginBottom: '2rem' },
+        backupText: { display: 'flex', alignItems: 'center', gap: '0.625rem', fontSize: '0.875rem', color: '#d4af37' },
+        backupButton: { display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.625rem 1.25rem', background: 'linear-gradient(135deg, #d4af37, #c9a227)', border: 'none', borderRadius: '8px', color: '#0a0f1a', fontSize: '0.875rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 2px 12px rgba(212, 175, 55, 0.3)' },
+        yearSelector: { display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem', padding: '1rem 1.25rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.05)' },
+        yearLabel: { fontSize: '0.75rem', color: '#707070', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: '500' },
+        yearSelect: { padding: '0.5rem 1rem', background: 'rgba(212, 175, 55, 0.08)', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '8px', color: '#f5f5f0', fontSize: '0.9375rem', fontWeight: '600', fontFamily: 'inherit', cursor: 'pointer' },
+        sectionTitle: { fontSize: '0.75rem', fontWeight: '600', color: '#d4af37', textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '1rem', marginTop: '2rem', display: 'flex', alignItems: 'center', gap: '0.625rem' },
+        dashboardGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', marginBottom: '1.5rem' },
+        statCard: () => ({ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '16px', padding: '1.5rem', position: 'relative', overflow: 'hidden', backdropFilter: 'blur(10px)' }),
+        statCardAccent: (color) => ({ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: `linear-gradient(90deg, ${color}, transparent)` }),
+        statLabel: { fontSize: '0.6875rem', color: '#707070', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem', fontWeight: '500' },
+        statValue: (color = '#f5f5f0') => ({ fontSize: '1.75rem', fontWeight: '600', color, letterSpacing: '-0.02em', fontFamily: '"Playfair Display", serif' }),
+        statSubtext: { fontSize: '0.6875rem', color: '#585858', marginTop: '0.5rem' },
+        panel: { background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '16px', padding: '1.5rem', marginBottom: '1.5rem' },
+        panelHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' },
+        panelTitle: { fontSize: '1rem', fontWeight: '500', color: '#e0e0e0', display: 'flex', alignItems: 'center', gap: '0.625rem' },
+        addButton: { display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.5rem 1rem', background: 'linear-gradient(135deg, #d4af37, #c9a227)', border: 'none', borderRadius: '8px', color: '#0a0f1a', fontSize: '0.8125rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.3s ease', fontFamily: 'inherit', boxShadow: '0 2px 8px rgba(212, 175, 55, 0.2)' },
+        itemRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.875rem 1rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '10px', marginBottom: '0.5rem', border: '1px solid rgba(255, 255, 255, 0.04)', transition: 'all 0.2s ease' },
+        itemName: { fontSize: '0.875rem', fontWeight: '500', color: '#e0e0e0' },
+        itemMeta: { fontSize: '0.6875rem', color: '#606060' },
+        itemAmount: (positive = false) => ({ fontSize: '0.9375rem', fontWeight: '600', color: positive ? '#4caf50' : '#ef5350' }),
+        deleteBtn: { padding: '0.375rem', background: 'rgba(239, 83, 80, 0.08)', border: '1px solid rgba(239, 83, 80, 0.15)', borderRadius: '6px', color: '#ef5350', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease' },
+        formOverlay: { position: 'fixed', inset: 0, background: 'rgba(5, 8, 15, 0.85)', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: '1.5rem' },
+        formCard: { background: 'linear-gradient(160deg, #111827, #0d1929)', border: '1px solid rgba(212, 175, 55, 0.15)', borderRadius: '20px', padding: '2rem', width: '100%', maxWidth: '420px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 25px 80px rgba(0, 0, 0, 0.6)' },
+        formTitle: { fontSize: '1.25rem', fontWeight: '600', color: '#f5f5f0', marginBottom: '1.5rem', fontFamily: '"Playfair Display", serif' },
+        formGroup: { marginBottom: '1rem' },
+        formLabel: { display: 'block', fontSize: '0.6875rem', color: '#808080', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem', fontWeight: '500' },
+        formInput: { width: '100%', padding: '0.75rem 1rem', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '10px', color: '#f5f5f0', fontSize: '0.9375rem', fontFamily: 'inherit', outline: 'none', transition: 'all 0.3s ease', boxSizing: 'border-box' },
+        formSelect: { width: '100%', padding: '0.75rem 1rem', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '10px', color: '#f5f5f0', fontSize: '0.9375rem', fontFamily: 'inherit', outline: 'none', cursor: 'pointer', boxSizing: 'border-box' },
+        formHint: { fontSize: '0.6875rem', color: '#585858', marginTop: '0.375rem', fontStyle: 'italic' },
+        formActions: { display: 'flex', gap: '0.75rem', marginTop: '1.5rem' },
+        cancelBtn: { flex: 1, padding: '0.75rem', background: 'transparent', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '10px', color: '#808080', fontSize: '0.875rem', fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.3s ease' },
+        submitBtn: { flex: 1, padding: '0.75rem', background: 'linear-gradient(135deg, #d4af37, #c9a227)', border: 'none', borderRadius: '10px', color: '#0a0f1a', fontSize: '0.875rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 2px 12px rgba(212, 175, 55, 0.3)' },
+        tableContainer: { background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '16px', overflow: 'hidden' },
+        tableHeader: { display: 'grid', gridTemplateColumns: '100px 55px 1fr 115px 115px 115px 45px', gap: '1px', background: 'rgba(212, 175, 55, 0.05)', padding: '0.875rem 1.25rem', borderBottom: '1px solid rgba(255, 255, 255, 0.05)', position: 'sticky', top: 0, zIndex: 10 },
+        tableHeaderCell: { fontSize: '0.625rem', fontWeight: '600', color: '#808080', textTransform: 'uppercase', letterSpacing: '0.12em' },
+        tableBody: { maxHeight: '600px', overflowY: 'auto' },
+        tableRow: (isToday, isPast, isMonthStart) => ({ display: 'grid', gridTemplateColumns: '100px 55px 1fr 115px 115px 115px 45px', gap: '1px', padding: '0.5rem 1.25rem', background: isToday ? 'rgba(212, 175, 55, 0.08)' : isMonthStart ? 'rgba(255, 255, 255, 0.02)' : 'transparent', borderBottom: '1px solid rgba(255, 255, 255, 0.03)', opacity: isPast ? 0.5 : 1, transition: 'background 0.2s ease' }),
+        tableCell: { fontSize: '0.75rem', color: '#c0c0c0', display: 'flex', alignItems: 'center' },
+        monthDivider: { padding: '0.625rem 1.25rem', background: 'linear-gradient(90deg, rgba(212, 175, 55, 0.1), transparent)', borderBottom: '1px solid rgba(212, 175, 55, 0.15)' },
+        monthLabel: { fontSize: '0.75rem', fontWeight: '600', color: '#d4af37', textTransform: 'uppercase', letterSpacing: '0.2em' },
+        balancePositive: { color: '#4caf50', fontWeight: '600' },
+        balanceNegative: { color: '#ef5350', fontWeight: '600' },
+        expenseCell: { color: '#ef5350', fontWeight: '500' },
+        payrollBadge: { display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.125rem 0.375rem', background: 'rgba(76, 175, 80, 0.1)', border: '1px solid rgba(76, 175, 80, 0.2)', borderRadius: '4px', fontSize: '0.625rem', color: '#4caf50', marginRight: '0.3125rem', marginBottom: '0.1875rem' },
+        recurringExpenseBadge: { display: 'inline-flex', alignItems: 'center', padding: '0.125rem 0.375rem', background: 'rgba(239, 83, 80, 0.08)', border: '1px solid rgba(239, 83, 80, 0.15)', borderRadius: '4px', fontSize: '0.625rem', color: '#ef5350', marginRight: '0.3125rem', marginBottom: '0.1875rem' },
+        oneOffExpenseBadge: { display: 'inline-flex', alignItems: 'center', padding: '0.125rem 0.375rem', background: 'rgba(212, 175, 55, 0.1)', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '4px', fontSize: '0.625rem', color: '#d4af37', marginRight: '0.3125rem', marginBottom: '0.1875rem' },
+        overrideBadge: { display: 'inline-flex', alignItems: 'center', padding: '0.0625rem 0.3125rem', background: 'rgba(212, 175, 55, 0.1)', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '4px', fontSize: '0.5625rem', color: '#d4af37', marginLeft: '0.3125rem', cursor: 'pointer' },
+        editButton: { padding: '0.25rem', background: 'transparent', border: 'none', color: '#606060', cursor: 'pointer', marginLeft: '0.3125rem', opacity: 0.6, transition: 'opacity 0.2s ease' },
+        addExpenseBtn: { padding: '0.25rem', background: 'rgba(212, 175, 55, 0.1)', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '4px', color: '#d4af37', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease' },
+        inlineInput: { width: '80px', padding: '0.25rem 0.375rem', background: 'rgba(212, 175, 55, 0.1)', border: '1px solid rgba(212, 175, 55, 0.25)', borderRadius: '4px', color: '#f5f5f0', fontSize: '0.75rem', fontFamily: 'inherit', outline: 'none' },
+        inlineActions: { display: 'flex', gap: '0.1875rem', marginLeft: '0.1875rem' },
+        inlineBtn: (color) => ({ padding: '0.25rem', background: `rgba(${color}, 0.1)`, border: 'none', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }),
+        initialBalanceSection: { display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem 1.25rem', background: 'rgba(212, 175, 55, 0.05)', borderBottom: '1px solid rgba(255, 255, 255, 0.05)', flexWrap: 'wrap' },
+        initialBalanceLabel: { fontSize: '0.6875rem', color: '#808080', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: '500' },
+        initialBalanceInput: { width: '120px', padding: '0.5rem 0.625rem', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '6px', color: '#f5f5f0', fontSize: '0.875rem', fontWeight: '600', fontFamily: 'inherit', outline: 'none' },
+        monthSelector: { display: 'flex', gap: '0.25rem', padding: '0.625rem 1.25rem', background: 'rgba(0, 0, 0, 0.15)', overflowX: 'auto' },
+        monthBtn: (isActive) => ({ padding: '0.375rem 0.625rem', background: isActive ? 'rgba(212, 175, 55, 0.15)' : 'transparent', border: isActive ? '1px solid rgba(212, 175, 55, 0.25)' : '1px solid transparent', borderRadius: '6px', color: isActive ? '#d4af37' : '#606060', fontSize: '0.625rem', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit', transition: 'all 0.2s ease' }),
+        expensesList: { display: 'flex', flexWrap: 'wrap', gap: '0.1875rem' },
+        threeColumn: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' },
+        clearButton: { padding: '0.5rem 1rem', background: 'rgba(239, 83, 80, 0.08)', border: '1px solid rgba(239, 83, 80, 0.15)', borderRadius: '8px', color: '#ef5350', fontSize: '0.75rem', fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s ease' },
+        emptyState: { color: '#585858', fontSize: '0.8125rem', textAlign: 'center', padding: '1.5rem' },
+        dataManagerCard: { background: 'linear-gradient(160deg, #111827, #0d1929)', border: '1px solid rgba(212, 175, 55, 0.15)', borderRadius: '20px', padding: '2rem', width: '100%', maxWidth: '500px', boxShadow: '0 25px 80px rgba(0, 0, 0, 0.6)' },
+        dataSection: { padding: '1.5rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '12px', marginBottom: '1.25rem', border: '1px solid rgba(255, 255, 255, 0.04)' },
+        dataSectionTitle: { fontSize: '0.9375rem', fontWeight: '500', color: '#f5f5f0', marginBottom: '0.625rem', display: 'flex', alignItems: 'center', gap: '0.625rem' },
+        dataSectionDesc: { fontSize: '0.8125rem', color: '#606060', marginBottom: '1.25rem', lineHeight: '1.5' },
+        dataActionRow: { display: 'flex', gap: '1rem' },
+        exportBtn: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.875rem', background: 'linear-gradient(135deg, #4caf50, #388e3c)', border: 'none', borderRadius: '10px', color: '#fff', fontSize: '0.875rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 2px 12px rgba(76, 175, 80, 0.25)' },
+        importBtn: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.875rem', background: 'rgba(212, 175, 55, 0.1)', border: '1px solid rgba(212, 175, 55, 0.25)', borderRadius: '10px', color: '#d4af37', fontSize: '0.875rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' },
+        lastBackupText: { fontSize: '0.75rem', color: '#585858', marginTop: '1rem', textAlign: 'center' },
+        fileInput: { display: 'none' },
+      };
+
+      // Show loading state
+      if (isLoading) {
+        return (
+          <div className="loading-screen">
+            <div className="loading-spinner"></div>
+            <span>Loading Mercury...</span>
+          </div>
+        );
+      }
+
+      // Show error state
+      if (loadError) {
+        return (
+          <div className="loading-screen">
+            <span style={{ color: '#ef5350' }}>Failed to load data: {loadError}</span>
+            <button onClick={() => window.location.reload()} style={{ marginTop: '1rem', padding: '0.5rem 1rem', background: '#d4af37', border: 'none', borderRadius: '8px', color: '#0a0f1a', cursor: 'pointer' }}>Retry</button>
+          </div>
+        );
+      }
+
+      const renderDashboard = () => (
+        <div>
+          {needsBackup && (
+            <div style={styles.backupBanner}>
+              <div style={styles.backupText}><Icons.Warning /> {lastBackup ? `Last backup: ${formatFullDate(new Date(lastBackup))}` : 'No backup yet!'} — Export your data to keep it safe.</div>
+              <button style={styles.backupButton} onClick={exportData}><Icons.Download /> Backup Now</button>
+            </div>
+          )}
+
+          <div style={styles.yearSelector}>
+            <span style={styles.yearLabel}>Viewing Year:</span>
+            <select value={dashboardYear} onChange={(e) => setDashboardYear(parseInt(e.target.value))} style={styles.yearSelect}>
+              {availableYears.map(year => <option key={year} value={year}>{year}</option>)}
+            </select>
+            {dashboardYear !== activeYear && <span style={{ fontSize: '0.6875rem', color: '#fbbf24' }}>(Archived)</span>}
+          </div>
+
+          <div style={styles.sectionTitle}><Icons.TrendUp /> Overview</div>
+          <div style={styles.dashboardGrid}>
+            <div style={styles.statCard()}><div style={styles.statCardAccent('#4ade80')} /><div style={styles.statLabel}>Starting Balance (Jan 1)</div><div style={styles.statValue('#4ade80')}>{formatCurrency(stats.initialBalance)}</div></div>
+            <div style={styles.statCard()}><div style={styles.statCardAccent('#8b5cf6')} /><div style={styles.statLabel}>Projected Year-End</div><div style={styles.statValue(stats.endOfYearBalance >= 0 ? '#4ade80' : '#f87171')}>{formatCurrency(stats.endOfYearBalance)}</div><div style={styles.statSubtext}>Dec 31, {dashboardYear}</div></div>
+            <div style={styles.statCard()}><div style={styles.statCardAccent('#f87171')} /><div style={styles.statLabel}>Lowest Balance Point</div><div style={styles.statValue('#f87171')}>{formatCurrency(stats.lowestBalance)}</div><div style={styles.statSubtext}>{stats.lowestBalanceDate && formatFullDate(stats.lowestBalanceDate)}</div></div>
+            <div style={styles.statCard()}><div style={styles.statCardAccent('#10b981')} /><div style={styles.statLabel}>Net Annual Cashflow</div><div style={styles.statValue(stats.netAnnual >= 0 ? '#4ade80' : '#f87171')}>{formatCurrency(stats.netAnnual)}</div><div style={styles.statSubtext}>Income - Expenses</div></div>
+          </div>
+
+          <div style={styles.sectionTitle}><Icons.Expense /> Expense Tracking</div>
+          <div style={styles.dashboardGrid}>
+            <div style={styles.statCard()}><div style={styles.statCardAccent('#f87171')} /><div style={styles.statLabel}>Forecasted Recurring Expenses</div><div style={styles.statValue('#f87171')}>{formatCurrency(stats.forecastedRecurringExpenses)}</div><div style={styles.statSubtext}>Until Dec 31</div></div>
+            <div style={styles.statCard()}><div style={styles.statCardAccent('#fbbf24')} /><div style={styles.statLabel}>Forecasted Total Expenses</div><div style={styles.statValue('#fbbf24')}>{formatCurrency(stats.forecastedTotalExpenses)}</div><div style={styles.statSubtext}>Recurring + One-off until Dec 31</div></div>
+            <div style={styles.statCard()}><div style={styles.statCardAccent('#a855f7')} /><div style={styles.statLabel}>Paid Recurring Expenses YTD</div><div style={styles.statValue('#a855f7')}>{formatCurrency(stats.historicalRecurringExpensesPaid)}</div><div style={styles.statSubtext}>Year to date</div></div>
+            <div style={styles.statCard()}><div style={styles.statCardAccent('#ec4899')} /><div style={styles.statLabel}>Paid Total Expenses YTD</div><div style={styles.statValue('#ec4899')}>{formatCurrency(stats.historicalTotalExpensesPaid)}</div><div style={styles.statSubtext}>Recurring + One-off YTD</div></div>
+          </div>
+
+          <div style={styles.sectionTitle}><Icons.Calendar /> Full Year Summary ({dashboardYear})</div>
+          <div style={styles.dashboardGrid}>
+            <div style={styles.statCard()}><div style={styles.statCardAccent('#22d3ee')} /><div style={styles.statLabel}>Total Income</div><div style={styles.statValue('#4ade80')}>{formatCurrency(stats.totalPayrollForYear)}</div></div>
+            <div style={styles.statCard()}><div style={styles.statCardAccent('#6366f1')} /><div style={styles.statLabel}>Total Recurring Expenses</div><div style={styles.statValue('#f87171')}>{formatCurrency(stats.totalRecurringExpensesForYear)}</div></div>
+            <div style={styles.statCard()}><div style={styles.statCardAccent('#f59e0b')} /><div style={styles.statLabel}>Total One-Off Expenses</div><div style={styles.statValue('#fbbf24')}>{formatCurrency(stats.totalOneOffExpensesForYear)}</div><div style={styles.statSubtext}>{oneOffExpenses.filter(e => e.date.startsWith(dashboardYear)).length} scheduled</div></div>
+            <div style={styles.statCard()}><div style={styles.statCardAccent('#14b8a6')} /><div style={styles.statLabel}>Total All Expenses</div><div style={styles.statValue('#f87171')}>{formatCurrency(stats.totalExpensesForYear)}</div></div>
+          </div>
+
+          <div style={styles.threeColumn}>
+            <div style={styles.panel}>
+              <div style={styles.panelHeader}><div style={styles.panelTitle}><Icons.Money /> Income Sources</div><button style={styles.addButton} onClick={() => setShowPayrollForm(true)}><Icons.Plus /> Add</button></div>
+              {payrolls.map(payroll => (
+                <div key={payroll.id} style={styles.itemRow}>
+                  <div><div style={styles.itemName}>{payroll.name}</div><div style={styles.itemMeta}>{frequencyLabels[payroll.frequency] || payroll.frequency}{['weekly', 'biweekly', 'monthly'].includes(payroll.frequency) && ` - Day ${payroll.startDay}`}</div></div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4375rem' }}><div style={styles.itemAmount(true)}>+{formatCurrency(payroll.amount)}</div><button style={styles.deleteBtn} onClick={() => deletePayroll(payroll.id)}><Icons.Trash /></button></div>
+                </div>
+              ))}
+              {payrolls.length === 0 && <div style={styles.emptyState}>No income sources added</div>}
+            </div>
+
+            <div style={styles.panel}>
+              <div style={styles.panelHeader}><div style={styles.panelTitle}><Icons.Recurring /> Recurring Expenses</div><button style={styles.addButton} onClick={() => setShowRecurringExpenseForm(true)}><Icons.Plus /> Add</button></div>
+              {recurringExpenses.map(expense => (
+                <div key={expense.id} style={styles.itemRow}>
+                  <div><div style={styles.itemName}>{expense.name}</div><div style={styles.itemMeta}>{getExpenseFrequencyLabel(expense)}</div></div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4375rem' }}><div style={styles.itemAmount(false)}>-{formatCurrency(expense.amount)}</div><button style={styles.deleteBtn} onClick={() => deleteRecurringExpense(expense.id)}><Icons.Trash /></button></div>
+                </div>
+              ))}
+              {recurringExpenses.length === 0 && <div style={styles.emptyState}>No recurring expenses added</div>}
+            </div>
+
+            <div style={styles.panel}>
+              <div style={styles.panelHeader}><div style={styles.panelTitle}><Icons.OneTime /> One-Off Expenses</div><button style={styles.addButton} onClick={() => setShowOneOffExpenseForm(true)}><Icons.Plus /> Add</button></div>
+              {oneOffExpenses.filter(e => e.date.startsWith(String(dashboardYear))).map(expense => (
+                <div key={expense.id} style={styles.itemRow}>
+                  <div><div style={styles.itemName}>{expense.name}</div><div style={styles.itemMeta}>{formatFullDate(new Date(expense.date + 'T00:00:00'))}</div></div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4375rem' }}><div style={styles.itemAmount(false)}>-{formatCurrency(expense.amount)}</div><button style={styles.deleteBtn} onClick={() => deleteOneOffExpense(expense.id)}><Icons.Trash /></button></div>
+                </div>
+              ))}
+              {oneOffExpenses.filter(e => e.date.startsWith(String(dashboardYear))).length === 0 && <div style={styles.emptyState}>No one-off expenses for {dashboardYear}</div>}
+            </div>
+          </div>
+
+          <div style={{ marginTop: '1.75rem', textAlign: 'center' }}><button style={styles.clearButton} onClick={clearAllData}>Clear All Data</button></div>
+        </div>
+      );
+
+      const renderCalendar = () => {
+        let currentMonth = -1;
+        return (
+          <div style={styles.tableContainer}>
+            <div style={styles.initialBalanceSection}>
+              <span style={styles.initialBalanceLabel}>Year:</span><span style={styles.yearBadge}>{activeYear}</span>
+              <span style={styles.initialBalanceLabel}>Starting Balance (Jan 1):</span>
+              <input type="number" value={initialBalances[activeYear] || 5000} onChange={(e) => updateInitialBalance(activeYear, e.target.value)} style={styles.initialBalanceInput} />
+            </div>
+            <div style={styles.monthSelector}>{months.map((month, idx) => <button key={month} style={styles.monthBtn(scrollToMonth === idx)} onClick={() => { setScrollToMonth(idx); document.getElementById(`month-${idx}`)?.scrollIntoView({ behavior: 'smooth' }); }}>{month.slice(0, 3)}</button>)}</div>
+            <div style={styles.tableHeader}>
+              <div style={styles.tableHeaderCell}>Date</div><div style={styles.tableHeaderCell}>Day</div><div style={styles.tableHeaderCell}>Details</div><div style={styles.tableHeaderCell}>Starting</div><div style={styles.tableHeaderCell}>Expenses</div><div style={styles.tableHeaderCell}>Ending</div><div style={styles.tableHeaderCell}></div>
+            </div>
+            <div style={styles.tableBody}>
+              {financialData.map((day) => {
+                const showMonthDivider = day.month !== currentMonth;
+                if (showMonthDivider) currentMonth = day.month;
+                return (
+                  <Fragment key={day.dateKey}>
+                    {showMonthDivider && <div id={`month-${day.month}`} style={styles.monthDivider}><div style={styles.monthLabel}>{months[day.month]} {activeYear}</div></div>}
+                    <div style={styles.tableRow(day.isToday, day.isPast, day.dayOfMonth === 1)} onMouseEnter={(e) => { if (!day.isToday) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)'; }} onMouseLeave={(e) => { if (!day.isToday) e.currentTarget.style.background = day.dayOfMonth === 1 ? 'rgba(255, 255, 255, 0.03)' : 'transparent'; }}>
+                      <div style={styles.tableCell}><span style={{ fontWeight: day.isToday ? '700' : '500' }}>{formatDate(day.date)}</span>{day.isToday && <span style={{ marginLeft: '0.25rem', fontSize: '0.5rem', color: '#d4af37', background: 'rgba(212, 175, 55, 0.2)', padding: '0.0625rem 0.1875rem', borderRadius: '2px' }}>TODAY</span>}</div>
+                      <div style={styles.tableCell}><span style={{ color: ['Sat', 'Sun'].includes(day.dayOfWeek) ? '#8b5cf6' : '#8888a0' }}>{day.dayOfWeek}</span></div>
+                      <div style={styles.tableCell}>
+                        <div style={styles.expensesList}>
+                          {day.payrollDetails.map(p => <span key={p.id} style={styles.payrollBadge}>+{formatCurrency(p.amount)} {p.name}</span>)}
+                          {day.recurringExpenseDetails.map(exp => <span key={exp.id} style={styles.recurringExpenseBadge}>{exp.name}: -{formatCurrency(exp.amount)}</span>)}
+                          {day.oneOffExpenseDetails.map(exp => <span key={exp.id} style={styles.oneOffExpenseBadge}>{exp.name}: -{formatCurrency(exp.amount)}</span>)}
+                        </div>
+                      </div>
+                      <div style={styles.tableCell}>
+                        {editingCell === day.dateKey ? (
+                          <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <input type="number" value={editValue} onChange={(e) => setEditValue(e.target.value)} style={styles.inlineInput} autoFocus onKeyDown={(e) => { if (e.key === 'Enter') handleOverrideBalance(day.dateKey, editValue); if (e.key === 'Escape') setEditingCell(null); }} />
+                            <div style={styles.inlineActions}><button style={{ ...styles.inlineBtn('74, 222, 128'), color: '#4ade80' }} onClick={() => handleOverrideBalance(day.dateKey, editValue)}><Icons.Check /></button><button style={{ ...styles.inlineBtn('248, 113, 113'), color: '#f87171' }} onClick={() => setEditingCell(null)}><Icons.X /></button></div>
+                          </div>
+                        ) : (
+                          <><span style={day.startingBalance >= 0 ? styles.balancePositive : styles.balanceNegative}>{formatCurrency(day.startingBalance)}</span>{day.isOverridden && <span style={styles.overrideBadge} onClick={() => clearOverride(day.dateKey)} title="Click to remove override">✎</span>}<button style={styles.editButton} onClick={() => { setEditingCell(day.dateKey); setEditValue(day.startingBalance.toString()); }} title="Override balance"><Icons.Edit /></button></>
+                        )}
+                      </div>
+                      <div style={styles.tableCell}>{day.expenses > 0 && <span style={styles.expenseCell}>-{formatCurrency(day.expenses)}</span>}</div>
+                      <div style={styles.tableCell}><span style={day.endingBalance >= 0 ? styles.balancePositive : styles.balanceNegative}>{formatCurrency(day.endingBalance)}</span></div>
+                      <div style={styles.tableCell}><button style={styles.addExpenseBtn} onClick={() => openOneOffFormForDate(day.dateKey)} title="Add one-off expense"><Icons.Plus /></button></div>
+                    </div>
+                  </Fragment>
+                );
+              })}
+            </div>
+          </div>
+        );
+      };
+
+      return (
+        <div style={styles.container}>
+          <header style={styles.header}>
+            <div style={styles.headerContent}>
+              <div style={styles.logo}><div style={styles.logoIcon}><Icons.TrendUp /></div><span style={styles.logoText}>Mercury</span><span style={styles.yearBadge}>{activeYear}</span></div>
+              <div style={styles.headerActions}>
+                <div style={styles.cloudIndicator}><Icons.Cloud /> Cloud Sync</div>
+                <div style={styles.saveIndicator}><Icons.Save /> Saved</div>
+                <button style={styles.dataButton(needsBackup)} onClick={() => setShowDataManager(true)}><Icons.Database /> Data</button>
+              </div>
+              <nav style={styles.nav}><button style={styles.navButton(activeView === 'dashboard')} onClick={() => setActiveView('dashboard')}><Icons.Dashboard /> Dashboard</button><button style={styles.navButton(activeView === 'calendar')} onClick={() => setActiveView('calendar')}><Icons.Calendar /> Calendar</button></nav>
+            </div>
+          </header>
+          <main style={styles.main}>{activeView === 'dashboard' ? renderDashboard() : renderCalendar()}</main>
+
+          {showDataManager && (
+            <div style={styles.formOverlay} onClick={() => setShowDataManager(false)}>
+              <div style={styles.dataManagerCard} onClick={e => e.stopPropagation()}>
+                <h3 style={styles.formTitle}>Data Management</h3>
+
+                <div style={styles.dataSection}>
+                  <div style={styles.dataSectionTitle}><Icons.Cloud /> Cloud Storage</div>
+                  <div style={styles.dataSectionDesc}>Your data is automatically synced to the cloud. Access Mercury from any device and your data will be there.</div>
+                </div>
+
+                <div style={styles.dataSection}>
+                  <div style={styles.dataSectionTitle}><Icons.Download /> Export Data</div>
+                  <div style={styles.dataSectionDesc}>Download a local backup of your data as a JSON file.</div>
+                  <button style={styles.exportBtn} onClick={() => { exportData(); }}><Icons.Download /> Export to File</button>
+                  {lastBackup && <div style={styles.lastBackupText}>Last backup: {formatFullDate(new Date(lastBackup))}</div>}
+                </div>
+
+                <div style={styles.dataSection}>
+                  <div style={styles.dataSectionTitle}><Icons.Upload /> Import Data</div>
+                  <div style={styles.dataSectionDesc}>Load data from a previously exported JSON file. This will replace all current data.</div>
+                  <label style={styles.importBtn}>
+                    <Icons.Upload /> Import from File
+                    <input type="file" accept=".json" onChange={importData} style={styles.fileInput} />
+                  </label>
+                </div>
+
+                <div style={styles.formActions}>
+                  <button style={styles.cancelBtn} onClick={() => setShowDataManager(false)}>Close</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {showPayrollForm && (
+            <div style={styles.formOverlay} onClick={() => setShowPayrollForm(false)}>
+              <div style={styles.formCard} onClick={e => e.stopPropagation()}>
+                <h3 style={styles.formTitle}>Add Income Source</h3>
+                <div style={styles.formGroup}><label style={styles.formLabel}>Name</label><input type="text" placeholder="e.g., Salary, Freelance" value={newPayroll.name} onChange={e => setNewPayroll(p => ({ ...p, name: e.target.value }))} style={styles.formInput} /></div>
+                <div style={styles.formGroup}><label style={styles.formLabel}>Amount (per payment)</label><input type="number" placeholder="0.00" value={newPayroll.amount} onChange={e => setNewPayroll(p => ({ ...p, amount: e.target.value }))} style={styles.formInput} /></div>
+                <div style={styles.formGroup}><label style={styles.formLabel}>Frequency</label><select value={newPayroll.frequency} onChange={e => setNewPayroll(p => ({ ...p, frequency: e.target.value }))} style={styles.formSelect}><option value="weekly">Weekly</option><option value="biweekly">Biweekly</option><option value="monthly">Monthly (specific day)</option><option value="semimonthly">Semi-monthly (15th & EOM weekdays)</option><option value="last-weekday-15th">Last weekday before 15th only</option><option value="last-weekday-eom">Last weekday of month only</option></select></div>
+                {['weekly', 'biweekly', 'monthly'].includes(newPayroll.frequency) && (<div style={styles.formGroup}><label style={styles.formLabel}>{newPayroll.frequency === 'monthly' ? 'Day of Month (1-31)' : 'Start Day (1-31)'}</label><input type="number" min="1" max="31" value={newPayroll.startDay} onChange={e => setNewPayroll(p => ({ ...p, startDay: e.target.value }))} style={styles.formInput} /><div style={styles.formHint}>{newPayroll.frequency === 'biweekly' && 'First paycheck date in January, then every 14 days'}{newPayroll.frequency === 'weekly' && 'First paycheck date in January, then every 7 days'}</div></div>)}
+                <div style={styles.formActions}><button style={styles.cancelBtn} onClick={() => setShowPayrollForm(false)}>Cancel</button><button style={styles.submitBtn} onClick={addPayroll}>Add Income</button></div>
+              </div>
+            </div>
+          )}
+
+          {showRecurringExpenseForm && (
+            <div style={styles.formOverlay} onClick={() => setShowRecurringExpenseForm(false)}>
+              <div style={styles.formCard} onClick={e => e.stopPropagation()}>
+                <h3 style={styles.formTitle}>Add Recurring Expense</h3>
+                <div style={styles.formGroup}><label style={styles.formLabel}>Name</label><input type="text" placeholder="e.g., Rent, Netflix, Groceries" value={newRecurringExpense.name} onChange={e => setNewRecurringExpense(p => ({ ...p, name: e.target.value }))} style={styles.formInput} /></div>
+                <div style={styles.formGroup}><label style={styles.formLabel}>Amount</label><input type="number" placeholder="0.00" value={newRecurringExpense.amount} onChange={e => setNewRecurringExpense(p => ({ ...p, amount: e.target.value }))} style={styles.formInput} /></div>
+                <div style={styles.formGroup}><label style={styles.formLabel}>Frequency</label><select value={newRecurringExpense.frequency} onChange={e => setNewRecurringExpense(p => ({ ...p, frequency: e.target.value }))} style={styles.formSelect}><option value="weekly">Weekly</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select></div>
+                {newRecurringExpense.frequency === 'weekly' && (<div style={styles.formGroup}><label style={styles.formLabel}>Day of Week</label><select value={newRecurringExpense.dayOfWeek} onChange={e => setNewRecurringExpense(p => ({ ...p, dayOfWeek: parseInt(e.target.value) }))} style={styles.formSelect}>{dayNames.map((day, idx) => <option key={day} value={idx}>{day}</option>)}</select></div>)}
+                {newRecurringExpense.frequency === 'monthly' && (<div style={styles.formGroup}><label style={styles.formLabel}>Day of Month (1-31)</label><input type="number" min="1" max="31" value={newRecurringExpense.dayOfMonth} onChange={e => setNewRecurringExpense(p => ({ ...p, dayOfMonth: e.target.value }))} style={styles.formInput} /></div>)}
+                {newRecurringExpense.frequency === 'yearly' && (<><div style={styles.formGroup}><label style={styles.formLabel}>Month</label><select value={newRecurringExpense.month} onChange={e => setNewRecurringExpense(p => ({ ...p, month: parseInt(e.target.value) }))} style={styles.formSelect}>{months.map((month, idx) => <option key={month} value={idx}>{month}</option>)}</select></div><div style={styles.formGroup}><label style={styles.formLabel}>Day</label><input type="number" min="1" max="31" value={newRecurringExpense.day} onChange={e => setNewRecurringExpense(p => ({ ...p, day: e.target.value }))} style={styles.formInput} /></div></>)}
+                <div style={styles.formActions}><button style={styles.cancelBtn} onClick={() => setShowRecurringExpenseForm(false)}>Cancel</button><button style={styles.submitBtn} onClick={addRecurringExpense}>Add Expense</button></div>
+              </div>
+            </div>
+          )}
+
+          {showOneOffExpenseForm && (
+            <div style={styles.formOverlay} onClick={() => { setShowOneOffExpenseForm(false); setAddOneOffFromCalendar(null); }}>
+              <div style={styles.formCard} onClick={e => e.stopPropagation()}>
+                <h3 style={styles.formTitle}>Add One-Off Expense</h3>
+                <div style={styles.formGroup}><label style={styles.formLabel}>Name</label><input type="text" placeholder="e.g., Car repair, Gift, Trip" value={newOneOffExpense.name} onChange={e => setNewOneOffExpense(p => ({ ...p, name: e.target.value }))} style={styles.formInput} /></div>
+                <div style={styles.formGroup}><label style={styles.formLabel}>Amount</label><input type="number" placeholder="0.00" value={newOneOffExpense.amount} onChange={e => setNewOneOffExpense(p => ({ ...p, amount: e.target.value }))} style={styles.formInput} /></div>
+                <div style={styles.formGroup}><label style={styles.formLabel}>Date</label><input type="date" value={newOneOffExpense.date} onChange={e => setNewOneOffExpense(p => ({ ...p, date: e.target.value }))} style={styles.formInput} />{addOneOffFromCalendar && <div style={styles.formHint}>Selected: {formatFullDate(new Date(addOneOffFromCalendar + 'T00:00:00'))}</div>}</div>
+                <div style={styles.formActions}><button style={styles.cancelBtn} onClick={() => { setShowOneOffExpenseForm(false); setAddOneOffFromCalendar(null); }}>Cancel</button><button style={styles.submitBtn} onClick={addOneOffExpense}>Add Expense</button></div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.render(<FinancialTracker />, document.getElementById('root'));
+  </script>
+</body>
+</html>

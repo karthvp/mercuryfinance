@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "initialBalances": {},
+  "payrolls": [],
+  "recurringExpenses": [],
+  "oneOffExpenses": [],
+  "balanceOverrides": {},
+  "currentYear": 2026,
+  "archivedYears": [],
+  "lastBackup": null
+}
