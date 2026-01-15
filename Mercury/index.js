@@ -1,6 +1,9 @@
 const express = require('express');
 const path = require('path');
 const { Pool } = require('pg');
+const session = require('express-session');
+const connectPgSimple = require('connect-pg-simple');
+const client = require('openid-client');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -9,12 +12,37 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
+const PgSession = connectPgSimple(session);
+
 async function initDatabase() {
-  const client = await pool.connect();
+  const dbClient = await pool.connect();
   try {
-    await client.query(`
+    await dbClient.query(`
+      CREATE TABLE IF NOT EXISTS session (
+        sid VARCHAR NOT NULL PRIMARY KEY,
+        sess JSON NOT NULL,
+        expire TIMESTAMP(6) NOT NULL
+      )
+    `);
+    await dbClient.query(`CREATE INDEX IF NOT EXISTS IDX_session_expire ON session (expire)`);
+
+    await dbClient.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        replit_id VARCHAR UNIQUE NOT NULL,
+        email VARCHAR,
+        first_name VARCHAR,
+        last_name VARCHAR,
+        profile_image VARCHAR,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await dbClient.query(`
       CREATE TABLE IF NOT EXISTS mercury_data (
-        id INTEGER PRIMARY KEY DEFAULT 1,
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         version INTEGER DEFAULT 1,
         initial_balances JSONB DEFAULT '{}',
         payrolls JSONB DEFAULT '[]',
@@ -24,18 +52,45 @@ async function initDatabase() {
         current_year INTEGER DEFAULT EXTRACT(YEAR FROM CURRENT_DATE),
         archived_years JSONB DEFAULT '[]',
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT single_row CHECK (id = 1)
+        UNIQUE(user_id)
       )
     `);
-    
-    const currentYear = new Date().getFullYear();
-    await client.query(`
-      INSERT INTO mercury_data (id, version, initial_balances, payrolls, recurring_expenses, one_off_expenses, balance_overrides, current_year, archived_years)
-      VALUES (1, 1, $1, '[]', '[]', '[]', '{}', $2, '[]')
-      ON CONFLICT (id) DO NOTHING
-    `, [JSON.stringify({ [currentYear]: 5000 }), currentYear]);
+
+    await dbClient.query(`ALTER TABLE mercury_data DROP CONSTRAINT IF EXISTS single_row`);
   } finally {
-    client.release();
+    dbClient.release();
+  }
+}
+
+let oidcConfig = null;
+
+function getCallbackUrl(req) {
+  const domain = req?.hostname || process.env.REPLIT_DEV_DOMAIN || 
+                 (process.env.REPLIT_DOMAINS ? process.env.REPLIT_DOMAINS.split(',')[0] : null);
+  if (!domain) return null;
+  return `https://${domain}/api/callback`;
+}
+
+async function setupOIDC() {
+  try {
+    const callbackUrl = getCallbackUrl();
+    if (!callbackUrl) {
+      console.log('No domain available for OIDC callback');
+      return;
+    }
+    
+    const issuerUrl = new URL(process.env.ISSUER_URL || 'https://replit.com/oidc');
+    const clientId = process.env.REPL_ID;
+    
+    if (!clientId) {
+      console.log('REPL_ID not available, OIDC disabled');
+      return;
+    }
+    
+    oidcConfig = await client.discovery(issuerUrl, clientId);
+    console.log('OIDC configured successfully');
+  } catch (error) {
+    console.error('OIDC setup error:', error.message);
   }
 }
 
@@ -44,11 +99,139 @@ app.use((req, res, next) => {
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
   next();
 });
-app.use(express.static(__dirname));
 
-app.get('/api/data', async (req, res) => {
+app.set('trust proxy', 1);
+
+const sessionTtl = 7 * 24 * 60 * 60 * 1000;
+if (!process.env.SESSION_SECRET) {
+  console.warn('Warning: SESSION_SECRET not set, using random secret (sessions will not persist across restarts)');
+}
+app.use(session({
+  store: new PgSession({
+    pool,
+    tableName: 'sessions',
+    createTableIfMissing: true,
+    ttl: sessionTtl / 1000,
+  }),
+  secret: process.env.SESSION_SECRET || require('crypto').randomBytes(32).toString('hex'),
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: true,
+    httpOnly: true,
+    maxAge: sessionTtl,
+    sameSite: 'lax',
+  },
+}));
+
+app.get('/api/login', async (req, res) => {
+  if (!oidcConfig) {
+    return res.redirect('/?auth_error=not_available');
+  }
+  
   try {
-    const result = await pool.query('SELECT * FROM mercury_data WHERE id = 1');
+    const callbackUrl = getCallbackUrl(req);
+    const codeVerifier = client.randomPKCECodeVerifier();
+    const codeChallenge = await client.calculatePKCECodeChallenge(codeVerifier);
+    const state = client.randomState();
+    const nonce = client.randomNonce();
+    
+    req.session.auth = {
+      codeVerifier,
+      state,
+      nonce,
+      redirectUri: callbackUrl,
+    };
+    
+    const authUrl = client.buildAuthorizationUrl(oidcConfig, {
+      redirect_uri: callbackUrl,
+      scope: 'openid email profile offline_access',
+      state,
+      nonce,
+      code_challenge: codeChallenge,
+      code_challenge_method: 'S256',
+      prompt: 'login consent',
+    });
+    
+    res.redirect(authUrl.href);
+  } catch (error) {
+    console.error('Login initiation error:', error);
+    res.redirect('/?auth_error=login_failed');
+  }
+});
+
+app.get('/api/callback', async (req, res) => {
+  if (!oidcConfig || !req.session.auth) {
+    return res.redirect('/?auth_error=session_expired');
+  }
+  
+  try {
+    const { codeVerifier, state, nonce, redirectUri } = req.session.auth;
+    const currentUrl = new URL(`https://${req.headers.host}${req.url}`);
+    
+    const tokens = await client.authorizationCodeGrant(oidcConfig, currentUrl, {
+      pkceCodeVerifier: codeVerifier,
+      expectedState: state,
+      expectedNonce: nonce,
+      idTokenExpected: true,
+    });
+    
+    const claims = tokens.claims();
+    
+    const result = await pool.query(`
+      INSERT INTO users (replit_id, email, first_name, last_name, profile_image, updated_at)
+      VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+      ON CONFLICT (replit_id) DO UPDATE SET
+        email = EXCLUDED.email,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        profile_image = EXCLUDED.profile_image,
+        updated_at = CURRENT_TIMESTAMP
+      RETURNING id, replit_id, email, first_name, last_name, profile_image
+    `, [
+      claims.sub,
+      claims.email || null,
+      claims.first_name || claims.given_name || null,
+      claims.last_name || claims.family_name || null,
+      claims.profile_image_url || claims.picture || null,
+    ]);
+    
+    req.session.userId = result.rows[0].id;
+    req.session.user = result.rows[0];
+    delete req.session.auth;
+    
+    res.redirect('/');
+  } catch (error) {
+    console.error('Auth callback error:', error);
+    delete req.session.auth;
+    res.redirect('/?auth_error=callback_failed');
+  }
+});
+
+app.get('/api/logout', (req, res) => {
+  req.session.destroy((err) => {
+    if (err) console.error('Logout error:', err);
+    res.redirect('/');
+  });
+});
+
+app.get('/api/auth/user', (req, res) => {
+  res.json({ user: req.session?.user || null });
+});
+
+function isAuthenticated(req, res, next) {
+  if (req.session?.userId) {
+    next();
+  } else {
+    res.status(401).json({ error: 'Unauthorized' });
+  }
+}
+
+app.get('/api/data', isAuthenticated, async (req, res) => {
+  try {
+    const userId = req.session.userId;
+    const result = await pool.query('SELECT * FROM mercury_data WHERE user_id = $1', [userId]);
+    
     if (result.rows.length === 0) {
       return res.json({
         version: 1,
@@ -61,6 +244,7 @@ app.get('/api/data', async (req, res) => {
         archivedYears: []
       });
     }
+    
     const row = result.rows[0];
     res.json({
       version: row.version,
@@ -78,13 +262,15 @@ app.get('/api/data', async (req, res) => {
   }
 });
 
-app.post('/api/data', async (req, res) => {
+app.post('/api/data', isAuthenticated, async (req, res) => {
   try {
+    const userId = req.session.userId;
     const data = req.body;
+    
     await pool.query(`
-      INSERT INTO mercury_data (id, version, initial_balances, payrolls, recurring_expenses, one_off_expenses, balance_overrides, current_year, archived_years, updated_at)
-      VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)
-      ON CONFLICT (id) DO UPDATE SET
+      INSERT INTO mercury_data (user_id, version, initial_balances, payrolls, recurring_expenses, one_off_expenses, balance_overrides, current_year, archived_years, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
+      ON CONFLICT (user_id) DO UPDATE SET
         version = EXCLUDED.version,
         initial_balances = EXCLUDED.initial_balances,
         payrolls = EXCLUDED.payrolls,
@@ -95,6 +281,7 @@ app.post('/api/data', async (req, res) => {
         archived_years = EXCLUDED.archived_years,
         updated_at = CURRENT_TIMESTAMP
     `, [
+      userId,
       data.version || 1,
       JSON.stringify(data.initialBalances || {}),
       JSON.stringify(data.payrolls || []),
@@ -104,6 +291,7 @@ app.post('/api/data', async (req, res) => {
       data.currentYear || new Date().getFullYear(),
       JSON.stringify(data.archivedYears || [])
     ]);
+    
     res.json({ success: true, timestamp: new Date().toISOString() });
   } catch (error) {
     console.error('Error saving data:', error);
@@ -111,8 +299,9 @@ app.post('/api/data', async (req, res) => {
   }
 });
 
-app.patch('/api/data/:field', async (req, res) => {
+app.patch('/api/data/:field', isAuthenticated, async (req, res) => {
   try {
+    const userId = req.session.userId;
     const { field } = req.params;
     const { value } = req.body;
     
@@ -132,7 +321,7 @@ app.patch('/api/data/:field', async (req, res) => {
     }
     
     const jsonValue = dbField === 'current_year' ? value : JSON.stringify(value);
-    await pool.query(`UPDATE mercury_data SET ${dbField} = $1, updated_at = CURRENT_TIMESTAMP WHERE id = 1`, [jsonValue]);
+    await pool.query(`UPDATE mercury_data SET ${dbField} = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2`, [jsonValue, userId]);
     
     res.json({ success: true, timestamp: new Date().toISOString() });
   } catch (error) {
@@ -141,12 +330,15 @@ app.patch('/api/data/:field', async (req, res) => {
   }
 });
 
+app.use(express.static(__dirname));
+
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 async function startServer() {
   await initDatabase();
+  await setupOIDC();
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Mercury is running on port ${PORT}`);
   });
