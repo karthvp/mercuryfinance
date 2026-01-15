@@ -22,6 +22,7 @@ Preferred communication style: Simple, everyday language.
 ### App Structure
 - **AppShell**: Root component that manages authentication state and view navigation
 - **HomePage**: Conversion-focused landing page with hero, features, stats, demo preview, and CTAs
+- **MoneyRain**: Canvas-based Matrix-style animation with falling gold dollar signs; reacts to mouse movement with glow effect
 - **FinancialTracker**: Main application with dashboard and calendar views (protected, requires auth)
 
 ### Authentication
@@ -100,6 +101,7 @@ The application tracks:
 
 ## Recent Changes
 
+- **January 2026**: Added interactive Matrix-style "Money Rain" animation to the homepage hero background (canvas-based, gold dollar signs with mouse glow effect)
 - **January 2026**: Added Replit Auth (OpenID Connect) for multi-user authentication
 - **January 2026**: Added users table and modified database schema for user isolation
 - **January 2026**: Updated all API endpoints to be user-specific and protected with authentication
