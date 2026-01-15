@@ -134,15 +134,12 @@
       const [recurringExpenses, setRecurringExpenses] = useState([]);
       const [oneOffExpenses, setOneOffExpenses] = useState([]);
       const [balanceOverrides, setBalanceOverrides] = useState({});
-      const [lastBackup, setLastBackup] = useState(null);
-
       // UI state
       const [activeView, setActiveView] = useState('dashboard');
       const [editingCell, setEditingCell] = useState(null);
       const [editValue, setEditValue] = useState('');
       const [scrollToMonth, setScrollToMonth] = useState(today.getMonth());
       const [saveIndicator, setSaveIndicator] = useState(false);
-      const [showDataManager, setShowDataManager] = useState(false);
 
       const [newPayroll, setNewPayroll] = useState({ name: '', amount: '', frequency: 'semimonthly', startDay: 1, dayOfWeek: 5 });
       const [newRecurringExpense, setNewRecurringExpense] = useState({ name: '', amount: '', frequency: 'monthly', dayOfMonth: 1, dayOfWeek: 5, month: 0, day: 1 });
@@ -169,7 +166,6 @@
               setDashboardYear(data.currentYear);
             }
             if (data.archivedYears) setArchivedYears(data.archivedYears);
-            if (data.lastBackup) setLastBackup(data.lastBackup);
             setIsLoading(false);
           })
           .catch(err => {
@@ -191,8 +187,7 @@
             oneOffExpenses,
             balanceOverrides,
             currentYear: activeYear,
-            archivedYears,
-            lastBackup
+            archivedYears
           };
           api.saveData(data)
             .then(() => {
@@ -201,7 +196,7 @@
             })
             .catch(err => console.error('Save failed:', err));
         }, 500);
-      }, [initialBalances, payrolls, recurringExpenses, oneOffExpenses, balanceOverrides, activeYear, archivedYears, lastBackup]);
+      }, [initialBalances, payrolls, recurringExpenses, oneOffExpenses, balanceOverrides, activeYear, archivedYears]);
 
       // Save whenever data changes
       useEffect(() => {
@@ -210,84 +205,6 @@
 
       const datesForYear = useMemo(() => generateDatesForYear(activeYear), [activeYear]);
       const availableYears = useMemo(() => Array.from(new Set([activeYear, ...archivedYears])).sort((a, b) => b - a), [activeYear, archivedYears]);
-
-      // Check if backup is needed (more than 7 days old or never done)
-      const needsBackup = useMemo(() => {
-        if (!lastBackup) return true;
-        const daysSinceBackup = (Date.now() - new Date(lastBackup).getTime()) / (1000 * 60 * 60 * 24);
-        return daysSinceBackup > 7;
-      }, [lastBackup]);
-
-      // Export all data to JSON file
-      const exportData = useCallback(() => {
-        const data = {
-          version: DATA_VERSION,
-          exportDate: new Date().toISOString(),
-          data: {
-            initialBalances,
-            payrolls,
-            recurringExpenses,
-            oneOffExpenses,
-            balanceOverrides,
-            currentYear: activeYear,
-            archivedYears,
-          }
-        };
-
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `mercury-data-${new Date().toISOString().split('T')[0]}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-
-        const now = new Date().toISOString();
-        setLastBackup(now);
-      }, [initialBalances, payrolls, recurringExpenses, oneOffExpenses, balanceOverrides, activeYear, archivedYears]);
-
-      // Import data from JSON file
-      const importData = useCallback((event) => {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          try {
-            const imported = JSON.parse(e.target.result);
-
-            if (!imported.data) {
-              alert('Invalid data file format');
-              return;
-            }
-
-            const { data } = imported;
-
-            if (!confirm('This will replace all current data. Are you sure?')) {
-              return;
-            }
-
-            if (data.initialBalances) setInitialBalances(data.initialBalances);
-            if (data.payrolls) setPayrolls(data.payrolls);
-            if (data.recurringExpenses) setRecurringExpenses(data.recurringExpenses);
-            if (data.oneOffExpenses) setOneOffExpenses(data.oneOffExpenses);
-            if (data.balanceOverrides) setBalanceOverrides(data.balanceOverrides);
-            if (data.currentYear) {
-              setActiveYear(data.currentYear);
-              setDashboardYear(data.currentYear);
-            }
-            if (data.archivedYears) setArchivedYears(data.archivedYears);
-
-            alert('Data imported successfully!');
-          } catch (err) {
-            alert('Error reading file: ' + err.message);
-          }
-        };
-        reader.readAsText(file);
-        event.target.value = '';
-      }, []);
 
       const financialData = useMemo(() => {
         const data = [];
@@ -581,13 +498,6 @@
 
       const renderDashboard = () => (
         <div>
-          {needsBackup && (
-            <div style={styles.backupBanner}>
-              <div style={styles.backupText}><Icons.Warning /> {lastBackup ? `Last backup: ${formatFullDate(new Date(lastBackup))}` : 'No backup yet!'} — Export your data to keep it safe.</div>
-              <button style={styles.backupButton} onClick={exportData}><Icons.Download /> Backup Now</button>
-            </div>
-          )}
-
           <div style={styles.yearSelector}>
             <span style={styles.yearLabel}>Viewing Year:</span>
             <select value={dashboardYear} onChange={(e) => setDashboardYear(parseInt(e.target.value))} style={styles.yearSelect}>
@@ -719,45 +629,11 @@
               <div style={styles.headerActions}>
                 <div style={styles.cloudIndicator}><Icons.Cloud /> Cloud Sync</div>
                 <div style={styles.saveIndicator}><Icons.Save /> Saved</div>
-                <button style={styles.dataButton(needsBackup)} onClick={() => setShowDataManager(true)}><Icons.Database /> Data</button>
               </div>
               <nav style={styles.nav}><button style={styles.navButton(activeView === 'dashboard')} onClick={() => setActiveView('dashboard')}><Icons.Dashboard /> Dashboard</button><button style={styles.navButton(activeView === 'calendar')} onClick={() => setActiveView('calendar')}><Icons.Calendar /> Calendar</button></nav>
             </div>
           </header>
           <main style={styles.main}>{activeView === 'dashboard' ? renderDashboard() : renderCalendar()}</main>
-
-          {showDataManager && (
-            <div style={styles.formOverlay} onClick={() => setShowDataManager(false)}>
-              <div style={styles.dataManagerCard} onClick={e => e.stopPropagation()}>
-                <h3 style={styles.formTitle}>Data Management</h3>
-
-                <div style={styles.dataSection}>
-                  <div style={styles.dataSectionTitle}><Icons.Cloud /> Cloud Storage</div>
-                  <div style={styles.dataSectionDesc}>Your data is automatically synced to the cloud. Access Mercury from any device and your data will be there.</div>
-                </div>
-
-                <div style={styles.dataSection}>
-                  <div style={styles.dataSectionTitle}><Icons.Download /> Export Data</div>
-                  <div style={styles.dataSectionDesc}>Download a local backup of your data as a JSON file.</div>
-                  <button style={styles.exportBtn} onClick={() => { exportData(); }}><Icons.Download /> Export to File</button>
-                  {lastBackup && <div style={styles.lastBackupText}>Last backup: {formatFullDate(new Date(lastBackup))}</div>}
-                </div>
-
-                <div style={styles.dataSection}>
-                  <div style={styles.dataSectionTitle}><Icons.Upload /> Import Data</div>
-                  <div style={styles.dataSectionDesc}>Load data from a previously exported JSON file. This will replace all current data.</div>
-                  <label style={styles.importBtn}>
-                    <Icons.Upload /> Import from File
-                    <input type="file" accept=".json" onChange={importData} style={styles.fileInput} />
-                  </label>
-                </div>
-
-                <div style={styles.formActions}>
-                  <button style={styles.cancelBtn} onClick={() => setShowDataManager(false)}>Close</button>
-                </div>
-              </div>
-            </div>
-          )}
 
           {showPayrollForm && (
             <div style={styles.formOverlay} onClick={() => setShowPayrollForm(false)}>
