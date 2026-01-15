@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mercury</title>
+  <title>Mercury - Personal Finance Tracker</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
@@ -12,6 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
     body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: linear-gradient(160deg, #0a0f1a 0%, #0d1929 40%, #0f1d2f 100%); min-height: 100vh; }
     #root { min-height: 100vh; }
     ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -24,6 +25,11 @@
     .loading-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; color: #d4af37; }
     .loading-spinner { width: 40px; height: 40px; border: 3px solid rgba(212,175,55,0.2); border-top-color: #d4af37; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 1rem; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-20px); } }
+    @keyframes shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
+    @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; } }
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes glow { 0%, 100% { box-shadow: 0 0 20px rgba(212,175,55,0.3); } 50% { box-shadow: 0 0 40px rgba(212,175,55,0.5); } }
   </style>
 </head>
 <body>
@@ -31,10 +37,8 @@
   <script type="text/babel">
     const { useState, useEffect, useMemo, Fragment, useCallback, useRef } = React;
 
-    // Data version for migration support
     const DATA_VERSION = 1;
 
-    // API functions for server persistence
     const api = {
       async loadData() {
         const res = await fetch('/api/data');
@@ -115,17 +119,249 @@
       Recurring: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>,
       Warning: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
       Cloud: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>,
+      Shield: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+      Zap: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
+      Target: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>,
+      BarChart: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>,
+      ArrowRight: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>,
+      Star: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+      ChevronDown: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>,
     };
 
-    function FinancialTracker() {
+    function HomePage({ onEnterApp }) {
+      const heroStyles = {
+        wrapper: { minHeight: '100vh', position: 'relative', overflow: 'hidden' },
+        nav: { position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, padding: '1.5rem 2rem', background: 'rgba(10, 15, 26, 0.8)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(212, 175, 55, 0.1)' },
+        navContent: { maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+        logo: { display: 'flex', alignItems: 'center', gap: '0.75rem' },
+        logoIcon: { width: '44px', height: '44px', background: 'linear-gradient(135deg, #d4af37, #c9a227, #b8860b)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 24px rgba(212, 175, 55, 0.3)', animation: 'glow 3s ease-in-out infinite' },
+        logoText: { fontSize: '1.75rem', fontWeight: '600', fontFamily: '"Playfair Display", serif', background: 'linear-gradient(135deg, #d4af37, #f4e4ba)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' },
+        navCta: { padding: '0.75rem 2rem', background: 'linear-gradient(135deg, #d4af37, #c9a227)', border: 'none', borderRadius: '10px', color: '#0a0f1a', fontSize: '0.9375rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 4px 20px rgba(212, 175, 55, 0.35)', transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '0.5rem' },
+        hero: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8rem 2rem 4rem', position: 'relative' },
+        heroGlow: { position: 'absolute', top: '20%', left: '50%', transform: 'translateX(-50%)', width: '800px', height: '600px', background: 'radial-gradient(ellipse at center, rgba(212, 175, 55, 0.08) 0%, transparent 70%)', pointerEvents: 'none' },
+        heroContent: { maxWidth: '900px', textAlign: 'center', position: 'relative', zIndex: 1 },
+        heroTagline: { display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1.25rem', background: 'rgba(212, 175, 55, 0.08)', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '50px', fontSize: '0.8125rem', color: '#d4af37', marginBottom: '2rem', fontWeight: '500', letterSpacing: '0.05em' },
+        heroTitle: { fontSize: 'clamp(2.5rem, 6vw, 4.5rem)', fontWeight: '700', fontFamily: '"Playfair Display", serif', color: '#f5f5f0', lineHeight: '1.1', marginBottom: '1.5rem', letterSpacing: '-0.02em' },
+        heroGradient: { background: 'linear-gradient(135deg, #d4af37, #f4e4ba, #d4af37)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundSize: '200% auto', animation: 'shimmer 4s linear infinite' },
+        heroSubtitle: { fontSize: '1.25rem', color: '#a0a0a0', lineHeight: '1.7', marginBottom: '3rem', maxWidth: '650px', margin: '0 auto 3rem' },
+        heroActions: { display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' },
+        primaryBtn: { padding: '1rem 2.5rem', background: 'linear-gradient(135deg, #d4af37, #c9a227)', border: 'none', borderRadius: '12px', color: '#0a0f1a', fontSize: '1.0625rem', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 8px 32px rgba(212, 175, 55, 0.4)', transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '0.625rem' },
+        secondaryBtn: { padding: '1rem 2.5rem', background: 'transparent', border: '1px solid rgba(212, 175, 55, 0.3)', borderRadius: '12px', color: '#d4af37', fontSize: '1.0625rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '0.625rem' },
+        scrollIndicator: { position: 'absolute', bottom: '2rem', left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', color: '#606060', fontSize: '0.75rem', animation: 'float 3s ease-in-out infinite' },
+        section: { padding: '6rem 2rem', maxWidth: '1200px', margin: '0 auto' },
+        sectionTitle: { fontSize: 'clamp(2rem, 4vw, 3rem)', fontWeight: '700', fontFamily: '"Playfair Display", serif', color: '#f5f5f0', textAlign: 'center', marginBottom: '1rem' },
+        sectionSubtitle: { fontSize: '1.125rem', color: '#808080', textAlign: 'center', maxWidth: '600px', margin: '0 auto 4rem', lineHeight: '1.7' },
+        featuresGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' },
+        featureCard: { background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '20px', padding: '2.5rem', transition: 'all 0.4s ease', position: 'relative', overflow: 'hidden' },
+        featureCardHover: { position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: 'linear-gradient(90deg, transparent, #d4af37, transparent)', opacity: 0, transition: 'opacity 0.4s ease' },
+        featureIcon: { width: '56px', height: '56px', background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.15), rgba(212, 175, 55, 0.05))', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d4af37', marginBottom: '1.5rem' },
+        featureTitle: { fontSize: '1.375rem', fontWeight: '600', color: '#f5f5f0', marginBottom: '0.75rem' },
+        featureDesc: { fontSize: '0.9375rem', color: '#707070', lineHeight: '1.7' },
+        statsSection: { background: 'linear-gradient(180deg, rgba(212, 175, 55, 0.03) 0%, transparent 100%)', borderTop: '1px solid rgba(212, 175, 55, 0.1)', borderBottom: '1px solid rgba(212, 175, 55, 0.1)' },
+        statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '2rem', textAlign: 'center' },
+        statNumber: { fontSize: '3rem', fontWeight: '700', fontFamily: '"Playfair Display", serif', background: 'linear-gradient(135deg, #d4af37, #f4e4ba)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: '0.5rem' },
+        statLabel: { fontSize: '0.875rem', color: '#707070', textTransform: 'uppercase', letterSpacing: '0.1em' },
+        ctaSection: { textAlign: 'center', padding: '8rem 2rem', background: 'radial-gradient(ellipse at center, rgba(212, 175, 55, 0.05) 0%, transparent 60%)' },
+        ctaTitle: { fontSize: 'clamp(1.75rem, 4vw, 2.5rem)', fontWeight: '700', fontFamily: '"Playfair Display", serif', color: '#f5f5f0', marginBottom: '1rem' },
+        ctaSubtitle: { fontSize: '1.125rem', color: '#808080', marginBottom: '2.5rem' },
+        footer: { borderTop: '1px solid rgba(255, 255, 255, 0.05)', padding: '2rem', textAlign: 'center', color: '#505050', fontSize: '0.875rem' },
+        demoPreview: { background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '24px', overflow: 'hidden', maxWidth: '900px', margin: '0 auto', boxShadow: '0 40px 100px rgba(0, 0, 0, 0.5)' },
+        demoHeader: { background: 'rgba(10, 15, 26, 0.9)', padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' },
+        demoDots: { display: 'flex', gap: '0.5rem' },
+        demoDot: (color) => ({ width: '12px', height: '12px', borderRadius: '50%', background: color }),
+        demoBody: { padding: '2rem', background: 'linear-gradient(160deg, #0a0f1a, #0d1929)' },
+        demoCards: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' },
+        demoCard: { background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.06)', borderRadius: '12px', padding: '1.25rem' },
+        demoCardLabel: { fontSize: '0.625rem', color: '#606060', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.375rem' },
+        demoCardValue: { fontSize: '1.25rem', fontWeight: '600', fontFamily: '"Playfair Display", serif' },
+      };
+
+      return (
+        <div style={heroStyles.wrapper}>
+          <nav style={heroStyles.nav}>
+            <div style={heroStyles.navContent}>
+              <div style={heroStyles.logo}>
+                <div style={heroStyles.logoIcon}><Icons.TrendUp /></div>
+                <span style={heroStyles.logoText}>Mercury</span>
+              </div>
+              <button style={heroStyles.navCta} onClick={onEnterApp}>
+                Launch App <Icons.ArrowRight />
+              </button>
+            </div>
+          </nav>
+
+          <div style={heroStyles.heroGlow} />
+
+          <section style={heroStyles.hero}>
+            <div style={heroStyles.heroContent}>
+              <div style={heroStyles.heroTagline}>
+                <Icons.Star /> Trusted by savvy savers
+              </div>
+              <h1 style={heroStyles.heroTitle}>
+                Master Your Money with{' '}
+                <span style={heroStyles.heroGradient}>Precision</span>
+              </h1>
+              <p style={heroStyles.heroSubtitle}>
+                Mercury transforms the way you manage your finances. Track income, forecast expenses, 
+                and visualize your financial future with an elegant, intuitive interface.
+              </p>
+              <div style={heroStyles.heroActions}>
+                <button style={heroStyles.primaryBtn} onClick={onEnterApp}>
+                  Start Tracking Free <Icons.ArrowRight />
+                </button>
+                <button style={heroStyles.secondaryBtn} onClick={() => document.getElementById('features').scrollIntoView({ behavior: 'smooth' })}>
+                  See Features <Icons.ChevronDown />
+                </button>
+              </div>
+            </div>
+            <div style={heroStyles.scrollIndicator}>
+              <span>Scroll to explore</span>
+              <Icons.ChevronDown />
+            </div>
+          </section>
+
+          <section id="features" style={heroStyles.section}>
+            <h2 style={heroStyles.sectionTitle}>Powerful Features</h2>
+            <p style={heroStyles.sectionSubtitle}>
+              Everything you need to take control of your personal finances, 
+              designed with elegance and built for simplicity.
+            </p>
+            <div style={heroStyles.featuresGrid}>
+              <div style={heroStyles.featureCard}>
+                <div style={heroStyles.featureCardHover} />
+                <div style={heroStyles.featureIcon}><Icons.Money /></div>
+                <h3 style={heroStyles.featureTitle}>Payroll Intelligence</h3>
+                <p style={heroStyles.featureDesc}>
+                  Automatically track multiple income streams with flexible scheduling. 
+                  Supports weekly, biweekly, monthly, and semi-monthly pay cycles.
+                </p>
+              </div>
+              <div style={heroStyles.featureCard}>
+                <div style={heroStyles.featureCardHover} />
+                <div style={heroStyles.featureIcon}><Icons.Calendar /></div>
+                <h3 style={heroStyles.featureTitle}>Calendar Clarity</h3>
+                <p style={heroStyles.featureDesc}>
+                  Visualize every financial transaction on a day-by-day calendar. 
+                  See exactly when money comes in and when it goes out.
+                </p>
+              </div>
+              <div style={heroStyles.featureCard}>
+                <div style={heroStyles.featureCardHover} />
+                <div style={heroStyles.featureIcon}><Icons.BarChart /></div>
+                <h3 style={heroStyles.featureTitle}>Smart Forecasting</h3>
+                <p style={heroStyles.featureDesc}>
+                  Project your year-end balance and identify your lowest balance points 
+                  before they happen. Stay ahead of cash flow challenges.
+                </p>
+              </div>
+              <div style={heroStyles.featureCard}>
+                <div style={heroStyles.featureCardHover} />
+                <div style={heroStyles.featureIcon}><Icons.Recurring /></div>
+                <h3 style={heroStyles.featureTitle}>Recurring Expenses</h3>
+                <p style={heroStyles.featureDesc}>
+                  Track subscriptions, bills, and regular expenses. Never forget a 
+                  payment with automatic scheduling and reminders.
+                </p>
+              </div>
+              <div style={heroStyles.featureCard}>
+                <div style={heroStyles.featureCardHover} />
+                <div style={heroStyles.featureIcon}><Icons.Cloud /></div>
+                <h3 style={heroStyles.featureTitle}>Cloud Sync</h3>
+                <p style={heroStyles.featureDesc}>
+                  Your data is securely stored in the cloud. Access your finances 
+                  from any device, anytime, with automatic synchronization.
+                </p>
+              </div>
+              <div style={heroStyles.featureCard}>
+                <div style={heroStyles.featureCardHover} />
+                <div style={heroStyles.featureIcon}><Icons.Shield /></div>
+                <h3 style={heroStyles.featureTitle}>Balance Overrides</h3>
+                <p style={heroStyles.featureDesc}>
+                  Reconcile your accounts anytime. Override calculated balances 
+                  to match your actual bank statements with a single click.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section style={{ ...heroStyles.section, ...heroStyles.statsSection }}>
+            <div style={heroStyles.statsGrid}>
+              <div>
+                <div style={heroStyles.statNumber}>365</div>
+                <div style={heroStyles.statLabel}>Days Forecasted</div>
+              </div>
+              <div>
+                <div style={heroStyles.statNumber}>24/7</div>
+                <div style={heroStyles.statLabel}>Cloud Access</div>
+              </div>
+              <div>
+                <div style={heroStyles.statNumber}>100%</div>
+                <div style={heroStyles.statLabel}>Privacy Focused</div>
+              </div>
+              <div>
+                <div style={heroStyles.statNumber}>Free</div>
+                <div style={heroStyles.statLabel}>Forever</div>
+              </div>
+            </div>
+          </section>
+
+          <section style={heroStyles.section}>
+            <h2 style={heroStyles.sectionTitle}>See It In Action</h2>
+            <p style={heroStyles.sectionSubtitle}>
+              A beautiful dashboard that gives you complete visibility into your financial health.
+            </p>
+            <div style={heroStyles.demoPreview}>
+              <div style={heroStyles.demoHeader}>
+                <div style={heroStyles.demoDots}>
+                  <div style={heroStyles.demoDot('#ef5350')} />
+                  <div style={heroStyles.demoDot('#fbbf24')} />
+                  <div style={heroStyles.demoDot('#4ade80')} />
+                </div>
+                <span style={{ color: '#606060', fontSize: '0.8125rem' }}>Mercury Dashboard</span>
+              </div>
+              <div style={heroStyles.demoBody}>
+                <div style={heroStyles.demoCards}>
+                  <div style={heroStyles.demoCard}>
+                    <div style={heroStyles.demoCardLabel}>Starting Balance</div>
+                    <div style={{ ...heroStyles.demoCardValue, color: '#4ade80' }}>$5,000.00</div>
+                  </div>
+                  <div style={heroStyles.demoCard}>
+                    <div style={heroStyles.demoCardLabel}>Year-End Projection</div>
+                    <div style={{ ...heroStyles.demoCardValue, color: '#8b5cf6' }}>$12,450.00</div>
+                  </div>
+                  <div style={heroStyles.demoCard}>
+                    <div style={heroStyles.demoCardLabel}>Net Cashflow</div>
+                    <div style={{ ...heroStyles.demoCardValue, color: '#4ade80' }}>+$7,450.00</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section style={heroStyles.ctaSection}>
+            <h2 style={heroStyles.ctaTitle}>Ready to Take Control?</h2>
+            <p style={heroStyles.ctaSubtitle}>
+              Join thousands who have transformed their financial clarity with Mercury.
+            </p>
+            <button style={heroStyles.primaryBtn} onClick={onEnterApp}>
+              Start Using Mercury <Icons.ArrowRight />
+            </button>
+          </section>
+
+          <footer style={heroStyles.footer}>
+            <p>Mercury - Personal Finance Tracker</p>
+          </footer>
+        </div>
+      );
+    }
+
+    function FinancialTracker({ onBackToHome }) {
       const today = new Date();
       const realCurrentYear = getCurrentYear();
 
-      // Loading state
       const [isLoading, setIsLoading] = useState(true);
       const [loadError, setLoadError] = useState(null);
 
-      // Data state
       const [activeYear, setActiveYear] = useState(realCurrentYear);
       const [dashboardYear, setDashboardYear] = useState(realCurrentYear);
       const [archivedYears, setArchivedYears] = useState([]);
@@ -134,7 +370,6 @@
       const [recurringExpenses, setRecurringExpenses] = useState([]);
       const [oneOffExpenses, setOneOffExpenses] = useState([]);
       const [balanceOverrides, setBalanceOverrides] = useState({});
-      // UI state
       const [activeView, setActiveView] = useState('dashboard');
       const [editingCell, setEditingCell] = useState(null);
       const [editValue, setEditValue] = useState('');
@@ -149,10 +384,8 @@
       const [showOneOffExpenseForm, setShowOneOffExpenseForm] = useState(false);
       const [addOneOffFromCalendar, setAddOneOffFromCalendar] = useState(null);
 
-      // Save timeout ref for debouncing
       const saveTimeoutRef = useRef(null);
 
-      // Load initial data from server
       useEffect(() => {
         api.loadData()
           .then(data => {
@@ -175,7 +408,6 @@
           });
       }, []);
 
-      // Debounced save to server
       const saveToServer = useCallback(() => {
         if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
         saveTimeoutRef.current = setTimeout(() => {
@@ -198,7 +430,6 @@
         }, 500);
       }, [initialBalances, payrolls, recurringExpenses, oneOffExpenses, balanceOverrides, activeYear, archivedYears]);
 
-      // Save whenever data changes
       useEffect(() => {
         if (!isLoading) saveToServer();
       }, [initialBalances, payrolls, recurringExpenses, oneOffExpenses, balanceOverrides, activeYear, archivedYears]);
@@ -383,7 +614,7 @@
       const deleteOneOffExpense = (id) => { setOneOffExpenses(prev => prev.filter(e => e.id !== id)); };
       const openOneOffFormForDate = (dateKey) => { setNewOneOffExpense({ name: '', amount: '', date: dateKey }); setAddOneOffFromCalendar(dateKey); setShowOneOffExpenseForm(true); };
       const updateInitialBalance = (year, value) => { setInitialBalances(prev => ({ ...prev, [year]: parseFloat(value) || 0 })); };
-      const clearAllData = () => { if (confirm('Clear all data? Export a backup first!')) { setInitialBalances({ [activeYear]: 5000 }); setPayrolls([]); setRecurringExpenses([]); setOneOffExpenses([]); setBalanceOverrides({}); setArchivedYears([]); } };
+      const clearAllData = () => { if (confirm('Clear all data? This cannot be undone!')) { setInitialBalances({ [activeYear]: 5000 }); setPayrolls([]); setRecurringExpenses([]); setOneOffExpenses([]); setBalanceOverrides({}); setArchivedYears([]); } };
 
       const frequencyLabels = { 'weekly': 'Weekly', 'biweekly': 'Biweekly', 'monthly': 'Monthly', 'semimonthly': 'Semi-monthly (15th & EOM)', 'last-weekday-15th': 'Last weekday before 15th', 'last-weekday-eom': 'Last weekday of month', 'yearly': 'Yearly' };
       const getExpenseFrequencyLabel = (expense) => { if (expense.frequency === 'weekly') return `Weekly on ${dayNames[expense.dayOfWeek]}s`; if (expense.frequency === 'monthly') return `Monthly on day ${expense.dayOfMonth}`; if (expense.frequency === 'yearly') return `Yearly on ${months[expense.month]} ${expense.day}`; return expense.frequency; };
@@ -392,20 +623,16 @@
         container: { minHeight: '100vh', background: 'linear-gradient(160deg, #0a0f1a 0%, #0d1929 40%, #0f1d2f 100%)', fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif', color: '#f5f5f0' },
         header: { background: 'rgba(10, 15, 26, 0.85)', borderBottom: '1px solid rgba(212, 175, 55, 0.15)', padding: '1rem 2rem', position: 'sticky', top: 0, zIndex: 100, backdropFilter: 'blur(24px)' },
         headerContent: { maxWidth: '1600px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' },
-        logo: { display: 'flex', alignItems: 'center', gap: '0.75rem' },
+        logo: { display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' },
         logoIcon: { width: '40px', height: '40px', background: 'linear-gradient(135deg, #d4af37, #c9a227, #b8860b)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 24px rgba(212, 175, 55, 0.25)' },
         logoText: { fontSize: '1.5rem', fontWeight: '600', fontFamily: '"Playfair Display", serif', background: 'linear-gradient(135deg, #d4af37, #f4e4ba)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '0.02em' },
         yearBadge: { padding: '0.25rem 0.75rem', background: 'rgba(212, 175, 55, 0.1)', border: '1px solid rgba(212, 175, 55, 0.25)', borderRadius: '20px', fontSize: '0.75rem', color: '#d4af37', fontWeight: '500', letterSpacing: '0.05em' },
         headerActions: { display: 'flex', alignItems: 'center', gap: '0.75rem' },
-        dataButton: (warning = false) => ({ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: warning ? 'rgba(212, 175, 55, 0.1)' : 'rgba(255, 255, 255, 0.03)', border: `1px solid ${warning ? 'rgba(212, 175, 55, 0.3)' : 'rgba(255, 255, 255, 0.08)'}`, borderRadius: '8px', color: warning ? '#d4af37' : '#a0a0a0', fontSize: '0.8125rem', fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.3s ease' }),
         saveIndicator: { display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.375rem 0.625rem', background: 'rgba(76, 175, 80, 0.1)', border: '1px solid rgba(76, 175, 80, 0.2)', borderRadius: '6px', fontSize: '0.6875rem', color: '#4caf50', opacity: saveIndicator ? 1 : 0, transition: 'opacity 0.3s ease' },
         cloudIndicator: { display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.375rem 0.625rem', background: 'rgba(212, 175, 55, 0.1)', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '6px', fontSize: '0.6875rem', color: '#d4af37' },
         nav: { display: 'flex', gap: '0.5rem' },
         navButton: (isActive) => ({ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.625rem 1.25rem', background: isActive ? 'rgba(212, 175, 55, 0.1)' : 'transparent', border: isActive ? '1px solid rgba(212, 175, 55, 0.25)' : '1px solid transparent', borderRadius: '8px', color: isActive ? '#d4af37' : '#808080', fontSize: '0.875rem', fontWeight: '500', cursor: 'pointer', transition: 'all 0.3s ease', fontFamily: 'inherit' }),
         main: { maxWidth: '1600px', margin: '0 auto', padding: '2rem' },
-        backupBanner: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', padding: '1rem 1.5rem', background: 'rgba(212, 175, 55, 0.08)', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '12px', marginBottom: '2rem' },
-        backupText: { display: 'flex', alignItems: 'center', gap: '0.625rem', fontSize: '0.875rem', color: '#d4af37' },
-        backupButton: { display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.625rem 1.25rem', background: 'linear-gradient(135deg, #d4af37, #c9a227)', border: 'none', borderRadius: '8px', color: '#0a0f1a', fontSize: '0.875rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 2px 12px rgba(212, 175, 55, 0.3)' },
         yearSelector: { display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem', padding: '1rem 1.25rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.05)' },
         yearLabel: { fontSize: '0.75rem', color: '#707070', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: '500' },
         yearSelect: { padding: '0.5rem 1rem', background: 'rgba(212, 175, 55, 0.08)', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '8px', color: '#f5f5f0', fontSize: '0.9375rem', fontWeight: '600', fontFamily: 'inherit', cursor: 'pointer' },
@@ -463,20 +690,9 @@
         monthBtn: (isActive) => ({ padding: '0.375rem 0.625rem', background: isActive ? 'rgba(212, 175, 55, 0.15)' : 'transparent', border: isActive ? '1px solid rgba(212, 175, 55, 0.25)' : '1px solid transparent', borderRadius: '6px', color: isActive ? '#d4af37' : '#606060', fontSize: '0.625rem', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit', transition: 'all 0.2s ease' }),
         expensesList: { display: 'flex', flexWrap: 'wrap', gap: '0.1875rem' },
         threeColumn: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' },
-        clearButton: { padding: '0.5rem 1rem', background: 'rgba(239, 83, 80, 0.08)', border: '1px solid rgba(239, 83, 80, 0.15)', borderRadius: '8px', color: '#ef5350', fontSize: '0.75rem', fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s ease' },
         emptyState: { color: '#585858', fontSize: '0.8125rem', textAlign: 'center', padding: '1.5rem' },
-        dataManagerCard: { background: 'linear-gradient(160deg, #111827, #0d1929)', border: '1px solid rgba(212, 175, 55, 0.15)', borderRadius: '20px', padding: '2rem', width: '100%', maxWidth: '500px', boxShadow: '0 25px 80px rgba(0, 0, 0, 0.6)' },
-        dataSection: { padding: '1.5rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '12px', marginBottom: '1.25rem', border: '1px solid rgba(255, 255, 255, 0.04)' },
-        dataSectionTitle: { fontSize: '0.9375rem', fontWeight: '500', color: '#f5f5f0', marginBottom: '0.625rem', display: 'flex', alignItems: 'center', gap: '0.625rem' },
-        dataSectionDesc: { fontSize: '0.8125rem', color: '#606060', marginBottom: '1.25rem', lineHeight: '1.5' },
-        dataActionRow: { display: 'flex', gap: '1rem' },
-        exportBtn: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.875rem', background: 'linear-gradient(135deg, #4caf50, #388e3c)', border: 'none', borderRadius: '10px', color: '#fff', fontSize: '0.875rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 2px 12px rgba(76, 175, 80, 0.25)' },
-        importBtn: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.875rem', background: 'rgba(212, 175, 55, 0.1)', border: '1px solid rgba(212, 175, 55, 0.25)', borderRadius: '10px', color: '#d4af37', fontSize: '0.875rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' },
-        lastBackupText: { fontSize: '0.75rem', color: '#585858', marginTop: '1rem', textAlign: 'center' },
-        fileInput: { display: 'none' },
       };
 
-      // Show loading state
       if (isLoading) {
         return (
           <div className="loading-screen">
@@ -486,7 +702,6 @@
         );
       }
 
-      // Show error state
       if (loadError) {
         return (
           <div className="loading-screen">
@@ -526,92 +741,117 @@
           <div style={styles.dashboardGrid}>
             <div style={styles.statCard()}><div style={styles.statCardAccent('#22d3ee')} /><div style={styles.statLabel}>Total Income</div><div style={styles.statValue('#4ade80')}>{formatCurrency(stats.totalPayrollForYear)}</div></div>
             <div style={styles.statCard()}><div style={styles.statCardAccent('#6366f1')} /><div style={styles.statLabel}>Total Recurring Expenses</div><div style={styles.statValue('#f87171')}>{formatCurrency(stats.totalRecurringExpensesForYear)}</div></div>
-            <div style={styles.statCard()}><div style={styles.statCardAccent('#f59e0b')} /><div style={styles.statLabel}>Total One-Off Expenses</div><div style={styles.statValue('#fbbf24')}>{formatCurrency(stats.totalOneOffExpensesForYear)}</div><div style={styles.statSubtext}>{oneOffExpenses.filter(e => e.date.startsWith(dashboardYear)).length} scheduled</div></div>
-            <div style={styles.statCard()}><div style={styles.statCardAccent('#14b8a6')} /><div style={styles.statLabel}>Total All Expenses</div><div style={styles.statValue('#f87171')}>{formatCurrency(stats.totalExpensesForYear)}</div></div>
+            <div style={styles.statCard()}><div style={styles.statCardAccent('#f59e0b')} /><div style={styles.statLabel}>Total One-Off Expenses</div><div style={styles.statValue('#fbbf24')}>{formatCurrency(stats.totalOneOffExpensesForYear)}</div></div>
+            <div style={styles.statCard()}><div style={styles.statCardAccent('#ef4444')} /><div style={styles.statLabel}>Total All Expenses</div><div style={styles.statValue('#f87171')}>{formatCurrency(stats.totalExpensesForYear)}</div></div>
           </div>
 
           <div style={styles.threeColumn}>
             <div style={styles.panel}>
-              <div style={styles.panelHeader}><div style={styles.panelTitle}><Icons.Money /> Income Sources</div><button style={styles.addButton} onClick={() => setShowPayrollForm(true)}><Icons.Plus /> Add</button></div>
-              {payrolls.map(payroll => (
+              <div style={styles.panelHeader}>
+                <div style={styles.panelTitle}><Icons.Money /> Income Sources</div>
+                <button style={styles.addButton} onClick={() => setShowPayrollForm(true)}><Icons.Plus /> Add</button>
+              </div>
+              {payrolls.length === 0 ? <div style={styles.emptyState}>No income sources added yet</div> : payrolls.map(payroll => (
                 <div key={payroll.id} style={styles.itemRow}>
-                  <div><div style={styles.itemName}>{payroll.name}</div><div style={styles.itemMeta}>{frequencyLabels[payroll.frequency] || payroll.frequency}{['weekly', 'biweekly', 'monthly'].includes(payroll.frequency) && ` - Day ${payroll.startDay}`}</div></div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4375rem' }}><div style={styles.itemAmount(true)}>+{formatCurrency(payroll.amount)}</div><button style={styles.deleteBtn} onClick={() => deletePayroll(payroll.id)}><Icons.Trash /></button></div>
+                  <div><div style={styles.itemName}>{payroll.name}</div><div style={styles.itemMeta}>{frequencyLabels[payroll.frequency]}</div></div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}><span style={styles.itemAmount(true)}>+{formatCurrency(payroll.amount)}</span><button style={styles.deleteBtn} onClick={() => deletePayroll(payroll.id)}><Icons.Trash /></button></div>
                 </div>
               ))}
-              {payrolls.length === 0 && <div style={styles.emptyState}>No income sources added</div>}
             </div>
 
             <div style={styles.panel}>
-              <div style={styles.panelHeader}><div style={styles.panelTitle}><Icons.Recurring /> Recurring Expenses</div><button style={styles.addButton} onClick={() => setShowRecurringExpenseForm(true)}><Icons.Plus /> Add</button></div>
-              {recurringExpenses.map(expense => (
+              <div style={styles.panelHeader}>
+                <div style={styles.panelTitle}><Icons.Recurring /> Recurring Expenses</div>
+                <button style={styles.addButton} onClick={() => setShowRecurringExpenseForm(true)}><Icons.Plus /> Add</button>
+              </div>
+              {recurringExpenses.length === 0 ? <div style={styles.emptyState}>No recurring expenses added yet</div> : recurringExpenses.map(expense => (
                 <div key={expense.id} style={styles.itemRow}>
                   <div><div style={styles.itemName}>{expense.name}</div><div style={styles.itemMeta}>{getExpenseFrequencyLabel(expense)}</div></div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4375rem' }}><div style={styles.itemAmount(false)}>-{formatCurrency(expense.amount)}</div><button style={styles.deleteBtn} onClick={() => deleteRecurringExpense(expense.id)}><Icons.Trash /></button></div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}><span style={styles.itemAmount()}>-{formatCurrency(expense.amount)}</span><button style={styles.deleteBtn} onClick={() => deleteRecurringExpense(expense.id)}><Icons.Trash /></button></div>
                 </div>
               ))}
-              {recurringExpenses.length === 0 && <div style={styles.emptyState}>No recurring expenses added</div>}
             </div>
 
             <div style={styles.panel}>
-              <div style={styles.panelHeader}><div style={styles.panelTitle}><Icons.OneTime /> One-Off Expenses</div><button style={styles.addButton} onClick={() => setShowOneOffExpenseForm(true)}><Icons.Plus /> Add</button></div>
-              {oneOffExpenses.filter(e => e.date.startsWith(String(dashboardYear))).map(expense => (
+              <div style={styles.panelHeader}>
+                <div style={styles.panelTitle}><Icons.OneTime /> One-Off Expenses</div>
+                <button style={styles.addButton} onClick={() => setShowOneOffExpenseForm(true)}><Icons.Plus /> Add</button>
+              </div>
+              {oneOffExpenses.filter(e => e.date.startsWith(String(dashboardYear))).length === 0 ? <div style={styles.emptyState}>No one-off expenses for {dashboardYear}</div> : oneOffExpenses.filter(e => e.date.startsWith(String(dashboardYear))).sort((a, b) => a.date.localeCompare(b.date)).map(expense => (
                 <div key={expense.id} style={styles.itemRow}>
                   <div><div style={styles.itemName}>{expense.name}</div><div style={styles.itemMeta}>{formatFullDate(new Date(expense.date + 'T00:00:00'))}</div></div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4375rem' }}><div style={styles.itemAmount(false)}>-{formatCurrency(expense.amount)}</div><button style={styles.deleteBtn} onClick={() => deleteOneOffExpense(expense.id)}><Icons.Trash /></button></div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}><span style={styles.itemAmount()}>-{formatCurrency(expense.amount)}</span><button style={styles.deleteBtn} onClick={() => deleteOneOffExpense(expense.id)}><Icons.Trash /></button></div>
                 </div>
               ))}
-              {oneOffExpenses.filter(e => e.date.startsWith(String(dashboardYear))).length === 0 && <div style={styles.emptyState}>No one-off expenses for {dashboardYear}</div>}
             </div>
           </div>
-
-          <div style={{ marginTop: '1.75rem', textAlign: 'center' }}><button style={styles.clearButton} onClick={clearAllData}>Clear All Data</button></div>
         </div>
       );
 
       const renderCalendar = () => {
-        let currentMonth = -1;
+        const monthRefs = useRef({});
+        useEffect(() => {
+          if (monthRefs.current[scrollToMonth]) {
+            monthRefs.current[scrollToMonth].scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, [scrollToMonth]);
+
         return (
           <div style={styles.tableContainer}>
             <div style={styles.initialBalanceSection}>
-              <span style={styles.initialBalanceLabel}>Year:</span><span style={styles.yearBadge}>{activeYear}</span>
-              <span style={styles.initialBalanceLabel}>Starting Balance (Jan 1):</span>
+              <span style={styles.initialBalanceLabel}>Initial Balance (Jan 1, {activeYear}):</span>
               <input type="number" value={initialBalances[activeYear] || 5000} onChange={(e) => updateInitialBalance(activeYear, e.target.value)} style={styles.initialBalanceInput} />
             </div>
-            <div style={styles.monthSelector}>{months.map((month, idx) => <button key={month} style={styles.monthBtn(scrollToMonth === idx)} onClick={() => { setScrollToMonth(idx); document.getElementById(`month-${idx}`)?.scrollIntoView({ behavior: 'smooth' }); }}>{month.slice(0, 3)}</button>)}</div>
+            <div style={styles.monthSelector}>
+              {months.map((month, idx) => (<button key={month} style={styles.monthBtn(scrollToMonth === idx)} onClick={() => setScrollToMonth(idx)}>{month.slice(0, 3)}</button>))}
+            </div>
             <div style={styles.tableHeader}>
-              <div style={styles.tableHeaderCell}>Date</div><div style={styles.tableHeaderCell}>Day</div><div style={styles.tableHeaderCell}>Details</div><div style={styles.tableHeaderCell}>Starting</div><div style={styles.tableHeaderCell}>Expenses</div><div style={styles.tableHeaderCell}>Ending</div><div style={styles.tableHeaderCell}></div>
+              <div style={styles.tableHeaderCell}>Date</div>
+              <div style={styles.tableHeaderCell}>Day</div>
+              <div style={styles.tableHeaderCell}>Activity</div>
+              <div style={styles.tableHeaderCell}>Starting</div>
+              <div style={styles.tableHeaderCell}>Expenses</div>
+              <div style={styles.tableHeaderCell}>Ending</div>
+              <div style={styles.tableHeaderCell}></div>
             </div>
             <div style={styles.tableBody}>
-              {financialData.map((day) => {
-                const showMonthDivider = day.month !== currentMonth;
-                if (showMonthDivider) currentMonth = day.month;
+              {financialData.map((day, idx) => {
+                const isMonthStart = day.dayOfMonth === 1;
+                const prevMonth = idx > 0 ? financialData[idx - 1].month : -1;
+                const showMonthDivider = day.month !== prevMonth;
+
                 return (
                   <Fragment key={day.dateKey}>
-                    {showMonthDivider && <div id={`month-${day.month}`} style={styles.monthDivider}><div style={styles.monthLabel}>{months[day.month]} {activeYear}</div></div>}
-                    <div style={styles.tableRow(day.isToday, day.isPast, day.dayOfMonth === 1)} onMouseEnter={(e) => { if (!day.isToday) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)'; }} onMouseLeave={(e) => { if (!day.isToday) e.currentTarget.style.background = day.dayOfMonth === 1 ? 'rgba(255, 255, 255, 0.03)' : 'transparent'; }}>
-                      <div style={styles.tableCell}><span style={{ fontWeight: day.isToday ? '700' : '500' }}>{formatDate(day.date)}</span>{day.isToday && <span style={{ marginLeft: '0.25rem', fontSize: '0.5rem', color: '#d4af37', background: 'rgba(212, 175, 55, 0.2)', padding: '0.0625rem 0.1875rem', borderRadius: '2px' }}>TODAY</span>}</div>
-                      <div style={styles.tableCell}><span style={{ color: ['Sat', 'Sun'].includes(day.dayOfWeek) ? '#8b5cf6' : '#8888a0' }}>{day.dayOfWeek}</span></div>
-                      <div style={styles.tableCell}>
+                    {showMonthDivider && (<div style={styles.monthDivider} ref={el => monthRefs.current[day.month] = el}><span style={styles.monthLabel}>{months[day.month]} {day.year}</span></div>)}
+                    <div style={styles.tableRow(day.isToday, day.isPast, isMonthStart)}>
+                      <div style={styles.tableCell}>{formatDate(day.date)}</div>
+                      <div style={styles.tableCell}>{day.dayOfWeek}</div>
+                      <div style={{ ...styles.tableCell, flexWrap: 'wrap' }}>
                         <div style={styles.expensesList}>
-                          {day.payrollDetails.map(p => <span key={p.id} style={styles.payrollBadge}>+{formatCurrency(p.amount)} {p.name}</span>)}
-                          {day.recurringExpenseDetails.map(exp => <span key={exp.id} style={styles.recurringExpenseBadge}>{exp.name}: -{formatCurrency(exp.amount)}</span>)}
-                          {day.oneOffExpenseDetails.map(exp => <span key={exp.id} style={styles.oneOffExpenseBadge}>{exp.name}: -{formatCurrency(exp.amount)}</span>)}
+                          {day.payrollDetails.map((p, i) => (<span key={i} style={styles.payrollBadge}>+${p.amount} {p.name}</span>))}
+                          {day.expenseDetails.map((e, i) => (<span key={i} style={e.isRecurring ? styles.recurringExpenseBadge : styles.oneOffExpenseBadge}>-${e.amount} {e.name}</span>))}
                         </div>
                       </div>
                       <div style={styles.tableCell}>
                         {editingCell === day.dateKey ? (
                           <div style={{ display: 'flex', alignItems: 'center' }}>
                             <input type="number" value={editValue} onChange={(e) => setEditValue(e.target.value)} style={styles.inlineInput} autoFocus onKeyDown={(e) => { if (e.key === 'Enter') handleOverrideBalance(day.dateKey, editValue); if (e.key === 'Escape') setEditingCell(null); }} />
-                            <div style={styles.inlineActions}><button style={{ ...styles.inlineBtn('74, 222, 128'), color: '#4ade80' }} onClick={() => handleOverrideBalance(day.dateKey, editValue)}><Icons.Check /></button><button style={{ ...styles.inlineBtn('248, 113, 113'), color: '#f87171' }} onClick={() => setEditingCell(null)}><Icons.X /></button></div>
+                            <div style={styles.inlineActions}>
+                              <button style={styles.inlineBtn('76, 175, 80')} onClick={() => handleOverrideBalance(day.dateKey, editValue)}><Icons.Check style={{ color: '#4caf50' }} /></button>
+                              <button style={styles.inlineBtn('239, 83, 80')} onClick={() => setEditingCell(null)}><Icons.X style={{ color: '#ef5350' }} /></button>
+                            </div>
                           </div>
                         ) : (
-                          <><span style={day.startingBalance >= 0 ? styles.balancePositive : styles.balanceNegative}>{formatCurrency(day.startingBalance)}</span>{day.isOverridden && <span style={styles.overrideBadge} onClick={() => clearOverride(day.dateKey)} title="Click to remove override">✎</span>}<button style={styles.editButton} onClick={() => { setEditingCell(day.dateKey); setEditValue(day.startingBalance.toString()); }} title="Override balance"><Icons.Edit /></button></>
+                          <span style={day.startingBalance >= 0 ? styles.balancePositive : styles.balanceNegative}>
+                            {formatCurrency(day.startingBalance)}
+                            {day.isOverridden && (<span style={styles.overrideBadge} onClick={() => clearOverride(day.dateKey)} title="Click to clear override">Override</span>)}
+                            <button style={styles.editButton} onClick={() => { setEditingCell(day.dateKey); setEditValue(day.startingBalance.toString()); }}><Icons.Edit /></button>
+                          </span>
                         )}
                       </div>
-                      <div style={styles.tableCell}>{day.expenses > 0 && <span style={styles.expenseCell}>-{formatCurrency(day.expenses)}</span>}</div>
+                      <div style={{ ...styles.tableCell, ...styles.expenseCell }}>{day.expenses > 0 ? `-${formatCurrency(day.expenses)}` : '-'}</div>
                       <div style={styles.tableCell}><span style={day.endingBalance >= 0 ? styles.balancePositive : styles.balanceNegative}>{formatCurrency(day.endingBalance)}</span></div>
-                      <div style={styles.tableCell}><button style={styles.addExpenseBtn} onClick={() => openOneOffFormForDate(day.dateKey)} title="Add one-off expense"><Icons.Plus /></button></div>
+                      <div style={styles.tableCell}><button style={styles.addExpenseBtn} onClick={() => openOneOffFormForDate(day.dateKey)} title="Add expense"><Icons.Plus /></button></div>
                     </div>
                   </Fragment>
                 );
@@ -625,7 +865,7 @@
         <div style={styles.container}>
           <header style={styles.header}>
             <div style={styles.headerContent}>
-              <div style={styles.logo}><div style={styles.logoIcon}><Icons.TrendUp /></div><span style={styles.logoText}>Mercury</span><span style={styles.yearBadge}>{activeYear}</span></div>
+              <div style={styles.logo} onClick={onBackToHome}><div style={styles.logoIcon}><Icons.TrendUp /></div><span style={styles.logoText}>Mercury</span><span style={styles.yearBadge}>{activeYear}</span></div>
               <div style={styles.headerActions}>
                 <div style={styles.cloudIndicator}><Icons.Cloud /> Cloud Sync</div>
                 <div style={styles.saveIndicator}><Icons.Save /> Saved</div>
@@ -678,7 +918,15 @@
       );
     }
 
-    ReactDOM.render(<FinancialTracker />, document.getElementById('root'));
+    function AppShell() {
+      const [currentView, setCurrentView] = useState('home');
+
+      return currentView === 'home' 
+        ? <HomePage onEnterApp={() => setCurrentView('app')} />
+        : <FinancialTracker onBackToHome={() => setCurrentView('home')} />;
+    }
+
+    ReactDOM.render(<AppShell />, document.getElementById('root'));
   </script>
 </body>
 </html>
