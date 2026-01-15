@@ -101,6 +101,7 @@ The application tracks:
 
 ## Recent Changes
 
+- **January 2026**: Added comprehensive mobile responsiveness to FinancialTracker app with CSS media queries for header, dashboard grids, panels, calendar table, and form overlays
 - **January 2026**: Added interactive Matrix-style "Money Rain" animation to the homepage hero background (canvas-based, gold dollar signs with mouse glow effect)
 - **January 2026**: Added Replit Auth (OpenID Connect) for multi-user authentication
 - **January 2026**: Added users table and modified database schema for user isolation

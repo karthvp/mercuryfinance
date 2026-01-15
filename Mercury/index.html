@@ -30,6 +30,75 @@
     @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; } }
     @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes glow { 0%, 100% { box-shadow: 0 0 20px rgba(212,175,55,0.3); } 50% { box-shadow: 0 0 40px rgba(212,175,55,0.5); } }
+    
+    /* Mobile Responsive Styles */
+    @media (max-width: 768px) {
+      .mobile-nav { padding: 1rem !important; }
+      .mobile-nav-content { flex-wrap: wrap; gap: 0.75rem; }
+      .mobile-logo-text { font-size: 1.25rem !important; }
+      .mobile-nav-actions { flex-wrap: wrap; justify-content: center; gap: 0.5rem !important; }
+      .mobile-nav-cta { padding: 0.5rem 1rem !important; font-size: 0.8125rem !important; }
+      .mobile-user-info { padding: 0.375rem 0.75rem !important; }
+      .mobile-user-name { display: none; }
+      .mobile-logout-btn { padding: 0.375rem 0.75rem !important; }
+      .mobile-hero { padding: 6rem 1rem 3rem !important; min-height: auto !important; }
+      .mobile-hero-content { padding: 0 0.5rem; }
+      .mobile-hero-subtitle { font-size: 1rem !important; margin-bottom: 2rem !important; }
+      .mobile-hero-actions { flex-direction: column; width: 100%; }
+      .mobile-primary-btn, .mobile-secondary-btn { width: 100%; justify-content: center; padding: 0.875rem 1.5rem !important; }
+      .mobile-scroll-indicator { display: none !important; }
+      .mobile-section { padding: 3rem 1rem !important; }
+      .mobile-features-grid { grid-template-columns: 1fr !important; gap: 1rem !important; }
+      .mobile-feature-card { padding: 1.5rem !important; }
+      .mobile-stats-section { padding: 2rem 1rem !important; }
+      .mobile-stats-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 1.5rem !important; }
+      .mobile-stat-number { font-size: 2rem !important; }
+      .mobile-demo-preview { margin: 0 -0.5rem; border-radius: 16px !important; }
+      .mobile-demo-body { padding: 1rem !important; }
+      .mobile-demo-cards { grid-template-columns: 1fr !important; }
+      .mobile-cta-section { padding: 4rem 1rem !important; }
+      .mobile-footer { padding: 1.5rem 1rem !important; }
+    }
+    
+    @media (max-width: 480px) {
+      .mobile-stats-grid { grid-template-columns: 1fr !important; }
+      .mobile-nav-actions { width: 100%; justify-content: flex-end; }
+      .mobile-hero-tagline { font-size: 0.75rem !important; padding: 0.375rem 1rem !important; }
+    }
+    
+    /* FinancialTracker App Responsive Styles */
+    @media (max-width: 768px) {
+      .app-header { padding: 0.75rem 1rem !important; }
+      .app-header-content { flex-direction: column; align-items: stretch !important; gap: 0.75rem !important; }
+      .app-header-top { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+      .app-header-actions { justify-content: center !important; flex-wrap: wrap; }
+      .app-nav { justify-content: center; width: 100%; }
+      .app-nav-btn { padding: 0.5rem 0.75rem !important; font-size: 0.75rem !important; flex: 1; justify-content: center; }
+      .app-main { padding: 1rem !important; }
+      .app-year-selector { flex-wrap: wrap; padding: 0.75rem 1rem !important; }
+      .app-dashboard-grid { grid-template-columns: 1fr !important; }
+      .app-stat-card { padding: 1rem !important; }
+      .app-stat-value { font-size: 1.5rem !important; }
+      .app-three-column { grid-template-columns: 1fr !important; }
+      .app-panel { padding: 1rem !important; }
+      .app-panel-header { flex-direction: column; align-items: stretch !important; }
+      .app-item-row { flex-direction: column; align-items: stretch !important; gap: 0.5rem; padding: 0.75rem !important; }
+      .app-item-actions { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+      .app-table-container { overflow-x: auto; }
+      .app-table-header, .app-table-row { grid-template-columns: 80px 45px 1fr 90px 90px !important; min-width: 450px; }
+      .app-table-header-cell, .app-table-cell { font-size: 0.625rem !important; }
+      .app-hide-mobile { display: none !important; }
+      .app-form-card { padding: 1.25rem !important; margin: 1rem; max-width: calc(100% - 2rem) !important; }
+      .app-form-actions { flex-direction: column; }
+      .app-month-selector { padding: 0.5rem !important; }
+      .app-initial-balance-section { flex-direction: column; align-items: stretch !important; gap: 0.5rem !important; }
+    }
+    
+    @media (max-width: 480px) {
+      .app-logo-text { font-size: 1.25rem !important; }
+      .app-year-badge { display: none; }
+      .app-table-header, .app-table-row { grid-template-columns: 70px 40px 1fr 80px !important; min-width: 350px; }
+    }
   </style>
 </head>
 <body>
@@ -305,32 +374,32 @@
 
       return (
         <div style={heroStyles.wrapper}>
-          <nav style={heroStyles.nav}>
-            <div style={heroStyles.navContent}>
+          <nav className="mobile-nav" style={heroStyles.nav}>
+            <div className="mobile-nav-content" style={heroStyles.navContent}>
               <div style={heroStyles.logo}>
                 <div style={heroStyles.logoIcon}><Icons.TrendUp /></div>
-                <span style={heroStyles.logoText}>Mercury</span>
+                <span className="mobile-logo-text" style={heroStyles.logoText}>Mercury</span>
               </div>
-              <div style={heroStyles.navActions}>
+              <div className="mobile-nav-actions" style={heroStyles.navActions}>
                 {user ? (
                   <>
-                    <div style={heroStyles.userInfo}>
+                    <div className="mobile-user-info" style={heroStyles.userInfo}>
                       {user.profile_image ? (
                         <img src={user.profile_image} alt="" style={heroStyles.userAvatar} />
                       ) : (
                         <div style={{ ...heroStyles.userAvatar, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(212, 175, 55, 0.2)', color: '#d4af37' }}><Icons.User /></div>
                       )}
-                      <span style={heroStyles.userName}>{user.first_name || user.email || 'User'}</span>
+                      <span className="mobile-user-name" style={heroStyles.userName}>{user.first_name || user.email || 'User'}</span>
                     </div>
-                    <button style={heroStyles.navCta} onClick={onEnterApp}>
+                    <button className="mobile-nav-cta" style={heroStyles.navCta} onClick={onEnterApp}>
                       Open App <Icons.ArrowRight />
                     </button>
-                    <a href="/api/logout" style={heroStyles.logoutBtn}>
+                    <a href="/api/logout" className="mobile-logout-btn" style={heroStyles.logoutBtn}>
                       <Icons.LogOut /> Sign Out
                     </a>
                   </>
                 ) : (
-                  <a href="/api/login" style={heroStyles.navCta}>
+                  <a href="/api/login" className="mobile-nav-cta" style={heroStyles.navCta}>
                     Sign In with Google <Icons.ArrowRight />
                   </a>
                 )}
@@ -340,49 +409,49 @@
 
           <div style={heroStyles.heroGlow} />
 
-          <section ref={heroSectionRef} style={heroStyles.hero}>
+          <section ref={heroSectionRef} className="mobile-hero" style={heroStyles.hero}>
             <MoneyRain containerRef={heroSectionRef} />
-            <div style={heroStyles.heroContent}>
-              <div style={heroStyles.heroTagline}>
+            <div className="mobile-hero-content" style={heroStyles.heroContent}>
+              <div className="mobile-hero-tagline" style={heroStyles.heroTagline}>
                 <Icons.Star /> Trusted by savvy savers
               </div>
               <h1 style={heroStyles.heroTitle}>
                 Master Your Money with{' '}
                 <span style={heroStyles.heroGradient}>Precision</span>
               </h1>
-              <p style={heroStyles.heroSubtitle}>
+              <p className="mobile-hero-subtitle" style={heroStyles.heroSubtitle}>
                 Mercury transforms the way you manage your finances. Track income, forecast expenses, 
                 and visualize your financial future with an elegant, intuitive interface.
               </p>
-              <div style={heroStyles.heroActions}>
+              <div className="mobile-hero-actions" style={heroStyles.heroActions}>
                 {user ? (
-                  <button style={heroStyles.primaryBtn} onClick={onEnterApp}>
+                  <button className="mobile-primary-btn" style={heroStyles.primaryBtn} onClick={onEnterApp}>
                     Open My Dashboard <Icons.ArrowRight />
                   </button>
                 ) : (
-                  <a href="/api/login" style={{ ...heroStyles.primaryBtn, textDecoration: 'none' }}>
+                  <a href="/api/login" className="mobile-primary-btn" style={{ ...heroStyles.primaryBtn, textDecoration: 'none' }}>
                     Sign In with Google <Icons.ArrowRight />
                   </a>
                 )}
-                <button style={heroStyles.secondaryBtn} onClick={() => document.getElementById('features').scrollIntoView({ behavior: 'smooth' })}>
+                <button className="mobile-secondary-btn" style={heroStyles.secondaryBtn} onClick={() => document.getElementById('features').scrollIntoView({ behavior: 'smooth' })}>
                   See Features <Icons.ChevronDown />
                 </button>
               </div>
             </div>
-            <div style={heroStyles.scrollIndicator}>
+            <div className="mobile-scroll-indicator" style={heroStyles.scrollIndicator}>
               <span>Scroll to explore</span>
               <Icons.ChevronDown />
             </div>
           </section>
 
-          <section id="features" style={heroStyles.section}>
+          <section id="features" className="mobile-section" style={heroStyles.section}>
             <h2 style={heroStyles.sectionTitle}>Powerful Features</h2>
             <p style={heroStyles.sectionSubtitle}>
               Everything you need to take control of your personal finances, 
               designed with elegance and built for simplicity.
             </p>
-            <div style={heroStyles.featuresGrid}>
-              <div style={heroStyles.featureCard}>
+            <div className="mobile-features-grid" style={heroStyles.featuresGrid}>
+              <div className="mobile-feature-card" style={heroStyles.featureCard}>
                 <div style={heroStyles.featureCardHover} />
                 <div style={heroStyles.featureIcon}><Icons.Money /></div>
                 <h3 style={heroStyles.featureTitle}>Payroll Intelligence</h3>
@@ -391,7 +460,7 @@
                   Supports weekly, biweekly, monthly, and semi-monthly pay cycles.
                 </p>
               </div>
-              <div style={heroStyles.featureCard}>
+              <div className="mobile-feature-card" style={heroStyles.featureCard}>
                 <div style={heroStyles.featureCardHover} />
                 <div style={heroStyles.featureIcon}><Icons.Calendar /></div>
                 <h3 style={heroStyles.featureTitle}>Calendar Clarity</h3>
@@ -400,7 +469,7 @@
                   See exactly when money comes in and when it goes out.
                 </p>
               </div>
-              <div style={heroStyles.featureCard}>
+              <div className="mobile-feature-card" style={heroStyles.featureCard}>
                 <div style={heroStyles.featureCardHover} />
                 <div style={heroStyles.featureIcon}><Icons.BarChart /></div>
                 <h3 style={heroStyles.featureTitle}>Smart Forecasting</h3>
@@ -409,7 +478,7 @@
                   before they happen. Stay ahead of cash flow challenges.
                 </p>
               </div>
-              <div style={heroStyles.featureCard}>
+              <div className="mobile-feature-card" style={heroStyles.featureCard}>
                 <div style={heroStyles.featureCardHover} />
                 <div style={heroStyles.featureIcon}><Icons.Recurring /></div>
                 <h3 style={heroStyles.featureTitle}>Recurring Expenses</h3>
@@ -418,7 +487,7 @@
                   payment with automatic scheduling and reminders.
                 </p>
               </div>
-              <div style={heroStyles.featureCard}>
+              <div className="mobile-feature-card" style={heroStyles.featureCard}>
                 <div style={heroStyles.featureCardHover} />
                 <div style={heroStyles.featureIcon}><Icons.Cloud /></div>
                 <h3 style={heroStyles.featureTitle}>Cloud Sync</h3>
@@ -427,7 +496,7 @@
                   from any device, anytime, with automatic synchronization.
                 </p>
               </div>
-              <div style={heroStyles.featureCard}>
+              <div className="mobile-feature-card" style={heroStyles.featureCard}>
                 <div style={heroStyles.featureCardHover} />
                 <div style={heroStyles.featureIcon}><Icons.Shield /></div>
                 <h3 style={heroStyles.featureTitle}>Balance Overrides</h3>
@@ -439,33 +508,33 @@
             </div>
           </section>
 
-          <section style={{ ...heroStyles.section, ...heroStyles.statsSection }}>
-            <div style={heroStyles.statsGrid}>
+          <section className="mobile-stats-section" style={{ ...heroStyles.section, ...heroStyles.statsSection }}>
+            <div className="mobile-stats-grid" style={heroStyles.statsGrid}>
               <div>
-                <div style={heroStyles.statNumber}>365</div>
+                <div className="mobile-stat-number" style={heroStyles.statNumber}>365</div>
                 <div style={heroStyles.statLabel}>Days Forecasted</div>
               </div>
               <div>
-                <div style={heroStyles.statNumber}>24/7</div>
+                <div className="mobile-stat-number" style={heroStyles.statNumber}>24/7</div>
                 <div style={heroStyles.statLabel}>Cloud Access</div>
               </div>
               <div>
-                <div style={heroStyles.statNumber}>100%</div>
+                <div className="mobile-stat-number" style={heroStyles.statNumber}>100%</div>
                 <div style={heroStyles.statLabel}>Privacy Focused</div>
               </div>
               <div>
-                <div style={heroStyles.statNumber}>Free</div>
+                <div className="mobile-stat-number" style={heroStyles.statNumber}>Free</div>
                 <div style={heroStyles.statLabel}>Forever</div>
               </div>
             </div>
           </section>
 
-          <section style={heroStyles.section}>
+          <section className="mobile-section" style={heroStyles.section}>
             <h2 style={heroStyles.sectionTitle}>See It In Action</h2>
             <p style={heroStyles.sectionSubtitle}>
               A beautiful dashboard that gives you complete visibility into your financial health.
             </p>
-            <div style={heroStyles.demoPreview}>
+            <div className="mobile-demo-preview" style={heroStyles.demoPreview}>
               <div style={heroStyles.demoHeader}>
                 <div style={heroStyles.demoDots}>
                   <div style={heroStyles.demoDot('#ef5350')} />
@@ -474,8 +543,8 @@
                 </div>
                 <span style={{ color: '#606060', fontSize: '0.8125rem' }}>Mercury Dashboard</span>
               </div>
-              <div style={heroStyles.demoBody}>
-                <div style={heroStyles.demoCards}>
+              <div className="mobile-demo-body" style={heroStyles.demoBody}>
+                <div className="mobile-demo-cards" style={heroStyles.demoCards}>
                   <div style={heroStyles.demoCard}>
                     <div style={heroStyles.demoCardLabel}>Starting Balance</div>
                     <div style={{ ...heroStyles.demoCardValue, color: '#4ade80' }}>$5,000.00</div>
@@ -493,23 +562,23 @@
             </div>
           </section>
 
-          <section style={heroStyles.ctaSection}>
+          <section className="mobile-cta-section" style={heroStyles.ctaSection}>
             <h2 style={heroStyles.ctaTitle}>Ready to Take Control?</h2>
             <p style={heroStyles.ctaSubtitle}>
               Join thousands who have transformed their financial clarity with Mercury.
             </p>
             {user ? (
-              <button style={heroStyles.primaryBtn} onClick={onEnterApp}>
+              <button className="mobile-primary-btn" style={heroStyles.primaryBtn} onClick={onEnterApp}>
                 Open My Dashboard <Icons.ArrowRight />
               </button>
             ) : (
-              <a href="/api/login" style={{ ...heroStyles.primaryBtn, textDecoration: 'none' }}>
+              <a href="/api/login" className="mobile-primary-btn" style={{ ...heroStyles.primaryBtn, textDecoration: 'none' }}>
                 Sign In with Google <Icons.ArrowRight />
               </a>
             )}
           </section>
 
-          <footer style={heroStyles.footer}>
+          <footer className="mobile-footer" style={heroStyles.footer}>
             <p>Mercury - Personal Finance Tracker</p>
           </footer>
         </div>
@@ -878,7 +947,7 @@
 
       const renderDashboard = () => (
         <div>
-          <div style={styles.yearSelector}>
+          <div className="app-year-selector" style={styles.yearSelector}>
             <span style={styles.yearLabel}>Viewing Year:</span>
             <select value={dashboardYear} onChange={(e) => setDashboardYear(parseInt(e.target.value))} style={styles.yearSelect}>
               {availableYears.map(year => <option key={year} value={year}>{year}</option>)}
@@ -887,65 +956,65 @@
           </div>
 
           <div style={styles.sectionTitle}><Icons.TrendUp /> Overview</div>
-          <div style={styles.dashboardGrid}>
-            <div style={styles.statCard()}><div style={styles.statCardAccent('#4ade80')} /><div style={styles.statLabel}>Starting Balance (Jan 1)</div><div style={styles.statValue('#4ade80')}>{formatCurrency(stats.initialBalance)}</div></div>
-            <div style={styles.statCard()}><div style={styles.statCardAccent('#8b5cf6')} /><div style={styles.statLabel}>Projected Year-End</div><div style={styles.statValue(stats.endOfYearBalance >= 0 ? '#4ade80' : '#f87171')}>{formatCurrency(stats.endOfYearBalance)}</div><div style={styles.statSubtext}>Dec 31, {dashboardYear}</div></div>
-            <div style={styles.statCard()}><div style={styles.statCardAccent('#f87171')} /><div style={styles.statLabel}>Lowest Balance Point</div><div style={styles.statValue('#f87171')}>{formatCurrency(stats.lowestBalance)}</div><div style={styles.statSubtext}>{stats.lowestBalanceDate && formatFullDate(stats.lowestBalanceDate)}</div></div>
-            <div style={styles.statCard()}><div style={styles.statCardAccent('#10b981')} /><div style={styles.statLabel}>Net Annual Cashflow</div><div style={styles.statValue(stats.netAnnual >= 0 ? '#4ade80' : '#f87171')}>{formatCurrency(stats.netAnnual)}</div><div style={styles.statSubtext}>Income - Expenses</div></div>
+          <div className="app-dashboard-grid" style={styles.dashboardGrid}>
+            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('#4ade80')} /><div style={styles.statLabel}>Starting Balance (Jan 1)</div><div className="app-stat-value" style={styles.statValue('#4ade80')}>{formatCurrency(stats.initialBalance)}</div></div>
+            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('#8b5cf6')} /><div style={styles.statLabel}>Projected Year-End</div><div className="app-stat-value" style={styles.statValue(stats.endOfYearBalance >= 0 ? '#4ade80' : '#f87171')}>{formatCurrency(stats.endOfYearBalance)}</div><div style={styles.statSubtext}>Dec 31, {dashboardYear}</div></div>
+            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('#f87171')} /><div style={styles.statLabel}>Lowest Balance Point</div><div className="app-stat-value" style={styles.statValue('#f87171')}>{formatCurrency(stats.lowestBalance)}</div><div style={styles.statSubtext}>{stats.lowestBalanceDate && formatFullDate(stats.lowestBalanceDate)}</div></div>
+            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('#10b981')} /><div style={styles.statLabel}>Net Annual Cashflow</div><div className="app-stat-value" style={styles.statValue(stats.netAnnual >= 0 ? '#4ade80' : '#f87171')}>{formatCurrency(stats.netAnnual)}</div><div style={styles.statSubtext}>Income - Expenses</div></div>
           </div>
 
           <div style={styles.sectionTitle}><Icons.Expense /> Expense Tracking</div>
-          <div style={styles.dashboardGrid}>
-            <div style={styles.statCard()}><div style={styles.statCardAccent('#f87171')} /><div style={styles.statLabel}>Forecasted Recurring Expenses</div><div style={styles.statValue('#f87171')}>{formatCurrency(stats.forecastedRecurringExpenses)}</div><div style={styles.statSubtext}>Until Dec 31</div></div>
-            <div style={styles.statCard()}><div style={styles.statCardAccent('#fbbf24')} /><div style={styles.statLabel}>Forecasted Total Expenses</div><div style={styles.statValue('#fbbf24')}>{formatCurrency(stats.forecastedTotalExpenses)}</div><div style={styles.statSubtext}>Recurring + One-off until Dec 31</div></div>
-            <div style={styles.statCard()}><div style={styles.statCardAccent('#a855f7')} /><div style={styles.statLabel}>Paid Recurring Expenses YTD</div><div style={styles.statValue('#a855f7')}>{formatCurrency(stats.historicalRecurringExpensesPaid)}</div><div style={styles.statSubtext}>Year to date</div></div>
-            <div style={styles.statCard()}><div style={styles.statCardAccent('#ec4899')} /><div style={styles.statLabel}>Paid Total Expenses YTD</div><div style={styles.statValue('#ec4899')}>{formatCurrency(stats.historicalTotalExpensesPaid)}</div><div style={styles.statSubtext}>Recurring + One-off YTD</div></div>
+          <div className="app-dashboard-grid" style={styles.dashboardGrid}>
+            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('#f87171')} /><div style={styles.statLabel}>Forecasted Recurring Expenses</div><div className="app-stat-value" style={styles.statValue('#f87171')}>{formatCurrency(stats.forecastedRecurringExpenses)}</div><div style={styles.statSubtext}>Until Dec 31</div></div>
+            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('#fbbf24')} /><div style={styles.statLabel}>Forecasted Total Expenses</div><div className="app-stat-value" style={styles.statValue('#fbbf24')}>{formatCurrency(stats.forecastedTotalExpenses)}</div><div style={styles.statSubtext}>Recurring + One-off until Dec 31</div></div>
+            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('#a855f7')} /><div style={styles.statLabel}>Paid Recurring Expenses YTD</div><div className="app-stat-value" style={styles.statValue('#a855f7')}>{formatCurrency(stats.historicalRecurringExpensesPaid)}</div><div style={styles.statSubtext}>Year to date</div></div>
+            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('#ec4899')} /><div style={styles.statLabel}>Paid Total Expenses YTD</div><div className="app-stat-value" style={styles.statValue('#ec4899')}>{formatCurrency(stats.historicalTotalExpensesPaid)}</div><div style={styles.statSubtext}>Recurring + One-off YTD</div></div>
           </div>
 
           <div style={styles.sectionTitle}><Icons.Calendar /> Full Year Summary ({dashboardYear})</div>
-          <div style={styles.dashboardGrid}>
-            <div style={styles.statCard()}><div style={styles.statCardAccent('#22d3ee')} /><div style={styles.statLabel}>Total Income</div><div style={styles.statValue('#4ade80')}>{formatCurrency(stats.totalPayrollForYear)}</div></div>
-            <div style={styles.statCard()}><div style={styles.statCardAccent('#6366f1')} /><div style={styles.statLabel}>Total Recurring Expenses</div><div style={styles.statValue('#f87171')}>{formatCurrency(stats.totalRecurringExpensesForYear)}</div></div>
-            <div style={styles.statCard()}><div style={styles.statCardAccent('#f59e0b')} /><div style={styles.statLabel}>Total One-Off Expenses</div><div style={styles.statValue('#fbbf24')}>{formatCurrency(stats.totalOneOffExpensesForYear)}</div></div>
-            <div style={styles.statCard()}><div style={styles.statCardAccent('#ef4444')} /><div style={styles.statLabel}>Total All Expenses</div><div style={styles.statValue('#f87171')}>{formatCurrency(stats.totalExpensesForYear)}</div></div>
+          <div className="app-dashboard-grid" style={styles.dashboardGrid}>
+            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('#22d3ee')} /><div style={styles.statLabel}>Total Income</div><div className="app-stat-value" style={styles.statValue('#4ade80')}>{formatCurrency(stats.totalPayrollForYear)}</div></div>
+            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('#6366f1')} /><div style={styles.statLabel}>Total Recurring Expenses</div><div className="app-stat-value" style={styles.statValue('#f87171')}>{formatCurrency(stats.totalRecurringExpensesForYear)}</div></div>
+            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('#f59e0b')} /><div style={styles.statLabel}>Total One-Off Expenses</div><div className="app-stat-value" style={styles.statValue('#fbbf24')}>{formatCurrency(stats.totalOneOffExpensesForYear)}</div></div>
+            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('#ef4444')} /><div style={styles.statLabel}>Total All Expenses</div><div className="app-stat-value" style={styles.statValue('#f87171')}>{formatCurrency(stats.totalExpensesForYear)}</div></div>
           </div>
 
-          <div style={styles.threeColumn}>
-            <div style={styles.panel}>
-              <div style={styles.panelHeader}>
+          <div className="app-three-column" style={styles.threeColumn}>
+            <div className="app-panel" style={styles.panel}>
+              <div className="app-panel-header" style={styles.panelHeader}>
                 <div style={styles.panelTitle}><Icons.Money /> Income Sources</div>
                 <button style={styles.addButton} onClick={() => setShowPayrollForm(true)}><Icons.Plus /> Add</button>
               </div>
               {payrolls.length === 0 ? <div style={styles.emptyState}>No income sources added yet</div> : payrolls.map(payroll => (
-                <div key={payroll.id} style={styles.itemRow}>
+                <div key={payroll.id} className="app-item-row" style={styles.itemRow}>
                   <div><div style={styles.itemName}>{payroll.name}</div><div style={styles.itemMeta}>{frequencyLabels[payroll.frequency]}</div></div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}><span style={styles.itemAmount(true)}>+{formatCurrency(payroll.amount)}</span><button style={styles.deleteBtn} onClick={() => deletePayroll(payroll.id)}><Icons.Trash /></button></div>
+                  <div className="app-item-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}><span style={styles.itemAmount(true)}>+{formatCurrency(payroll.amount)}</span><button style={styles.deleteBtn} onClick={() => deletePayroll(payroll.id)}><Icons.Trash /></button></div>
                 </div>
               ))}
             </div>
 
-            <div style={styles.panel}>
-              <div style={styles.panelHeader}>
+            <div className="app-panel" style={styles.panel}>
+              <div className="app-panel-header" style={styles.panelHeader}>
                 <div style={styles.panelTitle}><Icons.Recurring /> Recurring Expenses</div>
                 <button style={styles.addButton} onClick={() => setShowRecurringExpenseForm(true)}><Icons.Plus /> Add</button>
               </div>
               {recurringExpenses.length === 0 ? <div style={styles.emptyState}>No recurring expenses added yet</div> : recurringExpenses.map(expense => (
-                <div key={expense.id} style={styles.itemRow}>
+                <div key={expense.id} className="app-item-row" style={styles.itemRow}>
                   <div><div style={styles.itemName}>{expense.name}</div><div style={styles.itemMeta}>{getExpenseFrequencyLabel(expense)}</div></div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}><span style={styles.itemAmount()}>-{formatCurrency(expense.amount)}</span><button style={styles.deleteBtn} onClick={() => deleteRecurringExpense(expense.id)}><Icons.Trash /></button></div>
+                  <div className="app-item-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}><span style={styles.itemAmount()}>-{formatCurrency(expense.amount)}</span><button style={styles.deleteBtn} onClick={() => deleteRecurringExpense(expense.id)}><Icons.Trash /></button></div>
                 </div>
               ))}
             </div>
 
-            <div style={styles.panel}>
-              <div style={styles.panelHeader}>
+            <div className="app-panel" style={styles.panel}>
+              <div className="app-panel-header" style={styles.panelHeader}>
                 <div style={styles.panelTitle}><Icons.OneTime /> One-Off Expenses</div>
                 <button style={styles.addButton} onClick={() => setShowOneOffExpenseForm(true)}><Icons.Plus /> Add</button>
               </div>
               {oneOffExpenses.filter(e => e.date.startsWith(String(dashboardYear))).length === 0 ? <div style={styles.emptyState}>No one-off expenses for {dashboardYear}</div> : oneOffExpenses.filter(e => e.date.startsWith(String(dashboardYear))).sort((a, b) => a.date.localeCompare(b.date)).map(expense => (
-                <div key={expense.id} style={styles.itemRow}>
+                <div key={expense.id} className="app-item-row" style={styles.itemRow}>
                   <div><div style={styles.itemName}>{expense.name}</div><div style={styles.itemMeta}>{formatFullDate(new Date(expense.date + 'T00:00:00'))}</div></div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}><span style={styles.itemAmount()}>-{formatCurrency(expense.amount)}</span><button style={styles.deleteBtn} onClick={() => deleteOneOffExpense(expense.id)}><Icons.Trash /></button></div>
+                  <div className="app-item-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}><span style={styles.itemAmount()}>-{formatCurrency(expense.amount)}</span><button style={styles.deleteBtn} onClick={() => deleteOneOffExpense(expense.id)}><Icons.Trash /></button></div>
                 </div>
               ))}
             </div>
@@ -962,22 +1031,22 @@
         }, [scrollToMonth]);
 
         return (
-          <div style={styles.tableContainer}>
-            <div style={styles.initialBalanceSection}>
+          <div className="app-table-container" style={styles.tableContainer}>
+            <div className="app-initial-balance-section" style={styles.initialBalanceSection}>
               <span style={styles.initialBalanceLabel}>Initial Balance (Jan 1, {activeYear}):</span>
               <input type="number" value={initialBalances[activeYear] || 5000} onChange={(e) => updateInitialBalance(activeYear, e.target.value)} style={styles.initialBalanceInput} />
             </div>
-            <div style={styles.monthSelector}>
+            <div className="app-month-selector" style={styles.monthSelector}>
               {months.map((month, idx) => (<button key={month} style={styles.monthBtn(scrollToMonth === idx)} onClick={() => setScrollToMonth(idx)}>{month.slice(0, 3)}</button>))}
             </div>
-            <div style={styles.tableHeader}>
-              <div style={styles.tableHeaderCell}>Date</div>
-              <div style={styles.tableHeaderCell}>Day</div>
-              <div style={styles.tableHeaderCell}>Activity</div>
-              <div style={styles.tableHeaderCell}>Starting</div>
-              <div style={styles.tableHeaderCell}>Expenses</div>
-              <div style={styles.tableHeaderCell}>Ending</div>
-              <div style={styles.tableHeaderCell}></div>
+            <div className="app-table-header" style={styles.tableHeader}>
+              <div className="app-table-header-cell" style={styles.tableHeaderCell}>Date</div>
+              <div className="app-table-header-cell" style={styles.tableHeaderCell}>Day</div>
+              <div className="app-table-header-cell" style={styles.tableHeaderCell}>Activity</div>
+              <div className="app-table-header-cell" style={styles.tableHeaderCell}>Starting</div>
+              <div className="app-table-header-cell app-hide-mobile" style={styles.tableHeaderCell}>Expenses</div>
+              <div className="app-table-header-cell" style={styles.tableHeaderCell}>Ending</div>
+              <div className="app-table-header-cell app-hide-mobile" style={styles.tableHeaderCell}></div>
             </div>
             <div style={styles.tableBody}>
               {financialData.map((day, idx) => {
@@ -988,16 +1057,16 @@
                 return (
                   <Fragment key={day.dateKey}>
                     {showMonthDivider && (<div style={styles.monthDivider} ref={el => monthRefs.current[day.month] = el}><span style={styles.monthLabel}>{months[day.month]} {day.year}</span></div>)}
-                    <div style={styles.tableRow(day.isToday, day.isPast, isMonthStart)}>
-                      <div style={styles.tableCell}>{formatDate(day.date)}</div>
-                      <div style={styles.tableCell}>{day.dayOfWeek}</div>
-                      <div style={{ ...styles.tableCell, flexWrap: 'wrap' }}>
+                    <div className="app-table-row" style={styles.tableRow(day.isToday, day.isPast, isMonthStart)}>
+                      <div className="app-table-cell" style={styles.tableCell}>{formatDate(day.date)}</div>
+                      <div className="app-table-cell" style={styles.tableCell}>{day.dayOfWeek}</div>
+                      <div className="app-table-cell" style={{ ...styles.tableCell, flexWrap: 'wrap' }}>
                         <div style={styles.expensesList}>
                           {day.payrollDetails.map((p, i) => (<span key={i} style={styles.payrollBadge}>+${p.amount} {p.name}</span>))}
                           {day.expenseDetails.map((e, i) => (<span key={i} style={e.isRecurring ? styles.recurringExpenseBadge : styles.oneOffExpenseBadge}>-${e.amount} {e.name}</span>))}
                         </div>
                       </div>
-                      <div style={styles.tableCell}>
+                      <div className="app-table-cell" style={styles.tableCell}>
                         {editingCell === day.dateKey ? (
                           <div style={{ display: 'flex', alignItems: 'center' }}>
                             <input type="number" value={editValue} onChange={(e) => setEditValue(e.target.value)} style={styles.inlineInput} autoFocus onKeyDown={(e) => { if (e.key === 'Enter') handleOverrideBalance(day.dateKey, editValue); if (e.key === 'Escape') setEditingCell(null); }} />
@@ -1014,9 +1083,9 @@
                           </span>
                         )}
                       </div>
-                      <div style={{ ...styles.tableCell, ...styles.expenseCell }}>{day.expenses > 0 ? `-${formatCurrency(day.expenses)}` : '-'}</div>
-                      <div style={styles.tableCell}><span style={day.endingBalance >= 0 ? styles.balancePositive : styles.balanceNegative}>{formatCurrency(day.endingBalance)}</span></div>
-                      <div style={styles.tableCell}><button style={styles.addExpenseBtn} onClick={() => openOneOffFormForDate(day.dateKey)} title="Add expense"><Icons.Plus /></button></div>
+                      <div className="app-table-cell app-hide-mobile" style={{ ...styles.tableCell, ...styles.expenseCell }}>{day.expenses > 0 ? `-${formatCurrency(day.expenses)}` : '-'}</div>
+                      <div className="app-table-cell" style={styles.tableCell}><span style={day.endingBalance >= 0 ? styles.balancePositive : styles.balanceNegative}>{formatCurrency(day.endingBalance)}</span></div>
+                      <div className="app-table-cell app-hide-mobile" style={styles.tableCell}><button style={styles.addExpenseBtn} onClick={() => openOneOffFormForDate(day.dateKey)} title="Add expense"><Icons.Plus /></button></div>
                     </div>
                   </Fragment>
                 );
@@ -1028,45 +1097,47 @@
 
       return (
         <div style={styles.container}>
-          <header style={styles.header}>
-            <div style={styles.headerContent}>
-              <div style={styles.logo} onClick={onBackToHome}><div style={styles.logoIcon}><Icons.TrendUp /></div><span style={styles.logoText}>Mercury</span><span style={styles.yearBadge}>{activeYear}</span></div>
-              <div style={styles.headerActions}>
-                <div style={styles.cloudIndicator}><Icons.Cloud /> Cloud Sync</div>
-                <div style={styles.saveIndicator}><Icons.Save /> Saved</div>
-                {user && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginLeft: '1rem', padding: '0.375rem 0.75rem', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                    {user.profile_image ? (
-                      <img src={user.profile_image} alt="" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(212, 175, 55, 0.3)' }} />
-                    ) : (
-                      <div style={{ width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(212, 175, 55, 0.2)', color: '#d4af37' }}><Icons.User /></div>
-                    )}
-                    <span style={{ color: '#f5f5f0', fontSize: '0.8125rem', fontWeight: '500' }}>{user.first_name || user.email || 'User'}</span>
-                    <a href="/api/logout" style={{ display: 'flex', alignItems: 'center', color: '#808080', padding: '0.25rem', borderRadius: '4px', transition: 'color 0.2s' }} title="Sign Out"><Icons.LogOut /></a>
-                  </div>
-                )}
+          <header className="app-header" style={styles.header}>
+            <div className="app-header-content" style={styles.headerContent}>
+              <div className="app-header-top">
+                <div style={styles.logo} onClick={onBackToHome}><div style={styles.logoIcon}><Icons.TrendUp /></div><span className="app-logo-text" style={styles.logoText}>Mercury</span><span className="app-year-badge" style={styles.yearBadge}>{activeYear}</span></div>
+                <div className="app-header-actions" style={styles.headerActions}>
+                  <div className="app-hide-mobile" style={styles.cloudIndicator}><Icons.Cloud /> Cloud Sync</div>
+                  <div style={styles.saveIndicator}><Icons.Save /> Saved</div>
+                  {user && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.375rem 0.75rem', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                      {user.profile_image ? (
+                        <img src={user.profile_image} alt="" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(212, 175, 55, 0.3)' }} />
+                      ) : (
+                        <div style={{ width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(212, 175, 55, 0.2)', color: '#d4af37' }}><Icons.User /></div>
+                      )}
+                      <span className="app-hide-mobile" style={{ color: '#f5f5f0', fontSize: '0.8125rem', fontWeight: '500' }}>{user.first_name || user.email || 'User'}</span>
+                      <a href="/api/logout" style={{ display: 'flex', alignItems: 'center', color: '#808080', padding: '0.25rem', borderRadius: '4px', transition: 'color 0.2s' }} title="Sign Out"><Icons.LogOut /></a>
+                    </div>
+                  )}
+                </div>
               </div>
-              <nav style={styles.nav}><button style={styles.navButton(activeView === 'dashboard')} onClick={() => setActiveView('dashboard')}><Icons.Dashboard /> Dashboard</button><button style={styles.navButton(activeView === 'calendar')} onClick={() => setActiveView('calendar')}><Icons.Calendar /> Calendar</button></nav>
+              <nav className="app-nav" style={styles.nav}><button className="app-nav-btn" style={styles.navButton(activeView === 'dashboard')} onClick={() => setActiveView('dashboard')}><Icons.Dashboard /> Dashboard</button><button className="app-nav-btn" style={styles.navButton(activeView === 'calendar')} onClick={() => setActiveView('calendar')}><Icons.Calendar /> Calendar</button></nav>
             </div>
           </header>
-          <main style={styles.main}>{activeView === 'dashboard' ? renderDashboard() : renderCalendar()}</main>
+          <main className="app-main" style={styles.main}>{activeView === 'dashboard' ? renderDashboard() : renderCalendar()}</main>
 
           {showPayrollForm && (
             <div style={styles.formOverlay} onClick={() => setShowPayrollForm(false)}>
-              <div style={styles.formCard} onClick={e => e.stopPropagation()}>
+              <div className="app-form-card" style={styles.formCard} onClick={e => e.stopPropagation()}>
                 <h3 style={styles.formTitle}>Add Income Source</h3>
                 <div style={styles.formGroup}><label style={styles.formLabel}>Name</label><input type="text" placeholder="e.g., Salary, Freelance" value={newPayroll.name} onChange={e => setNewPayroll(p => ({ ...p, name: e.target.value }))} style={styles.formInput} /></div>
                 <div style={styles.formGroup}><label style={styles.formLabel}>Amount (per payment)</label><input type="number" placeholder="0.00" value={newPayroll.amount} onChange={e => setNewPayroll(p => ({ ...p, amount: e.target.value }))} style={styles.formInput} /></div>
                 <div style={styles.formGroup}><label style={styles.formLabel}>Frequency</label><select value={newPayroll.frequency} onChange={e => setNewPayroll(p => ({ ...p, frequency: e.target.value }))} style={styles.formSelect}><option value="weekly">Weekly</option><option value="biweekly">Biweekly</option><option value="monthly">Monthly (specific day)</option><option value="semimonthly">Semi-monthly (15th & EOM weekdays)</option><option value="last-weekday-15th">Last weekday before 15th only</option><option value="last-weekday-eom">Last weekday of month only</option></select></div>
                 {['weekly', 'biweekly', 'monthly'].includes(newPayroll.frequency) && (<div style={styles.formGroup}><label style={styles.formLabel}>{newPayroll.frequency === 'monthly' ? 'Day of Month (1-31)' : 'Start Day (1-31)'}</label><input type="number" min="1" max="31" value={newPayroll.startDay} onChange={e => setNewPayroll(p => ({ ...p, startDay: e.target.value }))} style={styles.formInput} /><div style={styles.formHint}>{newPayroll.frequency === 'biweekly' && 'First paycheck date in January, then every 14 days'}{newPayroll.frequency === 'weekly' && 'First paycheck date in January, then every 7 days'}</div></div>)}
-                <div style={styles.formActions}><button style={styles.cancelBtn} onClick={() => setShowPayrollForm(false)}>Cancel</button><button style={styles.submitBtn} onClick={addPayroll}>Add Income</button></div>
+                <div className="app-form-actions" style={styles.formActions}><button style={styles.cancelBtn} onClick={() => setShowPayrollForm(false)}>Cancel</button><button style={styles.submitBtn} onClick={addPayroll}>Add Income</button></div>
               </div>
             </div>
           )}
 
           {showRecurringExpenseForm && (
             <div style={styles.formOverlay} onClick={() => setShowRecurringExpenseForm(false)}>
-              <div style={styles.formCard} onClick={e => e.stopPropagation()}>
+              <div className="app-form-card" style={styles.formCard} onClick={e => e.stopPropagation()}>
                 <h3 style={styles.formTitle}>Add Recurring Expense</h3>
                 <div style={styles.formGroup}><label style={styles.formLabel}>Name</label><input type="text" placeholder="e.g., Rent, Netflix, Groceries" value={newRecurringExpense.name} onChange={e => setNewRecurringExpense(p => ({ ...p, name: e.target.value }))} style={styles.formInput} /></div>
                 <div style={styles.formGroup}><label style={styles.formLabel}>Amount</label><input type="number" placeholder="0.00" value={newRecurringExpense.amount} onChange={e => setNewRecurringExpense(p => ({ ...p, amount: e.target.value }))} style={styles.formInput} /></div>
@@ -1074,19 +1145,19 @@
                 {newRecurringExpense.frequency === 'weekly' && (<div style={styles.formGroup}><label style={styles.formLabel}>Day of Week</label><select value={newRecurringExpense.dayOfWeek} onChange={e => setNewRecurringExpense(p => ({ ...p, dayOfWeek: parseInt(e.target.value) }))} style={styles.formSelect}>{dayNames.map((day, idx) => <option key={day} value={idx}>{day}</option>)}</select></div>)}
                 {newRecurringExpense.frequency === 'monthly' && (<div style={styles.formGroup}><label style={styles.formLabel}>Day of Month (1-31)</label><input type="number" min="1" max="31" value={newRecurringExpense.dayOfMonth} onChange={e => setNewRecurringExpense(p => ({ ...p, dayOfMonth: e.target.value }))} style={styles.formInput} /></div>)}
                 {newRecurringExpense.frequency === 'yearly' && (<><div style={styles.formGroup}><label style={styles.formLabel}>Month</label><select value={newRecurringExpense.month} onChange={e => setNewRecurringExpense(p => ({ ...p, month: parseInt(e.target.value) }))} style={styles.formSelect}>{months.map((month, idx) => <option key={month} value={idx}>{month}</option>)}</select></div><div style={styles.formGroup}><label style={styles.formLabel}>Day</label><input type="number" min="1" max="31" value={newRecurringExpense.day} onChange={e => setNewRecurringExpense(p => ({ ...p, day: e.target.value }))} style={styles.formInput} /></div></>)}
-                <div style={styles.formActions}><button style={styles.cancelBtn} onClick={() => setShowRecurringExpenseForm(false)}>Cancel</button><button style={styles.submitBtn} onClick={addRecurringExpense}>Add Expense</button></div>
+                <div className="app-form-actions" style={styles.formActions}><button style={styles.cancelBtn} onClick={() => setShowRecurringExpenseForm(false)}>Cancel</button><button style={styles.submitBtn} onClick={addRecurringExpense}>Add Expense</button></div>
               </div>
             </div>
           )}
 
           {showOneOffExpenseForm && (
             <div style={styles.formOverlay} onClick={() => { setShowOneOffExpenseForm(false); setAddOneOffFromCalendar(null); }}>
-              <div style={styles.formCard} onClick={e => e.stopPropagation()}>
+              <div className="app-form-card" style={styles.formCard} onClick={e => e.stopPropagation()}>
                 <h3 style={styles.formTitle}>Add One-Off Expense</h3>
                 <div style={styles.formGroup}><label style={styles.formLabel}>Name</label><input type="text" placeholder="e.g., Car repair, Gift, Trip" value={newOneOffExpense.name} onChange={e => setNewOneOffExpense(p => ({ ...p, name: e.target.value }))} style={styles.formInput} /></div>
                 <div style={styles.formGroup}><label style={styles.formLabel}>Amount</label><input type="number" placeholder="0.00" value={newOneOffExpense.amount} onChange={e => setNewOneOffExpense(p => ({ ...p, amount: e.target.value }))} style={styles.formInput} /></div>
                 <div style={styles.formGroup}><label style={styles.formLabel}>Date</label><input type="date" value={newOneOffExpense.date} onChange={e => setNewOneOffExpense(p => ({ ...p, date: e.target.value }))} style={styles.formInput} />{addOneOffFromCalendar && <div style={styles.formHint}>Selected: {formatFullDate(new Date(addOneOffFromCalendar + 'T00:00:00'))}</div>}</div>
-                <div style={styles.formActions}><button style={styles.cancelBtn} onClick={() => { setShowOneOffExpenseForm(false); setAddOneOffFromCalendar(null); }}>Cancel</button><button style={styles.submitBtn} onClick={addOneOffExpense}>Add Expense</button></div>
+                <div className="app-form-actions" style={styles.formActions}><button style={styles.cancelBtn} onClick={() => { setShowOneOffExpenseForm(false); setAddOneOffFromCalendar(null); }}>Cancel</button><button style={styles.submitBtn} onClick={addOneOffExpense}>Add Expense</button></div>
               </div>
             </div>
           )}
