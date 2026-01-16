@@ -600,7 +600,31 @@
       const [recurringExpenses, setRecurringExpenses] = useState([]);
       const [oneOffExpenses, setOneOffExpenses] = useState([]);
       const [balanceOverrides, setBalanceOverrides] = useState({});
-      const [activeView, setActiveView] = useState('dashboard');
+      const getInitialActiveView = () => {
+        const hash = window.location.hash;
+        if (hash.includes('/calendar')) return 'calendar';
+        return 'dashboard';
+      };
+      const [activeView, setActiveViewState] = useState(getInitialActiveView);
+
+      const setActiveView = (view) => {
+        setActiveViewState(view);
+        window.history.replaceState(null, '', '#app/' + view);
+      };
+
+      useEffect(() => {
+        const handleHashChange = () => {
+          const hash = window.location.hash;
+          if (hash.includes('/calendar')) {
+            setActiveViewState('calendar');
+          } else if (hash.includes('/dashboard')) {
+            setActiveViewState('dashboard');
+          }
+        };
+        window.addEventListener('hashchange', handleHashChange);
+        return () => window.removeEventListener('hashchange', handleHashChange);
+      }, []);
+
       const [editingCell, setEditingCell] = useState(null);
       const [editValue, setEditValue] = useState('');
       const [scrollToMonth, setScrollToMonth] = useState(today.getMonth());
@@ -1166,9 +1190,38 @@
     }
 
     function AppShell() {
-      const [currentView, setCurrentView] = useState('home');
+      const getInitialView = () => {
+        const hash = window.location.hash;
+        if (hash.startsWith('#app')) return 'app';
+        return 'home';
+      };
+
+      const [currentView, setCurrentView] = useState(getInitialView);
       const [user, setUser] = useState(null);
       const [authLoading, setAuthLoading] = useState(true);
+
+      const changeView = (view) => {
+        setCurrentView(view);
+        if (view === 'home') {
+          window.history.replaceState(null, '', window.location.pathname);
+        } else {
+          const subView = window.location.hash.includes('/calendar') ? '/calendar' : '/dashboard';
+          window.history.replaceState(null, '', '#app' + subView);
+        }
+      };
+
+      useEffect(() => {
+        const handleHashChange = () => {
+          const hash = window.location.hash;
+          if (hash.startsWith('#app')) {
+            setCurrentView('app');
+          } else {
+            setCurrentView('home');
+          }
+        };
+        window.addEventListener('hashchange', handleHashChange);
+        return () => window.removeEventListener('hashchange', handleHashChange);
+      }, []);
 
       useEffect(() => {
         api.getUser()
@@ -1196,8 +1249,8 @@
       }
 
       return currentView === 'home' 
-        ? <HomePage onEnterApp={() => setCurrentView('app')} user={user} />
-        : <FinancialTracker onBackToHome={() => setCurrentView('home')} user={user} />;
+        ? <HomePage onEnterApp={() => changeView('app')} user={user} />
+        : <FinancialTracker onBackToHome={() => changeView('home')} user={user} />;
     }
 
     ReactDOM.render(<AppShell />, document.getElementById('root'));
