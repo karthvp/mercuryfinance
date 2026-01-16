@@ -12,19 +12,93 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --bg-primary: #0a0f1a;
+      --bg-secondary: #0d1929;
+      --bg-tertiary: #0f1d2f;
+      --bg-gradient: linear-gradient(160deg, #0a0f1a 0%, #0d1929 40%, #0f1d2f 100%);
+      --bg-surface: rgba(255, 255, 255, 0.02);
+      --bg-surface-hover: rgba(255, 255, 255, 0.04);
+      --bg-overlay: rgba(10, 15, 26, 0.85);
+      --text-primary: #f5f5f0;
+      --text-secondary: #a0a0a0;
+      --text-muted: #707070;
+      --text-dim: #505050;
+      --border-subtle: rgba(255, 255, 255, 0.05);
+      --border-light: rgba(255, 255, 255, 0.1);
+      --border-medium: rgba(255, 255, 255, 0.15);
+      --accent: #d4af37;
+      --accent-light: #f4e4ba;
+      --accent-dark: #b8860b;
+      --accent-bg: rgba(212, 175, 55, 0.08);
+      --accent-bg-hover: rgba(212, 175, 55, 0.12);
+      --accent-border: rgba(212, 175, 55, 0.2);
+      --accent-border-strong: rgba(212, 175, 55, 0.3);
+      --accent-text-on: #0a0f1a;
+      --success: #4ade80;
+      --success-bg: rgba(76, 175, 80, 0.1);
+      --danger: #ef5350;
+      --danger-bg: rgba(239, 83, 80, 0.1);
+      --warning: #fbbf24;
+      --purple: #ab47bc;
+      --scrollbar-track: rgba(255,255,255,0.02);
+      --scrollbar-thumb: rgba(212,175,55,0.25);
+      --shadow-color: rgba(0, 0, 0, 0.5);
+      --chart-grid: rgba(255, 255, 255, 0.05);
+      --rain-bg: rgba(10, 15, 26, 0.08);
+      --rain-color: rgba(212, 175, 55, 0.15);
+    }
+    
+    [data-theme="light"] {
+      --bg-primary: #f8f9fa;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #f0f2f5;
+      --bg-gradient: linear-gradient(160deg, #f8f9fa 0%, #ffffff 40%, #f0f2f5 100%);
+      --bg-surface: rgba(0, 0, 0, 0.02);
+      --bg-surface-hover: rgba(0, 0, 0, 0.04);
+      --bg-overlay: rgba(255, 255, 255, 0.9);
+      --text-primary: #1a1a2e;
+      --text-secondary: #4a4a5a;
+      --text-muted: #6a6a7a;
+      --text-dim: #8a8a9a;
+      --border-subtle: rgba(0, 0, 0, 0.06);
+      --border-light: rgba(0, 0, 0, 0.1);
+      --border-medium: rgba(0, 0, 0, 0.15);
+      --accent: #b8860b;
+      --accent-light: #d4af37;
+      --accent-dark: #8b6508;
+      --accent-bg: rgba(184, 134, 11, 0.08);
+      --accent-bg-hover: rgba(184, 134, 11, 0.12);
+      --accent-border: rgba(184, 134, 11, 0.25);
+      --accent-border-strong: rgba(184, 134, 11, 0.4);
+      --accent-text-on: #ffffff;
+      --success: #22c55e;
+      --success-bg: rgba(34, 197, 94, 0.1);
+      --danger: #dc2626;
+      --danger-bg: rgba(220, 38, 38, 0.1);
+      --warning: #f59e0b;
+      --purple: #9333ea;
+      --scrollbar-track: rgba(0,0,0,0.03);
+      --scrollbar-thumb: rgba(184,134,11,0.3);
+      --shadow-color: rgba(0, 0, 0, 0.1);
+      --chart-grid: rgba(0, 0, 0, 0.08);
+      --rain-bg: rgba(248, 249, 250, 0.08);
+      --rain-color: rgba(184, 134, 11, 0.2);
+    }
+    
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html { scroll-behavior: smooth; }
-    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: linear-gradient(160deg, #0a0f1a 0%, #0d1929 40%, #0f1d2f 100%); min-height: 100vh; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg-gradient); min-height: 100vh; color: var(--text-primary); transition: background 0.3s ease, color 0.3s ease; }
     #root { min-height: 100vh; }
     ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); }
-    ::-webkit-scrollbar-thumb { background: rgba(212,175,55,0.25); border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: rgba(212,175,55,0.4); }
-    input:focus, select:focus { border-color: rgba(212,175,55,0.5) !important; outline: none; }
-    option { background: #0d1929; color: #f5f5f0; }
-    ::selection { background: rgba(212,175,55,0.3); color: #fff; }
-    .loading-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; color: #d4af37; }
-    .loading-spinner { width: 40px; height: 40px; border: 3px solid rgba(212,175,55,0.2); border-top-color: #d4af37; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 1rem; }
+    ::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+    ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--accent-border-strong); }
+    input:focus, select:focus { border-color: var(--accent-border-strong) !important; outline: none; }
+    option { background: var(--bg-secondary); color: var(--text-primary); }
+    ::selection { background: var(--accent-border-strong); color: var(--text-primary); }
+    .loading-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; color: var(--accent); }
+    .loading-spinner { width: 40px; height: 40px; border: 3px solid var(--accent-border); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 1rem; }
     @keyframes spin { to { transform: rotate(360deg); } }
     @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-20px); } }
     @keyframes shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
@@ -106,6 +180,28 @@
   <div id="root"><div class="loading-screen"><div class="loading-spinner"></div><span>Loading Mercury...</span></div></div>
   <script type="text/babel">
     const { useState, useEffect, useMemo, Fragment, useCallback, useRef } = React;
+
+    function useTheme() {
+      const [theme, setTheme] = useState(() => {
+        if (typeof window !== 'undefined') {
+          return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        }
+        return 'dark';
+      });
+
+      useEffect(() => {
+        document.documentElement.setAttribute('data-theme', theme);
+      }, [theme]);
+
+      useEffect(() => {
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: light)');
+        const handleChange = (e) => setTheme(e.matches ? 'light' : 'dark');
+        mediaQuery.addEventListener('change', handleChange);
+        return () => mediaQuery.removeEventListener('change', handleChange);
+      }, []);
+
+      return { theme, setTheme, isDark: theme === 'dark' };
+    }
 
     const DATA_VERSION = 1;
 
@@ -215,6 +311,7 @@
       const canvasRef = useRef(null);
       const mouseRef = useRef({ x: -1000, y: -1000 });
       const animationRef = useRef(null);
+      const { isDark } = useTheme();
       
       useEffect(() => {
         const canvas = canvasRef.current;
@@ -225,6 +322,10 @@
         const chars = '$$$$$¢¢€€£¥₿%0123456789.+-';
         const charArray = chars.split('');
         const fontSize = 18;
+        
+        const bgFade = isDark ? 'rgba(10, 15, 26, 0.08)' : 'rgba(248, 249, 250, 0.08)';
+        const charColor = isDark ? 'rgba(212, 175, 55, 0.15)' : 'rgba(184, 134, 11, 0.2)';
+        const glowColor = isDark ? '#d4af37' : '#b8860b';
         
         let columns = Math.floor(container.offsetWidth / fontSize);
         let drops = new Array(columns).fill(0).map(() => Math.random() * -100);
@@ -251,7 +352,7 @@
         container.addEventListener('mouseleave', handleMouseLeave);
         
         const draw = () => {
-          ctx.fillStyle = 'rgba(10, 15, 26, 0.08)';
+          ctx.fillStyle = bgFade;
           ctx.fillRect(0, 0, canvas.width, canvas.height);
           
           ctx.font = `${fontSize}px "Playfair Display", serif`;
@@ -272,11 +373,11 @@
               const brightness = 1 - (distance / glowRadius);
               const alpha = 0.3 + brightness * 0.7;
               ctx.shadowBlur = 25 * brightness;
-              ctx.shadowColor = '#d4af37';
-              ctx.fillStyle = `rgba(212, 175, 55, ${alpha})`;
+              ctx.shadowColor = glowColor;
+              ctx.fillStyle = isDark ? `rgba(212, 175, 55, ${alpha})` : `rgba(184, 134, 11, ${alpha})`;
             } else {
               ctx.shadowBlur = 0;
-              ctx.fillStyle = 'rgba(212, 175, 55, 0.15)';
+              ctx.fillStyle = charColor;
             }
             
             ctx.fillText(char, x, y);
@@ -300,7 +401,7 @@
             cancelAnimationFrame(animationRef.current);
           }
         };
-      }, [containerRef]);
+      }, [containerRef, isDark]);
       
       return (
         <canvas
@@ -320,56 +421,57 @@
 
     function HomePage({ onEnterApp, user }) {
       const heroSectionRef = useRef(null);
+      const { theme, isDark } = useTheme();
       
       const heroStyles = {
         wrapper: { minHeight: '100vh', position: 'relative', overflow: 'hidden' },
-        nav: { position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, padding: '1.5rem 2rem', background: 'rgba(10, 15, 26, 0.8)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(212, 175, 55, 0.1)' },
+        nav: { position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, padding: '1.5rem 2rem', background: 'var(--bg-overlay)', backdropFilter: 'blur(20px)', borderBottom: '1px solid var(--accent-border)' },
         navContent: { maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
         logo: { display: 'flex', alignItems: 'center', gap: '0.75rem' },
-        logoIcon: { width: '44px', height: '44px', background: 'linear-gradient(135deg, #d4af37, #c9a227, #b8860b)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 24px rgba(212, 175, 55, 0.3)', animation: 'glow 3s ease-in-out infinite' },
-        logoText: { fontSize: '1.75rem', fontWeight: '600', fontFamily: '"Playfair Display", serif', background: 'linear-gradient(135deg, #d4af37, #f4e4ba)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' },
-        navCta: { padding: '0.75rem 2rem', background: 'linear-gradient(135deg, #d4af37, #c9a227)', border: 'none', borderRadius: '10px', color: '#0a0f1a', fontSize: '0.9375rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 4px 20px rgba(212, 175, 55, 0.35)', transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none' },
+        logoIcon: { width: '44px', height: '44px', background: 'linear-gradient(135deg, var(--accent), var(--accent-dark))', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 24px var(--accent-border-strong)', animation: 'glow 3s ease-in-out infinite', color: 'var(--accent-text-on)' },
+        logoText: { fontSize: '1.75rem', fontWeight: '600', fontFamily: '"Playfair Display", serif', background: 'linear-gradient(135deg, var(--accent), var(--accent-light))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' },
+        navCta: { padding: '0.75rem 2rem', background: 'linear-gradient(135deg, var(--accent), var(--accent-dark))', border: 'none', borderRadius: '10px', color: 'var(--accent-text-on)', fontSize: '0.9375rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 4px 20px var(--accent-border-strong)', transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none' },
         navActions: { display: 'flex', alignItems: 'center', gap: '1rem' },
-        userInfo: { display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 1rem', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.1)' },
-        userAvatar: { width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(212, 175, 55, 0.3)' },
-        userName: { color: '#f5f5f0', fontSize: '0.875rem', fontWeight: '500' },
-        logoutBtn: { padding: '0.5rem 1rem', background: 'transparent', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '8px', color: '#a0a0a0', fontSize: '0.8125rem', fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '0.375rem', transition: 'all 0.3s ease', textDecoration: 'none' },
+        userInfo: { display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 1rem', background: 'var(--bg-surface)', borderRadius: '10px', border: '1px solid var(--border-light)' },
+        userAvatar: { width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--accent-border-strong)' },
+        userName: { color: 'var(--text-primary)', fontSize: '0.875rem', fontWeight: '500' },
+        logoutBtn: { padding: '0.5rem 1rem', background: 'transparent', border: '1px solid var(--border-medium)', borderRadius: '8px', color: 'var(--text-secondary)', fontSize: '0.8125rem', fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '0.375rem', transition: 'all 0.3s ease', textDecoration: 'none' },
         hero: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8rem 2rem 4rem', position: 'relative', overflow: 'hidden' },
-        heroGlow: { position: 'absolute', top: '20%', left: '50%', transform: 'translateX(-50%)', width: '800px', height: '600px', background: 'radial-gradient(ellipse at center, rgba(212, 175, 55, 0.08) 0%, transparent 70%)', pointerEvents: 'none' },
+        heroGlow: { position: 'absolute', top: '20%', left: '50%', transform: 'translateX(-50%)', width: '800px', height: '600px', background: 'radial-gradient(ellipse at center, var(--accent-bg) 0%, transparent 70%)', pointerEvents: 'none' },
         heroContent: { maxWidth: '900px', textAlign: 'center', position: 'relative', zIndex: 1 },
-        heroTagline: { display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1.25rem', background: 'rgba(212, 175, 55, 0.08)', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '50px', fontSize: '0.8125rem', color: '#d4af37', marginBottom: '2rem', fontWeight: '500', letterSpacing: '0.05em' },
-        heroTitle: { fontSize: 'clamp(2.5rem, 6vw, 4.5rem)', fontWeight: '700', fontFamily: '"Playfair Display", serif', color: '#f5f5f0', lineHeight: '1.1', marginBottom: '1.5rem', letterSpacing: '-0.02em' },
-        heroGradient: { background: 'linear-gradient(135deg, #d4af37, #f4e4ba, #d4af37)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundSize: '200% auto', animation: 'shimmer 4s linear infinite' },
-        heroSubtitle: { fontSize: '1.25rem', color: '#a0a0a0', lineHeight: '1.7', maxWidth: '650px', margin: '0 auto 3rem', textAlign: 'center' },
+        heroTagline: { display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1.25rem', background: 'var(--accent-bg)', border: '1px solid var(--accent-border)', borderRadius: '50px', fontSize: '0.8125rem', color: 'var(--accent)', marginBottom: '2rem', fontWeight: '500', letterSpacing: '0.05em' },
+        heroTitle: { fontSize: 'clamp(2.5rem, 6vw, 4.5rem)', fontWeight: '700', fontFamily: '"Playfair Display", serif', color: 'var(--text-primary)', lineHeight: '1.1', marginBottom: '1.5rem', letterSpacing: '-0.02em' },
+        heroGradient: { background: 'linear-gradient(135deg, var(--accent), var(--accent-light), var(--accent))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundSize: '200% auto', animation: 'shimmer 4s linear infinite' },
+        heroSubtitle: { fontSize: '1.25rem', color: 'var(--text-secondary)', lineHeight: '1.7', maxWidth: '650px', margin: '0 auto 3rem', textAlign: 'center' },
         heroActions: { display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' },
-        primaryBtn: { padding: '1rem 2.5rem', background: 'linear-gradient(135deg, #d4af37, #c9a227)', border: 'none', borderRadius: '12px', color: '#0a0f1a', fontSize: '1.0625rem', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 8px 32px rgba(212, 175, 55, 0.4)', transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '0.625rem' },
-        secondaryBtn: { padding: '1rem 2.5rem', background: 'transparent', border: '1px solid rgba(212, 175, 55, 0.3)', borderRadius: '12px', color: '#d4af37', fontSize: '1.0625rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '0.625rem' },
-        scrollIndicator: { position: 'absolute', bottom: '2rem', left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', color: '#606060', fontSize: '0.75rem', animation: 'float 3s ease-in-out infinite' },
+        primaryBtn: { padding: '1rem 2.5rem', background: 'linear-gradient(135deg, var(--accent), var(--accent-dark))', border: 'none', borderRadius: '12px', color: 'var(--accent-text-on)', fontSize: '1.0625rem', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 8px 32px var(--accent-border-strong)', transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '0.625rem' },
+        secondaryBtn: { padding: '1rem 2.5rem', background: 'transparent', border: '1px solid var(--accent-border-strong)', borderRadius: '12px', color: 'var(--accent)', fontSize: '1.0625rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '0.625rem' },
+        scrollIndicator: { position: 'absolute', bottom: '2rem', left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', color: 'var(--text-dim)', fontSize: '0.75rem', animation: 'float 3s ease-in-out infinite' },
         section: { padding: '6rem 2rem', maxWidth: '1200px', margin: '0 auto' },
-        sectionTitle: { fontSize: 'clamp(2rem, 4vw, 3rem)', fontWeight: '700', fontFamily: '"Playfair Display", serif', color: '#f5f5f0', textAlign: 'center', marginBottom: '1rem' },
-        sectionSubtitle: { fontSize: '1.125rem', color: '#808080', textAlign: 'center', maxWidth: '600px', margin: '0 auto 4rem', lineHeight: '1.7' },
+        sectionTitle: { fontSize: 'clamp(2rem, 4vw, 3rem)', fontWeight: '700', fontFamily: '"Playfair Display", serif', color: 'var(--text-primary)', textAlign: 'center', marginBottom: '1rem' },
+        sectionSubtitle: { fontSize: '1.125rem', color: 'var(--text-muted)', textAlign: 'center', maxWidth: '600px', margin: '0 auto 4rem', lineHeight: '1.7' },
         featuresGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' },
-        featureCard: { background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '20px', padding: '2.5rem', transition: 'all 0.4s ease', position: 'relative', overflow: 'hidden' },
-        featureCardHover: { position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: 'linear-gradient(90deg, transparent, #d4af37, transparent)', opacity: 0, transition: 'opacity 0.4s ease' },
-        featureIcon: { width: '56px', height: '56px', background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.15), rgba(212, 175, 55, 0.05))', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d4af37', marginBottom: '1.5rem' },
-        featureTitle: { fontSize: '1.375rem', fontWeight: '600', color: '#f5f5f0', marginBottom: '0.75rem' },
-        featureDesc: { fontSize: '0.9375rem', color: '#707070', lineHeight: '1.7' },
-        statsSection: { background: 'linear-gradient(180deg, rgba(212, 175, 55, 0.03) 0%, transparent 100%)', borderTop: '1px solid rgba(212, 175, 55, 0.1)', borderBottom: '1px solid rgba(212, 175, 55, 0.1)', padding: '4rem 2rem' },
+        featureCard: { background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '20px', padding: '2.5rem', transition: 'all 0.4s ease', position: 'relative', overflow: 'hidden' },
+        featureCardHover: { position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: 'linear-gradient(90deg, transparent, var(--accent), transparent)', opacity: 0, transition: 'opacity 0.4s ease' },
+        featureIcon: { width: '56px', height: '56px', background: 'linear-gradient(135deg, var(--accent-bg-hover), var(--accent-bg))', border: '1px solid var(--accent-border)', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', marginBottom: '1.5rem' },
+        featureTitle: { fontSize: '1.375rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '0.75rem' },
+        featureDesc: { fontSize: '0.9375rem', color: 'var(--text-muted)', lineHeight: '1.7' },
+        statsSection: { background: 'linear-gradient(180deg, var(--accent-bg) 0%, transparent 100%)', borderTop: '1px solid var(--accent-border)', borderBottom: '1px solid var(--accent-border)', padding: '4rem 2rem' },
         statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '2rem', textAlign: 'center', maxWidth: '1000px', margin: '0 auto' },
-        statNumber: { fontSize: '3rem', fontWeight: '700', fontFamily: '"Playfair Display", serif', background: 'linear-gradient(135deg, #d4af37, #f4e4ba)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: '0.5rem' },
-        statLabel: { fontSize: '0.875rem', color: '#707070', textTransform: 'uppercase', letterSpacing: '0.1em' },
-        ctaSection: { textAlign: 'center', padding: '8rem 2rem', background: 'radial-gradient(ellipse at center, rgba(212, 175, 55, 0.05) 0%, transparent 60%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' },
-        ctaTitle: { fontSize: 'clamp(1.75rem, 4vw, 2.5rem)', fontWeight: '700', fontFamily: '"Playfair Display", serif', color: '#f5f5f0', marginBottom: '1rem', textAlign: 'center' },
-        ctaSubtitle: { fontSize: '1.125rem', color: '#808080', marginBottom: '2.5rem', textAlign: 'center', maxWidth: '500px' },
-        footer: { borderTop: '1px solid rgba(255, 255, 255, 0.05)', padding: '2rem', textAlign: 'center', color: '#505050', fontSize: '0.875rem' },
-        demoPreview: { background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '24px', overflow: 'hidden', maxWidth: '900px', margin: '0 auto', boxShadow: '0 40px 100px rgba(0, 0, 0, 0.5)' },
-        demoHeader: { background: 'rgba(10, 15, 26, 0.9)', padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' },
+        statNumber: { fontSize: '3rem', fontWeight: '700', fontFamily: '"Playfair Display", serif', background: 'linear-gradient(135deg, var(--accent), var(--accent-light))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: '0.5rem' },
+        statLabel: { fontSize: '0.875rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' },
+        ctaSection: { textAlign: 'center', padding: '8rem 2rem', background: 'radial-gradient(ellipse at center, var(--accent-bg) 0%, transparent 60%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' },
+        ctaTitle: { fontSize: 'clamp(1.75rem, 4vw, 2.5rem)', fontWeight: '700', fontFamily: '"Playfair Display", serif', color: 'var(--text-primary)', marginBottom: '1rem', textAlign: 'center' },
+        ctaSubtitle: { fontSize: '1.125rem', color: 'var(--text-muted)', marginBottom: '2.5rem', textAlign: 'center', maxWidth: '500px' },
+        footer: { borderTop: '1px solid var(--border-subtle)', padding: '2rem', textAlign: 'center', color: 'var(--text-dim)', fontSize: '0.875rem' },
+        demoPreview: { background: 'var(--bg-surface)', border: '1px solid var(--border-light)', borderRadius: '24px', overflow: 'hidden', maxWidth: '900px', margin: '0 auto', boxShadow: '0 40px 100px var(--shadow-color)' },
+        demoHeader: { background: 'var(--bg-overlay)', padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '1px solid var(--border-subtle)' },
         demoDots: { display: 'flex', gap: '0.5rem' },
         demoDot: (color) => ({ width: '12px', height: '12px', borderRadius: '50%', background: color }),
-        demoBody: { padding: '2rem', background: 'linear-gradient(160deg, #0a0f1a, #0d1929)' },
+        demoBody: { padding: '2rem', background: 'var(--bg-gradient)' },
         demoCards: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' },
-        demoCard: { background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.06)', borderRadius: '12px', padding: '1.25rem' },
-        demoCardLabel: { fontSize: '0.625rem', color: '#606060', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.375rem' },
+        demoCard: { background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '1.25rem' },
+        demoCardLabel: { fontSize: '0.625rem', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.375rem' },
         demoCardValue: { fontSize: '1.25rem', fontWeight: '600', fontFamily: '"Playfair Display", serif' },
       };
 
@@ -388,7 +490,7 @@
                       {user.profile_image ? (
                         <img src={user.profile_image} alt="" style={heroStyles.userAvatar} />
                       ) : (
-                        <div style={{ ...heroStyles.userAvatar, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(212, 175, 55, 0.2)', color: '#d4af37' }}><Icons.User /></div>
+                        <div style={{ ...heroStyles.userAvatar, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--accent-bg)', color: 'var(--accent)' }}><Icons.User /></div>
                       )}
                       <span className="mobile-user-name" style={heroStyles.userName}>{user.first_name || user.email || 'User'}</span>
                     </div>
@@ -953,6 +1055,8 @@
           .sort((a, b) => b.amount - a.amount);
       }, [dashboardYear, recurringExpenses, oneOffExpenses]);
 
+      const { theme, isDark } = useTheme();
+
       useEffect(() => {
         if (!ytdChartRef.current || activeView !== 'dashboard') return;
         
@@ -962,6 +1066,12 @@
         
         const ctx = ytdChartRef.current.getContext('2d');
         const colors = ['#ef5350', '#f59e0b', '#8b5cf6', '#ec4899', '#6366f1', '#14b8a6', '#f97316', '#a855f7', '#06b6d4', '#84cc16'];
+        
+        const tooltipBg = isDark ? 'rgba(13, 25, 41, 0.95)' : 'rgba(255, 255, 255, 0.95)';
+        const tooltipTitle = isDark ? '#f5f5f0' : '#1a1a2e';
+        const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.08)';
+        const tickColor = isDark ? '#808080' : '#6a6a7a';
+        const labelColor = isDark ? '#f5f5f0' : '#1a1a2e';
         
         ytdChartInstance.current = new Chart(ctx, {
           type: 'bar',
@@ -982,10 +1092,10 @@
             plugins: {
               legend: { display: false },
               tooltip: {
-                backgroundColor: 'rgba(13, 25, 41, 0.95)',
-                titleColor: '#f5f5f0',
-                bodyColor: '#d4af37',
-                borderColor: 'rgba(212, 175, 55, 0.3)',
+                backgroundColor: tooltipBg,
+                titleColor: tooltipTitle,
+                bodyColor: isDark ? '#d4af37' : '#b8860b',
+                borderColor: isDark ? 'rgba(212, 175, 55, 0.3)' : 'rgba(184, 134, 11, 0.4)',
                 borderWidth: 1,
                 callbacks: {
                   label: (context) => `$${context.raw.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
@@ -994,12 +1104,12 @@
             },
             scales: {
               x: {
-                grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                ticks: { color: '#808080', callback: (value) => '$' + value.toLocaleString() }
+                grid: { color: gridColor },
+                ticks: { color: tickColor, callback: (value) => '$' + value.toLocaleString() }
               },
               y: {
                 grid: { display: false },
-                ticks: { color: '#f5f5f0', font: { size: 11 } }
+                ticks: { color: labelColor, font: { size: 11 } }
               }
             }
           }
@@ -1010,7 +1120,7 @@
             ytdChartInstance.current.destroy();
           }
         };
-      }, [ytdExpensesByName, activeView]);
+      }, [ytdExpensesByName, activeView, isDark]);
 
       const handleOverrideBalance = (dateKey, newBalance) => { setBalanceOverrides(prev => ({ ...prev, [dateKey]: parseFloat(newBalance) })); setEditingCell(null); };
       const clearOverride = (dateKey) => { setBalanceOverrides(prev => { const n = { ...prev }; delete n[dateKey]; return n; }); };
@@ -1026,79 +1136,79 @@
 
       const frequencyLabels = { 'weekly': 'Weekly', 'biweekly': 'Biweekly', 'monthly': 'Monthly', 'semimonthly': 'Semi-monthly (15th & EOM)', 'last-weekday-15th': 'Last weekday before 15th', 'last-weekday-eom': 'Last weekday of month', 'yearly': 'Yearly' };
       const getExpenseFrequencyLabel = (expense) => { if (expense.frequency === 'weekly') return `Weekly on ${dayNames[expense.dayOfWeek]}s`; if (expense.frequency === 'monthly') return `Monthly on day ${expense.dayOfMonth}`; if (expense.frequency === 'yearly') return `Yearly on ${months[expense.month]} ${expense.day}`; return expense.frequency; };
-
+      
       const styles = {
-        container: { minHeight: '100vh', background: 'linear-gradient(160deg, #0a0f1a 0%, #0d1929 40%, #0f1d2f 100%)', fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif', color: '#f5f5f0' },
-        header: { background: 'rgba(10, 15, 26, 0.85)', borderBottom: '1px solid rgba(212, 175, 55, 0.15)', padding: '1rem 2rem', position: 'sticky', top: 0, zIndex: 100, backdropFilter: 'blur(24px)' },
+        container: { minHeight: '100vh', background: 'var(--bg-gradient)', fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif', color: 'var(--text-primary)' },
+        header: { background: 'var(--bg-overlay)', borderBottom: '1px solid var(--accent-border)', padding: '1rem 2rem', position: 'sticky', top: 0, zIndex: 100, backdropFilter: 'blur(24px)' },
         headerContent: { maxWidth: '1600px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' },
         logo: { display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' },
-        logoIcon: { width: '40px', height: '40px', background: 'linear-gradient(135deg, #d4af37, #c9a227, #b8860b)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 24px rgba(212, 175, 55, 0.25)' },
-        logoText: { fontSize: '1.5rem', fontWeight: '600', fontFamily: '"Playfair Display", serif', background: 'linear-gradient(135deg, #d4af37, #f4e4ba)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '0.02em' },
-        yearBadge: { padding: '0.25rem 0.75rem', background: 'rgba(212, 175, 55, 0.1)', border: '1px solid rgba(212, 175, 55, 0.25)', borderRadius: '20px', fontSize: '0.75rem', color: '#d4af37', fontWeight: '500', letterSpacing: '0.05em' },
+        logoIcon: { width: '40px', height: '40px', background: 'linear-gradient(135deg, var(--accent), var(--accent-dark))', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 24px var(--accent-border)', color: 'var(--accent-text-on)' },
+        logoText: { fontSize: '1.5rem', fontWeight: '600', fontFamily: '"Playfair Display", serif', background: 'linear-gradient(135deg, var(--accent), var(--accent-light))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '0.02em' },
+        yearBadge: { padding: '0.25rem 0.75rem', background: 'var(--accent-bg)', border: '1px solid var(--accent-border)', borderRadius: '20px', fontSize: '0.75rem', color: 'var(--accent)', fontWeight: '500', letterSpacing: '0.05em' },
         headerActions: { display: 'flex', alignItems: 'center', gap: '0.75rem' },
-        saveIndicator: { display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.375rem 0.625rem', background: 'rgba(76, 175, 80, 0.1)', border: '1px solid rgba(76, 175, 80, 0.2)', borderRadius: '6px', fontSize: '0.6875rem', color: '#4caf50', opacity: saveIndicator ? 1 : 0, transition: 'opacity 0.3s ease' },
-        cloudIndicator: { display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.375rem 0.625rem', background: 'rgba(212, 175, 55, 0.1)', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '6px', fontSize: '0.6875rem', color: '#d4af37' },
+        saveIndicator: { display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.375rem 0.625rem', background: 'var(--success-bg)', border: '1px solid var(--success)', borderRadius: '6px', fontSize: '0.6875rem', color: 'var(--success)', opacity: saveIndicator ? 1 : 0, transition: 'opacity 0.3s ease' },
+        cloudIndicator: { display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.375rem 0.625rem', background: 'var(--accent-bg)', border: '1px solid var(--accent-border)', borderRadius: '6px', fontSize: '0.6875rem', color: 'var(--accent)' },
         nav: { display: 'flex', gap: '0.5rem' },
-        navButton: (isActive) => ({ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.625rem 1.25rem', background: isActive ? 'rgba(212, 175, 55, 0.1)' : 'transparent', border: isActive ? '1px solid rgba(212, 175, 55, 0.25)' : '1px solid transparent', borderRadius: '8px', color: isActive ? '#d4af37' : '#808080', fontSize: '0.875rem', fontWeight: '500', cursor: 'pointer', transition: 'all 0.3s ease', fontFamily: 'inherit' }),
+        navButton: (isActive) => ({ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.625rem 1.25rem', background: isActive ? 'var(--accent-bg)' : 'transparent', border: isActive ? '1px solid var(--accent-border)' : '1px solid transparent', borderRadius: '8px', color: isActive ? 'var(--accent)' : 'var(--text-muted)', fontSize: '0.875rem', fontWeight: '500', cursor: 'pointer', transition: 'all 0.3s ease', fontFamily: 'inherit' }),
         main: { maxWidth: '1600px', margin: '0 auto', padding: '2rem' },
-        yearSelector: { display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem', padding: '1rem 1.25rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.05)' },
-        yearLabel: { fontSize: '0.75rem', color: '#707070', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: '500' },
-        yearSelect: { padding: '0.5rem 1rem', background: 'rgba(212, 175, 55, 0.08)', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '8px', color: '#f5f5f0', fontSize: '0.9375rem', fontWeight: '600', fontFamily: 'inherit', cursor: 'pointer' },
-        sectionTitle: { fontSize: '0.75rem', fontWeight: '600', color: '#d4af37', textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '1rem', marginTop: '2rem', display: 'flex', alignItems: 'center', gap: '0.625rem' },
+        yearSelector: { display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem', padding: '1rem 1.25rem', background: 'var(--bg-surface)', borderRadius: '12px', border: '1px solid var(--border-subtle)' },
+        yearLabel: { fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: '500' },
+        yearSelect: { padding: '0.5rem 1rem', background: 'var(--accent-bg)', border: '1px solid var(--accent-border)', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '0.9375rem', fontWeight: '600', fontFamily: 'inherit', cursor: 'pointer' },
+        sectionTitle: { fontSize: '0.75rem', fontWeight: '600', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '1rem', marginTop: '2rem', display: 'flex', alignItems: 'center', gap: '0.625rem' },
         dashboardGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', marginBottom: '1.5rem' },
-        statCard: () => ({ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '16px', padding: '1.5rem', position: 'relative', overflow: 'hidden', backdropFilter: 'blur(10px)' }),
+        statCard: () => ({ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '16px', padding: '1.5rem', position: 'relative', overflow: 'hidden', backdropFilter: 'blur(10px)' }),
         statCardAccent: (color) => ({ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: `linear-gradient(90deg, ${color}, transparent)` }),
-        statLabel: { fontSize: '0.6875rem', color: '#707070', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem', fontWeight: '500' },
-        statValue: (color = '#f5f5f0') => ({ fontSize: '1.75rem', fontWeight: '600', color, letterSpacing: '-0.02em', fontFamily: '"Playfair Display", serif' }),
-        statSubtext: { fontSize: '0.6875rem', color: '#585858', marginTop: '0.5rem' },
-        panel: { background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '16px', padding: '1.5rem', marginBottom: '1.5rem' },
+        statLabel: { fontSize: '0.6875rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem', fontWeight: '500' },
+        statValue: (color) => ({ fontSize: '1.75rem', fontWeight: '600', color: color || 'var(--text-primary)', letterSpacing: '-0.02em', fontFamily: '"Playfair Display", serif' }),
+        statSubtext: { fontSize: '0.6875rem', color: 'var(--text-dim)', marginTop: '0.5rem' },
+        panel: { background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '16px', padding: '1.5rem', marginBottom: '1.5rem' },
         panelHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' },
-        panelTitle: { fontSize: '1rem', fontWeight: '500', color: '#e0e0e0', display: 'flex', alignItems: 'center', gap: '0.625rem' },
-        addButton: { display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.5rem 1rem', background: 'linear-gradient(135deg, #d4af37, #c9a227)', border: 'none', borderRadius: '8px', color: '#0a0f1a', fontSize: '0.8125rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.3s ease', fontFamily: 'inherit', boxShadow: '0 2px 8px rgba(212, 175, 55, 0.2)' },
-        itemRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.875rem 1rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '10px', marginBottom: '0.5rem', border: '1px solid rgba(255, 255, 255, 0.04)', transition: 'all 0.2s ease' },
-        itemName: { fontSize: '0.875rem', fontWeight: '500', color: '#e0e0e0' },
-        itemMeta: { fontSize: '0.6875rem', color: '#606060' },
-        itemAmount: (positive = false) => ({ fontSize: '0.9375rem', fontWeight: '600', color: positive ? '#4caf50' : '#ef5350' }),
-        deleteBtn: { padding: '0.375rem', background: 'rgba(239, 83, 80, 0.08)', border: '1px solid rgba(239, 83, 80, 0.15)', borderRadius: '6px', color: '#ef5350', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease' },
-        formOverlay: { position: 'fixed', inset: 0, background: 'rgba(5, 8, 15, 0.85)', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: '1.5rem' },
-        formCard: { background: 'linear-gradient(160deg, #111827, #0d1929)', border: '1px solid rgba(212, 175, 55, 0.15)', borderRadius: '20px', padding: '2rem', width: '100%', maxWidth: '420px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 25px 80px rgba(0, 0, 0, 0.6)' },
-        formTitle: { fontSize: '1.25rem', fontWeight: '600', color: '#f5f5f0', marginBottom: '1.5rem', fontFamily: '"Playfair Display", serif' },
+        panelTitle: { fontSize: '1rem', fontWeight: '500', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.625rem' },
+        addButton: { display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.5rem 1rem', background: 'linear-gradient(135deg, var(--accent), var(--accent-dark))', border: 'none', borderRadius: '8px', color: 'var(--accent-text-on)', fontSize: '0.8125rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.3s ease', fontFamily: 'inherit', boxShadow: '0 2px 8px var(--accent-border)' },
+        itemRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.875rem 1rem', background: 'var(--bg-surface)', borderRadius: '10px', marginBottom: '0.5rem', border: '1px solid var(--border-subtle)', transition: 'all 0.2s ease' },
+        itemName: { fontSize: '0.875rem', fontWeight: '500', color: 'var(--text-primary)' },
+        itemMeta: { fontSize: '0.6875rem', color: 'var(--text-dim)' },
+        itemAmount: (positive = false) => ({ fontSize: '0.9375rem', fontWeight: '600', color: positive ? 'var(--success)' : 'var(--danger)' }),
+        deleteBtn: { padding: '0.375rem', background: 'var(--danger-bg)', border: '1px solid var(--danger)', borderRadius: '6px', color: 'var(--danger)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease' },
+        formOverlay: { position: 'fixed', inset: 0, background: isDark ? 'rgba(5, 8, 15, 0.85)' : 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: '1.5rem' },
+        formCard: { background: 'var(--bg-gradient)', border: '1px solid var(--accent-border)', borderRadius: '20px', padding: '2rem', width: '100%', maxWidth: '420px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 25px 80px var(--shadow-color)' },
+        formTitle: { fontSize: '1.25rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '1.5rem', fontFamily: '"Playfair Display", serif' },
         formGroup: { marginBottom: '1rem' },
-        formLabel: { display: 'block', fontSize: '0.6875rem', color: '#808080', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem', fontWeight: '500' },
-        formInput: { width: '100%', padding: '0.75rem 1rem', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '10px', color: '#f5f5f0', fontSize: '0.9375rem', fontFamily: 'inherit', outline: 'none', transition: 'all 0.3s ease', boxSizing: 'border-box' },
-        formSelect: { width: '100%', padding: '0.75rem 1rem', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '10px', color: '#f5f5f0', fontSize: '0.9375rem', fontFamily: 'inherit', outline: 'none', cursor: 'pointer', boxSizing: 'border-box' },
-        formHint: { fontSize: '0.6875rem', color: '#585858', marginTop: '0.375rem', fontStyle: 'italic' },
+        formLabel: { display: 'block', fontSize: '0.6875rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem', fontWeight: '500' },
+        formInput: { width: '100%', padding: '0.75rem 1rem', background: 'var(--bg-surface)', border: '1px solid var(--border-light)', borderRadius: '10px', color: 'var(--text-primary)', fontSize: '0.9375rem', fontFamily: 'inherit', outline: 'none', transition: 'all 0.3s ease', boxSizing: 'border-box' },
+        formSelect: { width: '100%', padding: '0.75rem 1rem', background: 'var(--bg-surface)', border: '1px solid var(--border-light)', borderRadius: '10px', color: 'var(--text-primary)', fontSize: '0.9375rem', fontFamily: 'inherit', outline: 'none', cursor: 'pointer', boxSizing: 'border-box' },
+        formHint: { fontSize: '0.6875rem', color: 'var(--text-dim)', marginTop: '0.375rem', fontStyle: 'italic' },
         formActions: { display: 'flex', gap: '0.75rem', marginTop: '1.5rem' },
-        cancelBtn: { flex: 1, padding: '0.75rem', background: 'transparent', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '10px', color: '#808080', fontSize: '0.875rem', fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.3s ease' },
-        submitBtn: { flex: 1, padding: '0.75rem', background: 'linear-gradient(135deg, #d4af37, #c9a227)', border: 'none', borderRadius: '10px', color: '#0a0f1a', fontSize: '0.875rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 2px 12px rgba(212, 175, 55, 0.3)' },
-        tableContainer: { background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '16px', overflow: 'hidden' },
-        tableHeader: { display: 'grid', gridTemplateColumns: '100px 55px 1fr 115px 115px 115px 45px', gap: '1px', background: 'rgba(212, 175, 55, 0.05)', padding: '0.875rem 1.25rem', borderBottom: '1px solid rgba(255, 255, 255, 0.05)', position: 'sticky', top: 0, zIndex: 10 },
-        tableHeaderCell: { fontSize: '0.625rem', fontWeight: '600', color: '#808080', textTransform: 'uppercase', letterSpacing: '0.12em' },
+        cancelBtn: { flex: 1, padding: '0.75rem', background: 'transparent', border: '1px solid var(--border-light)', borderRadius: '10px', color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.3s ease' },
+        submitBtn: { flex: 1, padding: '0.75rem', background: 'linear-gradient(135deg, var(--accent), var(--accent-dark))', border: 'none', borderRadius: '10px', color: 'var(--accent-text-on)', fontSize: '0.875rem', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 2px 12px var(--accent-border-strong)' },
+        tableContainer: { background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '16px', overflow: 'hidden' },
+        tableHeader: { display: 'grid', gridTemplateColumns: '100px 55px 1fr 115px 115px 115px 45px', gap: '1px', background: 'var(--accent-bg)', padding: '0.875rem 1.25rem', borderBottom: '1px solid var(--border-subtle)', position: 'sticky', top: 0, zIndex: 10 },
+        tableHeaderCell: { fontSize: '0.625rem', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.12em' },
         tableBody: { maxHeight: '600px', overflowY: 'auto' },
-        tableRow: (isToday, isPast, isMonthStart) => ({ display: 'grid', gridTemplateColumns: '100px 55px 1fr 115px 115px 115px 45px', gap: '1px', padding: '0.5rem 1.25rem', background: isToday ? 'rgba(212, 175, 55, 0.08)' : isMonthStart ? 'rgba(255, 255, 255, 0.02)' : 'transparent', borderBottom: '1px solid rgba(255, 255, 255, 0.03)', opacity: isPast ? 0.5 : 1, transition: 'background 0.2s ease' }),
-        tableCell: { fontSize: '0.75rem', color: '#c0c0c0', display: 'flex', alignItems: 'center' },
-        monthDivider: { padding: '0.625rem 1.25rem', background: 'linear-gradient(90deg, rgba(212, 175, 55, 0.1), transparent)', borderBottom: '1px solid rgba(212, 175, 55, 0.15)' },
-        monthLabel: { fontSize: '0.75rem', fontWeight: '600', color: '#d4af37', textTransform: 'uppercase', letterSpacing: '0.2em' },
-        balancePositive: { color: '#4caf50', fontWeight: '600' },
-        balanceNegative: { color: '#ef5350', fontWeight: '600' },
-        expenseCell: { color: '#ef5350', fontWeight: '500' },
-        payrollBadge: { display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.125rem 0.375rem', background: 'rgba(76, 175, 80, 0.1)', border: '1px solid rgba(76, 175, 80, 0.2)', borderRadius: '4px', fontSize: '0.625rem', color: '#4caf50', marginRight: '0.3125rem', marginBottom: '0.1875rem' },
-        recurringExpenseBadge: { display: 'inline-flex', alignItems: 'center', padding: '0.125rem 0.375rem', background: 'rgba(239, 83, 80, 0.08)', border: '1px solid rgba(239, 83, 80, 0.15)', borderRadius: '4px', fontSize: '0.625rem', color: '#ef5350', marginRight: '0.3125rem', marginBottom: '0.1875rem' },
-        oneOffExpenseBadge: { display: 'inline-flex', alignItems: 'center', padding: '0.125rem 0.375rem', background: 'rgba(156, 39, 176, 0.1)', border: '1px solid rgba(156, 39, 176, 0.2)', borderRadius: '4px', fontSize: '0.625rem', color: '#ab47bc', marginRight: '0.3125rem', marginBottom: '0.1875rem' },
-        overrideBadge: { display: 'inline-flex', alignItems: 'center', padding: '0.0625rem 0.3125rem', background: 'rgba(212, 175, 55, 0.1)', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '4px', fontSize: '0.5625rem', color: '#d4af37', marginLeft: '0.3125rem', cursor: 'pointer' },
-        editButton: { padding: '0.25rem', background: 'transparent', border: 'none', color: '#606060', cursor: 'pointer', marginLeft: '0.3125rem', opacity: 0.6, transition: 'opacity 0.2s ease' },
-        addExpenseBtn: { padding: '0.25rem', background: 'rgba(212, 175, 55, 0.1)', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '4px', color: '#d4af37', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease' },
-        inlineInput: { width: '80px', padding: '0.25rem 0.375rem', background: 'rgba(212, 175, 55, 0.1)', border: '1px solid rgba(212, 175, 55, 0.25)', borderRadius: '4px', color: '#f5f5f0', fontSize: '0.75rem', fontFamily: 'inherit', outline: 'none' },
+        tableRow: (isToday, isPast, isMonthStart) => ({ display: 'grid', gridTemplateColumns: '100px 55px 1fr 115px 115px 115px 45px', gap: '1px', padding: '0.5rem 1.25rem', background: isToday ? 'var(--accent-bg)' : isMonthStart ? 'var(--bg-surface)' : 'transparent', borderBottom: '1px solid var(--border-subtle)', opacity: isPast ? 0.5 : 1, transition: 'background 0.2s ease' }),
+        tableCell: { fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center' },
+        monthDivider: { padding: '0.625rem 1.25rem', background: 'linear-gradient(90deg, var(--accent-bg), transparent)', borderBottom: '1px solid var(--accent-border)' },
+        monthLabel: { fontSize: '0.75rem', fontWeight: '600', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.2em' },
+        balancePositive: { color: 'var(--success)', fontWeight: '600' },
+        balanceNegative: { color: 'var(--danger)', fontWeight: '600' },
+        expenseCell: { color: 'var(--danger)', fontWeight: '500' },
+        payrollBadge: { display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.125rem 0.375rem', background: 'var(--success-bg)', border: '1px solid var(--success)', borderRadius: '4px', fontSize: '0.625rem', color: 'var(--success)', marginRight: '0.3125rem', marginBottom: '0.1875rem' },
+        recurringExpenseBadge: { display: 'inline-flex', alignItems: 'center', padding: '0.125rem 0.375rem', background: 'var(--danger-bg)', border: '1px solid var(--danger)', borderRadius: '4px', fontSize: '0.625rem', color: 'var(--danger)', marginRight: '0.3125rem', marginBottom: '0.1875rem' },
+        oneOffExpenseBadge: { display: 'inline-flex', alignItems: 'center', padding: '0.125rem 0.375rem', background: 'rgba(156, 39, 176, 0.1)', border: '1px solid var(--purple)', borderRadius: '4px', fontSize: '0.625rem', color: 'var(--purple)', marginRight: '0.3125rem', marginBottom: '0.1875rem' },
+        overrideBadge: { display: 'inline-flex', alignItems: 'center', padding: '0.0625rem 0.3125rem', background: 'var(--accent-bg)', border: '1px solid var(--accent-border)', borderRadius: '4px', fontSize: '0.5625rem', color: 'var(--accent)', marginLeft: '0.3125rem', cursor: 'pointer' },
+        editButton: { padding: '0.25rem', background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', marginLeft: '0.3125rem', opacity: 0.6, transition: 'opacity 0.2s ease' },
+        addExpenseBtn: { padding: '0.25rem', background: 'var(--accent-bg)', border: '1px solid var(--accent-border)', borderRadius: '4px', color: 'var(--accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease' },
+        inlineInput: { width: '80px', padding: '0.25rem 0.375rem', background: 'var(--accent-bg)', border: '1px solid var(--accent-border)', borderRadius: '4px', color: 'var(--text-primary)', fontSize: '0.75rem', fontFamily: 'inherit', outline: 'none' },
         inlineActions: { display: 'flex', gap: '0.1875rem', marginLeft: '0.1875rem' },
         inlineBtn: (color) => ({ padding: '0.25rem', background: `rgba(${color}, 0.1)`, border: 'none', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }),
-        initialBalanceSection: { display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem 1.25rem', background: 'rgba(212, 175, 55, 0.05)', borderBottom: '1px solid rgba(255, 255, 255, 0.05)', flexWrap: 'wrap' },
-        initialBalanceLabel: { fontSize: '0.6875rem', color: '#808080', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: '500' },
-        initialBalanceInput: { width: '120px', padding: '0.5rem 0.625rem', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '6px', color: '#f5f5f0', fontSize: '0.875rem', fontWeight: '600', fontFamily: 'inherit', outline: 'none' },
-        monthSelector: { display: 'flex', gap: '0.25rem', padding: '0.625rem 1.25rem', background: 'rgba(0, 0, 0, 0.15)', overflowX: 'auto' },
-        monthBtn: (isActive) => ({ padding: '0.375rem 0.625rem', background: isActive ? 'rgba(212, 175, 55, 0.15)' : 'transparent', border: isActive ? '1px solid rgba(212, 175, 55, 0.25)' : '1px solid transparent', borderRadius: '6px', color: isActive ? '#d4af37' : '#606060', fontSize: '0.625rem', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit', transition: 'all 0.2s ease' }),
+        initialBalanceSection: { display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem 1.25rem', background: 'var(--accent-bg)', borderBottom: '1px solid var(--border-subtle)', flexWrap: 'wrap' },
+        initialBalanceLabel: { fontSize: '0.6875rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: '500' },
+        initialBalanceInput: { width: '120px', padding: '0.5rem 0.625rem', background: 'var(--bg-surface)', border: '1px solid var(--border-light)', borderRadius: '6px', color: 'var(--text-primary)', fontSize: '0.875rem', fontWeight: '600', fontFamily: 'inherit', outline: 'none' },
+        monthSelector: { display: 'flex', gap: '0.25rem', padding: '0.625rem 1.25rem', background: isDark ? 'rgba(0, 0, 0, 0.15)' : 'rgba(0, 0, 0, 0.03)', overflowX: 'auto' },
+        monthBtn: (isActive) => ({ padding: '0.375rem 0.625rem', background: isActive ? 'var(--accent-bg-hover)' : 'transparent', border: isActive ? '1px solid var(--accent-border)' : '1px solid transparent', borderRadius: '6px', color: isActive ? 'var(--accent)' : 'var(--text-dim)', fontSize: '0.625rem', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit', transition: 'all 0.2s ease' }),
         expensesList: { display: 'flex', flexWrap: 'wrap', gap: '0.1875rem' },
         threeColumn: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' },
-        emptyState: { color: '#585858', fontSize: '0.8125rem', textAlign: 'center', padding: '1.5rem' },
+        emptyState: { color: 'var(--text-dim)', fontSize: '0.8125rem', textAlign: 'center', padding: '1.5rem' },
       };
 
       if (isLoading) {
@@ -1113,8 +1223,8 @@
       if (loadError) {
         return (
           <div className="loading-screen">
-            <span style={{ color: '#ef5350' }}>Failed to load data: {loadError}</span>
-            <button onClick={() => window.location.reload()} style={{ marginTop: '1rem', padding: '0.5rem 1rem', background: '#d4af37', border: 'none', borderRadius: '8px', color: '#0a0f1a', cursor: 'pointer' }}>Retry</button>
+            <span style={{ color: 'var(--danger)' }}>Failed to load data: {loadError}</span>
+            <button onClick={() => window.location.reload()} style={{ marginTop: '1rem', padding: '0.5rem 1rem', background: 'var(--accent)', border: 'none', borderRadius: '8px', color: 'var(--accent-text-on)', cursor: 'pointer' }}>Retry</button>
           </div>
         );
       }
@@ -1287,14 +1397,14 @@
                   <div className="app-hide-mobile" style={styles.cloudIndicator}><Icons.Cloud /> Cloud Sync</div>
                   <div style={styles.saveIndicator}><Icons.Save /> Saved</div>
                   {user && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.375rem 0.75rem', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.375rem 0.75rem', background: 'var(--bg-surface)', borderRadius: '8px', border: '1px solid var(--border-light)' }}>
                       {user.profile_image ? (
-                        <img src={user.profile_image} alt="" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(212, 175, 55, 0.3)' }} />
+                        <img src={user.profile_image} alt="" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--accent-border-strong)' }} />
                       ) : (
-                        <div style={{ width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(212, 175, 55, 0.2)', color: '#d4af37' }}><Icons.User /></div>
+                        <div style={{ width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--accent-bg)', color: 'var(--accent)' }}><Icons.User /></div>
                       )}
-                      <span className="app-hide-mobile" style={{ color: '#f5f5f0', fontSize: '0.8125rem', fontWeight: '500' }}>{user.first_name || user.email || 'User'}</span>
-                      <a href="/api/logout" style={{ display: 'flex', alignItems: 'center', color: '#808080', padding: '0.25rem', borderRadius: '4px', transition: 'color 0.2s' }} title="Sign Out"><Icons.LogOut /></a>
+                      <span className="app-hide-mobile" style={{ color: 'var(--text-primary)', fontSize: '0.8125rem', fontWeight: '500' }}>{user.first_name || user.email || 'User'}</span>
+                      <a href="/api/logout" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.25rem', borderRadius: '4px', transition: 'color 0.2s' }} title="Sign Out"><Icons.LogOut /></a>
                     </div>
                   )}
                 </div>
