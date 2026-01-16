@@ -637,6 +637,36 @@
       const [showRecurringExpenseForm, setShowRecurringExpenseForm] = useState(false);
       const [showOneOffExpenseForm, setShowOneOffExpenseForm] = useState(false);
       const [addOneOffFromCalendar, setAddOneOffFromCalendar] = useState(null);
+      const [draggedExpenseId, setDraggedExpenseId] = useState(null);
+
+      const moveOneOffExpense = (expenseId, newDate) => {
+        setOneOffExpenses(prev => prev.map(expense => 
+          expense.id === expenseId ? { ...expense, date: newDate } : expense
+        ));
+      };
+
+      const handleDragStart = (e, expenseId) => {
+        setDraggedExpenseId(expenseId);
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', expenseId.toString());
+      };
+
+      const handleDragOver = (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+      };
+
+      const handleDrop = (e, targetDateKey) => {
+        e.preventDefault();
+        if (draggedExpenseId) {
+          moveOneOffExpense(draggedExpenseId, targetDateKey);
+          setDraggedExpenseId(null);
+        }
+      };
+
+      const handleDragEnd = () => {
+        setDraggedExpenseId(null);
+      };
 
       const saveTimeoutRef = useRef(null);
       const monthRefs = useRef({});
@@ -1081,13 +1111,17 @@
                 return (
                   <Fragment key={day.dateKey}>
                     {showMonthDivider && (<div style={styles.monthDivider} ref={el => monthRefs.current[day.month] = el}><span style={styles.monthLabel}>{months[day.month]} {day.year}</span></div>)}
-                    <div className="app-table-row" style={styles.tableRow(day.isToday, day.isPast, isMonthStart)}>
+                    <div className="app-table-row" style={styles.tableRow(day.isToday, day.isPast, isMonthStart)} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, day.dateKey)}>
                       <div className="app-table-cell" style={styles.tableCell}>{formatDate(day.date)}</div>
                       <div className="app-table-cell" style={styles.tableCell}>{day.dayOfWeek}</div>
                       <div className="app-table-cell" style={{ ...styles.tableCell, flexWrap: 'wrap' }}>
                         <div style={styles.expensesList}>
                           {day.payrollDetails.map((p, i) => (<span key={i} style={styles.payrollBadge}>+${p.amount} {p.name}</span>))}
-                          {day.expenseDetails.map((e, i) => (<span key={i} style={e.isRecurring ? styles.recurringExpenseBadge : styles.oneOffExpenseBadge}>-${e.amount} {e.name}</span>))}
+                          {day.expenseDetails.map((e, i) => (
+                            e.isRecurring 
+                              ? <span key={i} style={styles.recurringExpenseBadge}>-${e.amount} {e.name}</span>
+                              : <span key={i} draggable="true" onDragStart={(ev) => handleDragStart(ev, e.id)} onDragEnd={handleDragEnd} style={{ ...styles.oneOffExpenseBadge, cursor: 'grab' }} title="Drag to move to another date">-${e.amount} {e.name}</span>
+                          ))}
                         </div>
                       </div>
                       <div className="app-table-cell" style={styles.tableCell}>
