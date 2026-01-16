@@ -615,6 +615,13 @@
       const [addOneOffFromCalendar, setAddOneOffFromCalendar] = useState(null);
 
       const saveTimeoutRef = useRef(null);
+      const monthRefs = useRef({});
+
+      useEffect(() => {
+        if (monthRefs.current[scrollToMonth]) {
+          monthRefs.current[scrollToMonth].scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, [scrollToMonth]);
 
       useEffect(() => {
         api.loadData()
@@ -1023,13 +1030,6 @@
       );
 
       const renderCalendar = () => {
-        const monthRefs = useRef({});
-        useEffect(() => {
-          if (monthRefs.current[scrollToMonth]) {
-            monthRefs.current[scrollToMonth].scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }
-        }, [scrollToMonth]);
-
         return (
           <div className="app-table-container" style={styles.tableContainer}>
             <div className="app-initial-balance-section" style={styles.initialBalanceSection}>
