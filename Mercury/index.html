@@ -1019,12 +1019,18 @@
 
       const renderDashboard = () => (
         <div>
-          <div className="app-year-selector" style={styles.yearSelector}>
-            <span style={styles.yearLabel}>Viewing Year:</span>
-            <select value={dashboardYear} onChange={(e) => setDashboardYear(parseInt(e.target.value))} style={styles.yearSelect}>
-              {availableYears.map(year => <option key={year} value={year}>{year}</option>)}
-            </select>
-            {dashboardYear !== activeYear && <span style={{ fontSize: '0.6875rem', color: '#fbbf24' }}>(Archived)</span>}
+          <div className="app-year-selector" style={{ ...styles.yearSelector, justifyContent: 'space-between', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <span style={styles.yearLabel}>Viewing Year:</span>
+              <select value={dashboardYear} onChange={(e) => setDashboardYear(parseInt(e.target.value))} style={styles.yearSelect}>
+                {availableYears.map(year => <option key={year} value={year}>{year}</option>)}
+              </select>
+              {dashboardYear !== activeYear && <span style={{ fontSize: '0.6875rem', color: '#fbbf24' }}>(Archived)</span>}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <span style={styles.initialBalanceLabel}>Initial Balance (Jan 1, {dashboardYear}):</span>
+              <input type="number" value={initialBalances[dashboardYear] || 5000} onChange={(e) => updateInitialBalance(dashboardYear, e.target.value)} style={styles.initialBalanceInput} />
+            </div>
           </div>
 
           <div style={styles.sectionTitle}><Icons.TrendUp /> Overview</div>
@@ -1097,10 +1103,6 @@
       const renderCalendar = () => {
         return (
           <div className="app-table-container" style={styles.tableContainer}>
-            <div className="app-initial-balance-section" style={styles.initialBalanceSection}>
-              <span style={styles.initialBalanceLabel}>Initial Balance (Jan 1, {activeYear}):</span>
-              <input type="number" value={initialBalances[activeYear] || 5000} onChange={(e) => updateInitialBalance(activeYear, e.target.value)} style={styles.initialBalanceInput} />
-            </div>
             <div className="app-month-selector" style={styles.monthSelector}>
               {months.map((month, idx) => (<button key={month} style={styles.monthBtn(scrollToMonth === idx)} onClick={() => setScrollToMonth(idx)}>{month.slice(0, 3)}</button>))}
             </div>
