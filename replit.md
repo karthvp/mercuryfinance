@@ -16,13 +16,21 @@ Preferred communication style: Simple, everyday language.
 - **Single HTML file approach**: The entire React application lives in `index.html` using Babel standalone for JSX transformation
 - **React 18**: Loaded via CDN (production builds from cdnjs)
 - **No build step**: Babel compiles JSX in the browser at runtime
-- **Styling**: Inline CSS in the HTML file with a dark theme featuring gold accent colors (#d4af37)
+- **Styling**: Inline CSS with CSS custom properties (design tokens) for theming
+- **Theme System**: Automatic light/dark mode based on system preference via `prefers-color-scheme` media query
 - **Fonts**: Inter for UI text, Playfair Display for decorative elements (loaded from Google Fonts)
+
+### Theme System
+- **CSS Custom Properties**: All colors defined as design tokens (--bg-primary, --text-primary, --accent, etc.)
+- **useTheme Hook**: Detects system preference and manages `data-theme` attribute on document root
+- **Dark Theme**: Deep blue-black background (#0a0f1a) with gold accent (#d4af37)
+- **Light Theme**: Clean white/gray background (#f8f9fa) with darker gold accent (#b8860b)
+- **Canvas Elements**: MoneyRain and Chart.js use `isDark` flag for JavaScript-based color switching
 
 ### App Structure
 - **AppShell**: Root component that manages authentication state and view navigation
 - **HomePage**: Conversion-focused landing page with hero, features, stats, demo preview, and CTAs
-- **MoneyRain**: Canvas-based Matrix-style animation with falling gold dollar signs; reacts to mouse movement with glow effect
+- **MoneyRain**: Canvas-based Matrix-style animation with falling gold dollar signs; reacts to mouse movement with glow effect (theme-aware)
 - **FinancialTracker**: Main application with dashboard and calendar views (protected, requires auth)
 
 ### Authentication
@@ -101,6 +109,7 @@ The application tracks:
 
 ## Recent Changes
 
+- **January 2026**: Added light/dark theme system with automatic system preference detection using CSS custom properties and useTheme hook
 - **January 2026**: Added comprehensive mobile responsiveness to FinancialTracker app with CSS media queries for header, dashboard grids, panels, calendar table, and form overlays
 - **January 2026**: Added interactive Matrix-style "Money Rain" animation to the homepage hero background (canvas-based, gold dollar signs with mouse glow effect)
 - **January 2026**: Added Replit Auth (OpenID Connect) for multi-user authentication
