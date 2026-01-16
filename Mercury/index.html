@@ -670,12 +670,23 @@
 
       const saveTimeoutRef = useRef(null);
       const monthRefs = useRef({});
+      const todayRowRef = useRef(null);
+      const hasScrolledToToday = useRef(false);
 
       useEffect(() => {
         if (monthRefs.current[scrollToMonth]) {
           monthRefs.current[scrollToMonth].scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
       }, [scrollToMonth]);
+
+      useEffect(() => {
+        if (activeView === 'calendar' && todayRowRef.current && !hasScrolledToToday.current) {
+          setTimeout(() => {
+            todayRowRef.current.scrollIntoView({ behavior: 'auto', block: 'center' });
+            hasScrolledToToday.current = true;
+          }, 100);
+        }
+      }, [activeView, isLoading]);
 
       useEffect(() => {
         api.loadData()
@@ -1111,7 +1122,7 @@
                 return (
                   <Fragment key={day.dateKey}>
                     {showMonthDivider && (<div style={styles.monthDivider} ref={el => monthRefs.current[day.month] = el}><span style={styles.monthLabel}>{months[day.month]} {day.year}</span></div>)}
-                    <div className="app-table-row" style={styles.tableRow(day.isToday, day.isPast, isMonthStart)} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, day.dateKey)}>
+                    <div ref={day.isToday ? todayRowRef : null} className="app-table-row" style={styles.tableRow(day.isToday, day.isPast, isMonthStart)} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, day.dateKey)}>
                       <div className="app-table-cell" style={styles.tableCell}>{formatDate(day.date)}</div>
                       <div className="app-table-cell" style={styles.tableCell}>{day.dayOfWeek}</div>
                       <div className="app-table-cell" style={{ ...styles.tableCell, flexWrap: 'wrap' }}>
