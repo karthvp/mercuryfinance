@@ -106,11 +106,30 @@ const sessionTtl = 7 * 24 * 60 * 60 * 1000;
 if (!process.env.SESSION_SECRET) {
   console.warn('Warning: SESSION_SECRET not set, using random secret (sessions will not persist across restarts)');
 }
+
+async function ensureSessionTable() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS sessions (
+        sid VARCHAR NOT NULL PRIMARY KEY,
+        sess JSON NOT NULL,
+        expire TIMESTAMP(6) NOT NULL
+      )
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS IDX_session_expire ON sessions (expire)
+    `);
+  } catch (err) {
+    console.log('Session table setup:', err.message);
+  }
+}
+ensureSessionTable();
+
 app.use(session({
   store: new PgSession({
     pool,
     tableName: 'sessions',
-    createTableIfMissing: true,
+    createTableIfMissing: false,
     ttl: sessionTtl / 1000,
   }),
   secret: process.env.SESSION_SECRET || require('crypto').randomBytes(32).toString('hex'),
