@@ -8,7 +8,10 @@
     "dev": "node index.js"
   },
   "dependencies": {
+    "connect-pg-simple": "^10.0.0",
     "express": "^4.18.2",
+    "express-session": "^1.19.0",
+    "openid-client": "^6.8.1",
     "pg": "^8.17.1"
   },
   "engines": {
