@@ -1002,6 +1002,95 @@
       );
     }
 
+    // ========================================
+    // Reusable UI Components
+    // ========================================
+
+    // StatCard - Displays a single statistic with accent color and optional subtext
+    const StatCard = ({ label, value, subtext, accentColor, valueColor, styles }) => (
+      <div className="app-stat-card" style={styles.statCard()}>
+        <div style={styles.statCardAccent(accentColor)} />
+        <div style={styles.statLabel}>{label}</div>
+        <div className="app-stat-value" style={styles.statValue(valueColor || accentColor)}>{value}</div>
+        {subtext && <div style={styles.statSubtext}>{subtext}</div>}
+      </div>
+    );
+
+    // ItemRow - Displays a list item with name, meta info, amount, and delete action
+    const ItemRow = ({ name, meta, amount, isPositive, onDelete, styles }) => (
+      <div className="app-item-row" style={styles.itemRow}>
+        <div>
+          <div style={styles.itemName}>{name}</div>
+          <div style={styles.itemMeta}>{meta}</div>
+        </div>
+        <div className="app-item-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <span style={styles.itemAmount(isPositive)}>
+            {isPositive ? '+' : '-'}{amount}
+          </span>
+          <button style={styles.deleteBtn} onClick={onDelete}><Icons.Trash /></button>
+        </div>
+      </div>
+    );
+
+    // FormField - Standardized form input with label and optional hint
+    const FormField = ({ label, hint, children, styles }) => (
+      <div style={styles.formGroup}>
+        <label style={styles.formLabel}>{label}</label>
+        {children}
+        {hint && <div style={styles.formHint}>{hint}</div>}
+      </div>
+    );
+
+    // FormOverlay - Modal wrapper for forms with title, actions, and close handling
+    const FormOverlay = ({ title, onClose, onSubmit, submitLabel, children, styles }) => (
+      <div style={styles.formOverlay} onClick={onClose}>
+        <div className="app-form-card" style={styles.formCard} onClick={e => e.stopPropagation()}>
+          <h3 style={styles.formTitle}>{title}</h3>
+          {children}
+          <div className="app-form-actions" style={styles.formActions}>
+            <button style={styles.cancelBtn} onClick={onClose}>Cancel</button>
+            <button style={styles.submitBtn} onClick={onSubmit}>{submitLabel || 'Add'}</button>
+          </div>
+        </div>
+      </div>
+    );
+
+    // ========================================
+    // Form State Management
+    // ========================================
+
+    // Form state reducer - consolidates 7 useState calls into 1
+    const initialFormState = {
+      payroll: { name: '', amount: '', frequency: 'semimonthly', startDay: 1, dayOfWeek: 5 },
+      recurring: { name: '', amount: '', frequency: 'monthly', dayOfMonth: 1, dayOfWeek: 5, month: 0, day: 1 },
+      oneOff: { name: '', amount: '', date: '' },
+      activeForm: null, // 'payroll' | 'recurring' | 'oneOff' | null
+      calendarDate: null // for adding expense from calendar
+    };
+
+    const formReducer = (state, action) => {
+      switch (action.type) {
+        case 'UPDATE_PAYROLL':
+          return { ...state, payroll: { ...state.payroll, ...action.payload } };
+        case 'UPDATE_RECURRING':
+          return { ...state, recurring: { ...state.recurring, ...action.payload } };
+        case 'UPDATE_ONEOFF':
+          return { ...state, oneOff: { ...state.oneOff, ...action.payload } };
+        case 'SHOW_FORM':
+          return { ...state, activeForm: action.formType, calendarDate: action.calendarDate || null };
+        case 'HIDE_FORM':
+          return { ...state, activeForm: null, calendarDate: null };
+        case 'RESET_PAYROLL':
+          return { ...state, payroll: initialFormState.payroll, activeForm: null };
+        case 'RESET_RECURRING':
+          return { ...state, recurring: initialFormState.recurring, activeForm: null };
+        case 'RESET_ONEOFF':
+          return { ...state, oneOff: initialFormState.oneOff, activeForm: null, calendarDate: null };
+        default:
+          return state;
+      }
+    };
+
     function FinancialTracker({ onBackToHome, user }) {
       const today = new Date();
       const realCurrentYear = getCurrentYear();
@@ -1050,13 +1139,35 @@
       const [scrollToMonth, setScrollToMonth] = useState(today.getMonth());
       const [saveIndicator, setSaveIndicator] = useState(false);
 
-      const [newPayroll, setNewPayroll] = useState({ name: '', amount: '', frequency: 'semimonthly', startDay: 1, dayOfWeek: 5 });
-      const [newRecurringExpense, setNewRecurringExpense] = useState({ name: '', amount: '', frequency: 'monthly', dayOfMonth: 1, dayOfWeek: 5, month: 0, day: 1 });
-      const [newOneOffExpense, setNewOneOffExpense] = useState({ name: '', amount: '', date: '' });
-      const [showPayrollForm, setShowPayrollForm] = useState(false);
-      const [showRecurringExpenseForm, setShowRecurringExpenseForm] = useState(false);
-      const [showOneOffExpenseForm, setShowOneOffExpenseForm] = useState(false);
-      const [addOneOffFromCalendar, setAddOneOffFromCalendar] = useState(null);
+      // Consolidated form state using reducer (replaces 7 useState calls)
+      const [formState, formDispatch] = React.useReducer(formReducer, initialFormState);
+
+      // Derived values for backward compatibility with existing code
+      const newPayroll = formState.payroll;
+      const newRecurringExpense = formState.recurring;
+      const newOneOffExpense = formState.oneOff;
+      const showPayrollForm = formState.activeForm === 'payroll';
+      const showRecurringExpenseForm = formState.activeForm === 'recurring';
+      const showOneOffExpenseForm = formState.activeForm === 'oneOff';
+      const addOneOffFromCalendar = formState.calendarDate;
+
+      // Helper functions for form updates (maintaining similar API)
+      const setNewPayroll = (updater) => {
+        const newVal = typeof updater === 'function' ? updater(formState.payroll) : updater;
+        formDispatch({ type: 'UPDATE_PAYROLL', payload: newVal });
+      };
+      const setNewRecurringExpense = (updater) => {
+        const newVal = typeof updater === 'function' ? updater(formState.recurring) : updater;
+        formDispatch({ type: 'UPDATE_RECURRING', payload: newVal });
+      };
+      const setNewOneOffExpense = (updater) => {
+        const newVal = typeof updater === 'function' ? updater(formState.oneOff) : updater;
+        formDispatch({ type: 'UPDATE_ONEOFF', payload: newVal });
+      };
+      const setShowPayrollForm = (show) => formDispatch({ type: show ? 'SHOW_FORM' : 'HIDE_FORM', formType: 'payroll' });
+      const setShowRecurringExpenseForm = (show) => formDispatch({ type: show ? 'SHOW_FORM' : 'HIDE_FORM', formType: 'recurring' });
+      const setShowOneOffExpenseForm = (show) => formDispatch({ type: show ? 'SHOW_FORM' : 'HIDE_FORM', formType: 'oneOff' });
+      const setAddOneOffFromCalendar = (date) => formDispatch({ type: date ? 'SHOW_FORM' : 'HIDE_FORM', formType: 'oneOff', calendarDate: date });
       const [draggedExpenseId, setDraggedExpenseId] = useState(null);
 
       const moveOneOffExpense = (expenseId, newDate) => {
@@ -1805,13 +1916,13 @@
 
       const handleOverrideBalance = (dateKey, newBalance) => { setBalanceOverrides(prev => ({ ...prev, [dateKey]: parseFloat(newBalance) })); setEditingCell(null); };
       const clearOverride = (dateKey) => { setBalanceOverrides(prev => { const n = { ...prev }; delete n[dateKey]; return n; }); };
-      const addPayroll = () => { if (newPayroll.name && newPayroll.amount) { setPayrolls(prev => [...prev, { id: Date.now(), name: newPayroll.name, amount: parseFloat(newPayroll.amount), frequency: newPayroll.frequency, startDay: parseInt(newPayroll.startDay), dayOfWeek: parseInt(newPayroll.dayOfWeek), startYear: activeYear }]); setNewPayroll({ name: '', amount: '', frequency: 'semimonthly', startDay: 1, dayOfWeek: 5 }); setShowPayrollForm(false); } };
+      const addPayroll = () => { if (newPayroll.name && newPayroll.amount) { setPayrolls(prev => [...prev, { id: Date.now(), name: newPayroll.name, amount: parseFloat(newPayroll.amount), frequency: newPayroll.frequency, startDay: parseInt(newPayroll.startDay), dayOfWeek: parseInt(newPayroll.dayOfWeek), startYear: activeYear }]); formDispatch({ type: 'RESET_PAYROLL' }); } };
       const deletePayroll = (id) => { setPayrolls(prev => prev.filter(p => p.id !== id)); };
-      const addRecurringExpense = () => { if (newRecurringExpense.name && newRecurringExpense.amount) { setRecurringExpenses(prev => [...prev, { id: Date.now(), name: newRecurringExpense.name, amount: parseFloat(newRecurringExpense.amount), frequency: newRecurringExpense.frequency, dayOfMonth: parseInt(newRecurringExpense.dayOfMonth), dayOfWeek: parseInt(newRecurringExpense.dayOfWeek), month: parseInt(newRecurringExpense.month), day: parseInt(newRecurringExpense.day) }]); setNewRecurringExpense({ name: '', amount: '', frequency: 'monthly', dayOfMonth: 1, dayOfWeek: 5, month: 0, day: 1 }); setShowRecurringExpenseForm(false); } };
+      const addRecurringExpense = () => { if (newRecurringExpense.name && newRecurringExpense.amount) { setRecurringExpenses(prev => [...prev, { id: Date.now(), name: newRecurringExpense.name, amount: parseFloat(newRecurringExpense.amount), frequency: newRecurringExpense.frequency, dayOfMonth: parseInt(newRecurringExpense.dayOfMonth), dayOfWeek: parseInt(newRecurringExpense.dayOfWeek), month: parseInt(newRecurringExpense.month), day: parseInt(newRecurringExpense.day) }]); formDispatch({ type: 'RESET_RECURRING' }); } };
       const deleteRecurringExpense = (id) => { setRecurringExpenses(prev => prev.filter(e => e.id !== id)); };
-      const addOneOffExpense = () => { if (newOneOffExpense.name && newOneOffExpense.amount && newOneOffExpense.date) { setOneOffExpenses(prev => [...prev, { id: Date.now(), name: newOneOffExpense.name, amount: parseFloat(newOneOffExpense.amount), date: newOneOffExpense.date }]); setNewOneOffExpense({ name: '', amount: '', date: '' }); setShowOneOffExpenseForm(false); setAddOneOffFromCalendar(null); } };
+      const addOneOffExpense = () => { if (newOneOffExpense.name && newOneOffExpense.amount && newOneOffExpense.date) { setOneOffExpenses(prev => [...prev, { id: Date.now(), name: newOneOffExpense.name, amount: parseFloat(newOneOffExpense.amount), date: newOneOffExpense.date }]); formDispatch({ type: 'RESET_ONEOFF' }); } };
       const deleteOneOffExpense = (id) => { setOneOffExpenses(prev => prev.filter(e => e.id !== id)); };
-      const openOneOffFormForDate = (dateKey) => { setNewOneOffExpense({ name: '', amount: '', date: dateKey }); setAddOneOffFromCalendar(dateKey); setShowOneOffExpenseForm(true); };
+      const openOneOffFormForDate = (dateKey) => { formDispatch({ type: 'UPDATE_ONEOFF', payload: { name: '', amount: '', date: dateKey } }); formDispatch({ type: 'SHOW_FORM', formType: 'oneOff', calendarDate: dateKey }); };
       const updateInitialBalance = (year, value) => { setInitialBalances(prev => ({ ...prev, [year]: parseFloat(value) || 0 })); };
       const clearAllData = () => { if (confirm('Clear all data? This cannot be undone!')) { setInitialBalances({ [activeYear]: 5000 }); setPayrolls([]); setRecurringExpenses([]); setOneOffExpenses([]); setBalanceOverrides({}); setArchivedYears([]); } };
 
