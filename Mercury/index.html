@@ -8,6 +8,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://unpkg.com/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -100,6 +102,338 @@
       .app-year-badge { display: none; }
       .app-table-header, .app-table-row { grid-template-columns: 70px 40px 1fr 80px !important; min-width: 350px; }
     }
+
+    /* Sankey Diagram Styles */
+    .app-cashflow-container {
+      padding: 1.5rem;
+      animation: fadeInUp 0.4s ease-out;
+    }
+
+    .cashflow-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .cashflow-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.75rem;
+      font-weight: 600;
+      color: #f5f5f0;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .cashflow-title-icon {
+      color: #d4af37;
+    }
+
+    .cashflow-stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .cashflow-stat-card {
+      background: rgba(15, 29, 47, 0.6);
+      border: 1px solid rgba(212, 175, 55, 0.15);
+      border-radius: 12px;
+      padding: 1.25rem;
+      transition: all 0.3s ease;
+    }
+
+    .cashflow-stat-card:hover {
+      border-color: rgba(212, 175, 55, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .cashflow-stat-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #808080;
+      margin-bottom: 0.5rem;
+    }
+
+    .cashflow-stat-value {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #f5f5f0;
+    }
+
+    .cashflow-stat-value.income { color: #4caf50; }
+    .cashflow-stat-value.expense { color: #ef5350; }
+    .cashflow-stat-value.positive { color: #4caf50; }
+    .cashflow-stat-value.negative { color: #ef5350; }
+
+    .sankey-container {
+      background: rgba(15, 29, 47, 0.5);
+      border: 1px solid rgba(212, 175, 55, 0.1);
+      border-radius: 16px;
+      padding: 1.5rem;
+      min-height: 500px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .sankey-container svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .sankey-node {
+      cursor: pointer;
+      transition: opacity 0.2s ease;
+    }
+
+    .sankey-node rect {
+      transition: all 0.2s ease;
+    }
+
+    .sankey-node:hover rect {
+      filter: brightness(1.2);
+    }
+
+    .sankey-node.dimmed {
+      opacity: 0.3;
+    }
+
+    .sankey-link {
+      fill: none;
+      stroke-opacity: 0.4;
+      transition: stroke-opacity 0.3s ease;
+    }
+
+    .sankey-link:hover {
+      stroke-opacity: 0.7;
+    }
+
+    .sankey-link.dimmed {
+      stroke-opacity: 0.1;
+    }
+
+    .sankey-link.highlighted {
+      stroke-opacity: 0.8;
+    }
+
+    .sankey-label {
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      fill: #f5f5f0;
+      pointer-events: none;
+    }
+
+    .sankey-label-amount {
+      font-weight: 600;
+      fill: #d4af37;
+    }
+
+    .sankey-label-percent {
+      font-size: 10px;
+      fill: #808080;
+    }
+
+    .sankey-tooltip {
+      position: absolute;
+      background: rgba(13, 25, 41, 0.95);
+      border: 1px solid rgba(212, 175, 55, 0.3);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      pointer-events: none;
+      z-index: 100;
+      min-width: 150px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      animation: tooltipFadeIn 0.15s ease-out;
+    }
+
+    @keyframes tooltipFadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .sankey-tooltip-title {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: #f5f5f0;
+      margin-bottom: 0.375rem;
+    }
+
+    .sankey-tooltip-amount {
+      font-size: 1.125rem;
+      font-weight: 700;
+      color: #d4af37;
+      margin-bottom: 0.25rem;
+    }
+
+    .sankey-tooltip-percent {
+      font-size: 0.75rem;
+      color: #808080;
+    }
+
+    .sankey-tooltip-hint {
+      font-size: 0.6875rem;
+      color: #606060;
+      margin-top: 0.5rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      padding-top: 0.5rem;
+    }
+
+    .sankey-legend {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin-top: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .sankey-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8125rem;
+      color: #808080;
+    }
+
+    .sankey-legend-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+    }
+
+    .sankey-empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 400px;
+      color: #606060;
+      text-align: center;
+      padding: 2rem;
+    }
+
+    .sankey-empty-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      opacity: 0.5;
+    }
+
+    .sankey-empty-title {
+      font-size: 1.125rem;
+      color: #808080;
+      margin-bottom: 0.5rem;
+    }
+
+    .sankey-empty-subtitle {
+      font-size: 0.875rem;
+      color: #606060;
+    }
+
+    /* Sankey Animation */
+    @keyframes sankeyFlowIn {
+      from { stroke-dashoffset: 1000; }
+      to { stroke-dashoffset: 0; }
+    }
+
+    .sankey-link-animated {
+      stroke-dasharray: 1000;
+      animation: sankeyFlowIn 1.5s ease-out forwards;
+    }
+
+    /* Category detail panel */
+    .cashflow-detail-panel {
+      margin-top: 1.5rem;
+      background: rgba(15, 29, 47, 0.6);
+      border: 1px solid rgba(212, 175, 55, 0.15);
+      border-radius: 12px;
+      padding: 1.25rem;
+      animation: fadeInUp 0.3s ease-out;
+    }
+
+    .cashflow-detail-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .cashflow-detail-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #f5f5f0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .cashflow-detail-close {
+      background: none;
+      border: none;
+      color: #808080;
+      cursor: pointer;
+      font-size: 1.25rem;
+      padding: 0.25rem;
+      transition: color 0.2s ease;
+    }
+
+    .cashflow-detail-close:hover {
+      color: #f5f5f0;
+    }
+
+    .cashflow-detail-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .cashflow-detail-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.625rem 0.75rem;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 8px;
+      transition: background 0.2s ease;
+    }
+
+    .cashflow-detail-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .cashflow-detail-item-name {
+      font-size: 0.875rem;
+      color: #f5f5f0;
+    }
+
+    .cashflow-detail-item-amount {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: #d4af37;
+    }
+
+    /* Responsive adjustments for Sankey */
+    @media (max-width: 768px) {
+      .app-cashflow-container { padding: 1rem; }
+      .cashflow-header { flex-direction: column; align-items: stretch; }
+      .cashflow-title { font-size: 1.5rem; }
+      .cashflow-stats-row { grid-template-columns: 1fr; }
+      .sankey-container { padding: 1rem; min-height: 400px; }
+      .sankey-legend { gap: 1rem; }
+      .sankey-label { font-size: 10px; }
+    }
+
+    @media (max-width: 480px) {
+      .sankey-container { min-height: 350px; }
+      .cashflow-stat-card { padding: 1rem; }
+      .cashflow-stat-value { font-size: 1.25rem; }
+    }
   </style>
 </head>
 <body>
@@ -184,6 +518,7 @@
     const Icons = {
       Dashboard: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>,
       Calendar: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+      CashFlow: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 12h4l2-3v6l2-3h2"/><path d="M12 6l4 2v2l4-2"/><path d="M12 12h4v0h4"/><path d="M12 18l4-2v-2l4 2"/><circle cx="20" cy="6" r="2" fill="currentColor"/><circle cx="20" cy="12" r="2" fill="currentColor"/><circle cx="20" cy="18" r="2" fill="currentColor"/><circle cx="4" cy="12" r="2" fill="currentColor"/></svg>,
       Money: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
       Expense: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>,
       Plus: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
@@ -604,6 +939,7 @@
       const getInitialActiveView = () => {
         const hash = window.location.hash;
         if (hash.includes('/calendar')) return 'calendar';
+        if (hash.includes('/cashflow')) return 'cashflow';
         return 'dashboard';
       };
       const [activeView, setActiveViewState] = useState(getInitialActiveView);
@@ -618,6 +954,8 @@
           const hash = window.location.hash;
           if (hash.includes('/calendar')) {
             setActiveViewState('calendar');
+          } else if (hash.includes('/cashflow')) {
+            setActiveViewState('cashflow');
           } else if (hash.includes('/dashboard')) {
             setActiveViewState('dashboard');
           }
@@ -953,6 +1291,148 @@
           .sort((a, b) => b.amount - a.amount);
       }, [dashboardYear, recurringExpenses, oneOffExpenses]);
 
+      // Sankey diagram data computation
+      const sankeyRef = useRef(null);
+      const [sankeyTooltip, setSankeyTooltip] = useState(null);
+      const [selectedCategory, setSelectedCategory] = useState(null);
+
+      const sankeyData = useMemo(() => {
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        const yearStart = `${dashboardYear}-01-01`;
+        const yearEnd = `${dashboardYear}-12-31`;
+        const cutoffDate = dashboardYear === new Date().getFullYear() ? todayStr : yearEnd;
+
+        // Calculate income by source (payrolls)
+        const incomeTotals = {};
+        payrolls.forEach(payroll => {
+          const dates = generateDatesForYear(dashboardYear);
+          let total = 0;
+          dates.forEach(date => {
+            const dateKey = date.toISOString().split('T')[0];
+            if (dateKey > cutoffDate) return;
+            const dayOfMonth = date.getDate();
+            const dayOfWeekIdx = getDayOfWeekIndex(date);
+            const month = date.getMonth();
+            let isDue = false;
+            if (payroll.frequency === 'monthly' && payroll.startDay === dayOfMonth) isDue = true;
+            else if (payroll.frequency === 'biweekly' && payroll.dayOfWeek === dayOfWeekIdx) {
+              const startDate = new Date(payroll.startYear || dashboardYear, 0, 1);
+              while (getDayOfWeekIndex(startDate) !== payroll.dayOfWeek) startDate.setDate(startDate.getDate() + 1);
+              const diffDays = Math.floor((date - startDate) / (1000 * 60 * 60 * 24));
+              isDue = diffDays >= 0 && diffDays % 14 === 0;
+            } else if (payroll.frequency === 'weekly' && payroll.dayOfWeek === dayOfWeekIdx) isDue = true;
+            else if (payroll.frequency === 'semimonthly' && (dayOfMonth === 15 || dayOfMonth === getLastDayOfMonth(dashboardYear, month))) isDue = true;
+            else if (payroll.frequency === 'last-weekday-15th' && (dayOfMonth === 15 || (date.getTime() === getLastWeekdayOfMonth(dashboardYear, month).getTime()))) isDue = true;
+            else if (payroll.frequency === 'last-weekday-eom' && date.getTime() === getLastWeekdayOfMonth(dashboardYear, month).getTime()) isDue = true;
+            if (isDue) total += payroll.amount;
+          });
+          if (total > 0) {
+            incomeTotals[payroll.name] = (incomeTotals[payroll.name] || 0) + total;
+          }
+        });
+
+        // Calculate expenses by category
+        const expenseTotals = {};
+        const expenseDetails = {};
+
+        recurringExpenses.forEach(expense => {
+          const dates = generateDatesForYear(dashboardYear);
+          let total = 0;
+          dates.forEach(date => {
+            const dateKey = date.toISOString().split('T')[0];
+            if (dateKey > cutoffDate) return;
+            const dayOfMonth = date.getDate();
+            const dayOfWeekIdx = getDayOfWeekIndex(date);
+            const month = date.getMonth();
+            let isDue = false;
+            if (expense.frequency === 'monthly' && expense.dayOfMonth === dayOfMonth) isDue = true;
+            else if (expense.frequency === 'weekly' && expense.dayOfWeek === dayOfWeekIdx) isDue = true;
+            else if (expense.frequency === 'yearly' && expense.month === month && expense.day === dayOfMonth) isDue = true;
+            if (isDue) total += expense.amount;
+          });
+          if (total > 0) {
+            expenseTotals[expense.name] = (expenseTotals[expense.name] || 0) + total;
+            if (!expenseDetails[expense.name]) expenseDetails[expense.name] = [];
+            expenseDetails[expense.name].push({ name: expense.name, amount: total, type: 'recurring', frequency: expense.frequency });
+          }
+        });
+
+        oneOffExpenses.forEach(expense => {
+          if (expense.date >= yearStart && expense.date <= cutoffDate) {
+            expenseTotals[expense.name] = (expenseTotals[expense.name] || 0) + expense.amount;
+            if (!expenseDetails[expense.name]) expenseDetails[expense.name] = [];
+            expenseDetails[expense.name].push({ name: expense.name, amount: expense.amount, type: 'one-off', date: expense.date });
+          }
+        });
+
+        const totalIncome = Object.values(incomeTotals).reduce((sum, v) => sum + v, 0);
+        const totalExpenses = Object.values(expenseTotals).reduce((sum, v) => sum + v, 0);
+
+        if (totalIncome === 0 && totalExpenses === 0) {
+          return { nodes: [], links: [], totalIncome: 0, totalExpenses: 0, expenseDetails: {} };
+        }
+
+        // Build nodes array
+        const nodes = [];
+        const nodeIndex = {};
+        let idx = 0;
+
+        // Add income source nodes
+        Object.keys(incomeTotals).forEach(name => {
+          nodeIndex[`income-${name}`] = idx++;
+          nodes.push({ id: `income-${name}`, name, type: 'income', value: incomeTotals[name] });
+        });
+
+        // Add total income node (aggregator)
+        if (totalIncome > 0) {
+          nodeIndex['total-income'] = idx++;
+          nodes.push({ id: 'total-income', name: 'Total Income', type: 'aggregate', value: totalIncome });
+        }
+
+        // Add expense category nodes
+        const sortedExpenses = Object.entries(expenseTotals).sort((a, b) => b[1] - a[1]);
+        sortedExpenses.forEach(([name, amount]) => {
+          nodeIndex[`expense-${name}`] = idx++;
+          nodes.push({ id: `expense-${name}`, name, type: 'expense', value: amount, percent: ((amount / totalExpenses) * 100).toFixed(1) });
+        });
+
+        // Build links array
+        const links = [];
+
+        // Links from income sources to total income
+        Object.entries(incomeTotals).forEach(([name, amount]) => {
+          links.push({
+            source: nodeIndex[`income-${name}`],
+            target: nodeIndex['total-income'],
+            value: amount,
+            sourceName: name,
+            targetName: 'Total Income'
+          });
+        });
+
+        // Links from total income to expense categories
+        sortedExpenses.forEach(([name, amount]) => {
+          links.push({
+            source: nodeIndex['total-income'],
+            target: nodeIndex[`expense-${name}`],
+            value: amount,
+            sourceName: 'Total Income',
+            targetName: name
+          });
+        });
+
+        return {
+          nodes,
+          links,
+          totalIncome,
+          totalExpenses,
+          netCashFlow: totalIncome - totalExpenses,
+          expenseDetails,
+          incomeSources: Object.entries(incomeTotals).map(([name, amount]) => ({ name, amount }))
+        };
+      }, [dashboardYear, payrolls, recurringExpenses, oneOffExpenses]);
+
       useEffect(() => {
         if (!ytdChartRef.current || activeView !== 'dashboard') return;
         
@@ -1011,6 +1491,273 @@
           }
         };
       }, [ytdExpensesByName, activeView]);
+
+      // D3 Sankey rendering effect
+      useEffect(() => {
+        if (!sankeyRef.current || activeView !== 'cashflow' || sankeyData.nodes.length === 0) return;
+
+        // Clear previous content
+        d3.select(sankeyRef.current).selectAll('*').remove();
+
+        const container = sankeyRef.current;
+        const width = container.clientWidth || 800;
+        const height = Math.max(500, sankeyData.nodes.filter(n => n.type === 'expense').length * 45 + 100);
+        const margin = { top: 20, right: 150, bottom: 20, left: 150 };
+
+        const svg = d3.select(container)
+          .append('svg')
+          .attr('width', width)
+          .attr('height', height)
+          .attr('viewBox', `0 0 ${width} ${height}`)
+          .attr('preserveAspectRatio', 'xMidYMid meet');
+
+        // Define gradients
+        const defs = svg.append('defs');
+
+        // Income gradient (green)
+        const incomeGradient = defs.append('linearGradient')
+          .attr('id', 'income-gradient')
+          .attr('x1', '0%').attr('y1', '0%').attr('x2', '100%').attr('y2', '0%');
+        incomeGradient.append('stop').attr('offset', '0%').attr('stop-color', '#4caf50');
+        incomeGradient.append('stop').attr('offset', '100%').attr('stop-color', '#66bb6a');
+
+        // Expense colors
+        const expenseColors = ['#d4af37', '#ef5350', '#8b5cf6', '#ec4899', '#6366f1', '#14b8a6', '#f97316', '#a855f7', '#06b6d4', '#84cc16', '#f59e0b', '#10b981'];
+
+        // Create sankey layout
+        const sankeyLayout = d3.sankey()
+          .nodeWidth(20)
+          .nodePadding(15)
+          .extent([[margin.left, margin.top], [width - margin.right, height - margin.bottom]])
+          .nodeId(d => d.id)
+          .nodeAlign(d3.sankeyLeft);
+
+        const { nodes, links } = sankeyLayout({
+          nodes: sankeyData.nodes.map(d => ({ ...d })),
+          links: sankeyData.links.map(d => ({ ...d }))
+        });
+
+        // Create link gradients
+        links.forEach((link, i) => {
+          const gradientId = `link-gradient-${i}`;
+          const gradient = defs.append('linearGradient')
+            .attr('id', gradientId)
+            .attr('gradientUnits', 'userSpaceOnUse')
+            .attr('x1', link.source.x1)
+            .attr('x2', link.target.x0);
+
+          const sourceColor = link.source.type === 'income' ? '#4caf50' :
+                             link.source.type === 'aggregate' ? '#d4af37' : expenseColors[nodes.indexOf(link.source) % expenseColors.length];
+          const targetColor = link.target.type === 'expense' ? expenseColors[nodes.filter(n => n.type === 'expense').indexOf(link.target) % expenseColors.length] :
+                             link.target.type === 'aggregate' ? '#d4af37' : '#4caf50';
+
+          gradient.append('stop').attr('offset', '0%').attr('stop-color', sourceColor).attr('stop-opacity', 0.8);
+          gradient.append('stop').attr('offset', '100%').attr('stop-color', targetColor).attr('stop-opacity', 0.8);
+
+          link.gradientId = gradientId;
+        });
+
+        // Draw links
+        const linkGroup = svg.append('g').attr('class', 'sankey-links');
+
+        const linkPaths = linkGroup.selectAll('path')
+          .data(links)
+          .enter()
+          .append('path')
+          .attr('class', 'sankey-link sankey-link-animated')
+          .attr('d', d3.sankeyLinkHorizontal())
+          .attr('stroke', d => `url(#${d.gradientId})`)
+          .attr('stroke-width', d => Math.max(1, d.width))
+          .attr('fill', 'none')
+          .style('stroke-opacity', 0.4)
+          .on('mouseenter', function(event, d) {
+            d3.select(this).style('stroke-opacity', 0.8);
+            const rect = container.getBoundingClientRect();
+            setSankeyTooltip({
+              x: event.clientX - rect.left + 10,
+              y: event.clientY - rect.top - 10,
+              title: `${d.sourceName} → ${d.targetName}`,
+              amount: d.value,
+              percent: ((d.value / sankeyData.totalExpenses) * 100).toFixed(1)
+            });
+          })
+          .on('mousemove', function(event) {
+            const rect = container.getBoundingClientRect();
+            setSankeyTooltip(prev => prev ? { ...prev, x: event.clientX - rect.left + 10, y: event.clientY - rect.top - 10 } : null);
+          })
+          .on('mouseleave', function() {
+            d3.select(this).style('stroke-opacity', 0.4);
+            setSankeyTooltip(null);
+          });
+
+        // Draw nodes
+        const nodeGroup = svg.append('g').attr('class', 'sankey-nodes');
+
+        const nodeRects = nodeGroup.selectAll('rect')
+          .data(nodes)
+          .enter()
+          .append('rect')
+          .attr('class', 'sankey-node')
+          .attr('x', d => d.x0)
+          .attr('y', d => d.y0)
+          .attr('width', d => d.x1 - d.x0)
+          .attr('height', d => Math.max(1, d.y1 - d.y0))
+          .attr('fill', d => {
+            if (d.type === 'income') return '#4caf50';
+            if (d.type === 'aggregate') return '#d4af37';
+            const expenseIndex = nodes.filter(n => n.type === 'expense').indexOf(d);
+            return expenseColors[expenseIndex % expenseColors.length];
+          })
+          .attr('rx', 3)
+          .attr('ry', 3)
+          .style('cursor', 'pointer')
+          .on('mouseenter', function(event, d) {
+            // Highlight connected links
+            linkPaths.style('stroke-opacity', link =>
+              (link.source === d || link.target === d) ? 0.8 : 0.1
+            );
+            nodeRects.style('opacity', node =>
+              node === d || links.some(l => (l.source === d && l.target === node) || (l.target === d && l.source === node)) ? 1 : 0.3
+            );
+
+            const rect = container.getBoundingClientRect();
+            const isExpense = d.type === 'expense';
+            setSankeyTooltip({
+              x: event.clientX - rect.left + 10,
+              y: event.clientY - rect.top - 10,
+              title: d.name,
+              amount: d.value,
+              percent: isExpense ? d.percent : ((d.value / sankeyData.totalIncome) * 100).toFixed(1),
+              type: d.type,
+              hint: isExpense ? 'Click for details' : null
+            });
+          })
+          .on('mousemove', function(event) {
+            const rect = container.getBoundingClientRect();
+            setSankeyTooltip(prev => prev ? { ...prev, x: event.clientX - rect.left + 10, y: event.clientY - rect.top - 10 } : null);
+          })
+          .on('mouseleave', function() {
+            linkPaths.style('stroke-opacity', 0.4);
+            nodeRects.style('opacity', 1);
+            setSankeyTooltip(null);
+          })
+          .on('click', function(event, d) {
+            if (d.type === 'expense') {
+              setSelectedCategory(d.name);
+            } else if (d.type === 'income') {
+              setSelectedCategory(`income:${d.name}`);
+            }
+          });
+
+        // Node animations on load
+        nodeRects
+          .attr('width', 0)
+          .transition()
+          .duration(600)
+          .delay((d, i) => i * 50)
+          .attr('width', d => d.x1 - d.x0);
+
+        // Add node labels
+        const labelGroup = svg.append('g').attr('class', 'sankey-labels');
+
+        // Labels for income nodes (left side)
+        labelGroup.selectAll('.label-income')
+          .data(nodes.filter(n => n.type === 'income'))
+          .enter()
+          .append('g')
+          .attr('class', 'label-income')
+          .each(function(d) {
+            const g = d3.select(this);
+            const x = d.x0 - 10;
+            const y = (d.y0 + d.y1) / 2;
+
+            g.append('text')
+              .attr('class', 'sankey-label')
+              .attr('x', x)
+              .attr('y', y - 6)
+              .attr('text-anchor', 'end')
+              .attr('fill', '#f5f5f0')
+              .text(d.name);
+
+            g.append('text')
+              .attr('class', 'sankey-label-amount')
+              .attr('x', x)
+              .attr('y', y + 10)
+              .attr('text-anchor', 'end')
+              .attr('fill', '#4caf50')
+              .attr('font-weight', '600')
+              .text(formatCurrency(d.value));
+          });
+
+        // Labels for aggregate node (center)
+        labelGroup.selectAll('.label-aggregate')
+          .data(nodes.filter(n => n.type === 'aggregate'))
+          .enter()
+          .append('g')
+          .attr('class', 'label-aggregate')
+          .each(function(d) {
+            const g = d3.select(this);
+            const x = (d.x0 + d.x1) / 2;
+            const y = d.y0 - 15;
+
+            g.append('text')
+              .attr('class', 'sankey-label')
+              .attr('x', x)
+              .attr('y', y)
+              .attr('text-anchor', 'middle')
+              .attr('fill', '#d4af37')
+              .attr('font-weight', '600')
+              .attr('font-size', '14px')
+              .text(formatCurrency(d.value));
+          });
+
+        // Labels for expense nodes (right side)
+        labelGroup.selectAll('.label-expense')
+          .data(nodes.filter(n => n.type === 'expense'))
+          .enter()
+          .append('g')
+          .attr('class', 'label-expense')
+          .each(function(d) {
+            const g = d3.select(this);
+            const x = d.x1 + 10;
+            const y = (d.y0 + d.y1) / 2;
+
+            g.append('text')
+              .attr('class', 'sankey-label')
+              .attr('x', x)
+              .attr('y', y - 6)
+              .attr('text-anchor', 'start')
+              .attr('fill', '#f5f5f0')
+              .text(d.name);
+
+            g.append('text')
+              .attr('class', 'sankey-label-amount')
+              .attr('x', x)
+              .attr('y', y + 8)
+              .attr('text-anchor', 'start')
+              .attr('fill', '#d4af37')
+              .attr('font-weight', '600')
+              .text(formatCurrency(d.value));
+
+            g.append('text')
+              .attr('class', 'sankey-label-percent')
+              .attr('x', x)
+              .attr('y', y + 22)
+              .attr('text-anchor', 'start')
+              .attr('fill', '#808080')
+              .attr('font-size', '11px')
+              .text(`${d.percent}%`);
+          });
+
+        // Animate labels
+        labelGroup.selectAll('g')
+          .style('opacity', 0)
+          .transition()
+          .duration(400)
+          .delay((d, i) => 400 + i * 30)
+          .style('opacity', 1);
+
+      }, [sankeyData, activeView, dashboardYear]);
 
       const handleOverrideBalance = (dateKey, newBalance) => { setBalanceOverrides(prev => ({ ...prev, [dateKey]: parseFloat(newBalance) })); setEditingCell(null); };
       const clearOverride = (dateKey) => { setBalanceOverrides(prev => { const n = { ...prev }; delete n[dateKey]; return n; }); };
@@ -1211,6 +1958,201 @@
         </div>
       );
 
+      const renderCashFlow = () => {
+        const hasData = sankeyData.nodes.length > 0;
+
+        return (
+          <div className="app-cashflow-container">
+            {/* Header */}
+            <div className="cashflow-header">
+              <h2 className="cashflow-title">
+                <span className="cashflow-title-icon"><Icons.CashFlow /></span>
+                Cash Flow
+              </h2>
+              <div className="app-year-selector" style={{ ...styles.yearSelector, margin: 0 }}>
+                <select value={dashboardYear} onChange={e => setDashboardYear(parseInt(e.target.value))} style={styles.yearSelect}>
+                  {availableYears.map(year => <option key={year} value={year}>{year}</option>)}
+                </select>
+                <span style={{ fontSize: '0.75rem', color: '#808080' }}>
+                  {dashboardYear === new Date().getFullYear() ? 'Year to date' : 'Full year'}
+                </span>
+              </div>
+            </div>
+
+            {/* Stats Row */}
+            {hasData && (
+              <div className="cashflow-stats-row">
+                <div className="cashflow-stat-card">
+                  <div className="cashflow-stat-label">Total Income</div>
+                  <div className="cashflow-stat-value income">{formatCurrency(sankeyData.totalIncome)}</div>
+                </div>
+                <div className="cashflow-stat-card">
+                  <div className="cashflow-stat-label">Total Expenses</div>
+                  <div className="cashflow-stat-value expense">{formatCurrency(sankeyData.totalExpenses)}</div>
+                </div>
+                <div className="cashflow-stat-card">
+                  <div className="cashflow-stat-label">Net Cash Flow</div>
+                  <div className={`cashflow-stat-value ${sankeyData.netCashFlow >= 0 ? 'positive' : 'negative'}`}>
+                    {sankeyData.netCashFlow >= 0 ? '+' : ''}{formatCurrency(sankeyData.netCashFlow)}
+                  </div>
+                </div>
+                <div className="cashflow-stat-card">
+                  <div className="cashflow-stat-label">Savings Rate</div>
+                  <div className={`cashflow-stat-value ${sankeyData.netCashFlow >= 0 ? 'positive' : 'negative'}`}>
+                    {sankeyData.totalIncome > 0 ? ((sankeyData.netCashFlow / sankeyData.totalIncome) * 100).toFixed(1) : 0}%
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Sankey Diagram */}
+            <div className="sankey-container" style={{ position: 'relative' }}>
+              {hasData ? (
+                <>
+                  <div ref={sankeyRef} style={{ width: '100%', minHeight: '500px' }}></div>
+                  {sankeyTooltip && (
+                    <div className="sankey-tooltip" style={{ left: sankeyTooltip.x, top: sankeyTooltip.y }}>
+                      <div className="sankey-tooltip-title">{sankeyTooltip.title}</div>
+                      <div className="sankey-tooltip-amount">{formatCurrency(sankeyTooltip.amount)}</div>
+                      <div className="sankey-tooltip-percent">
+                        {sankeyTooltip.type === 'expense' ? `${sankeyTooltip.percent}% of expenses` :
+                         sankeyTooltip.type === 'income' ? `${sankeyTooltip.percent}% of income` :
+                         `${sankeyTooltip.percent}% of total`}
+                      </div>
+                      {sankeyTooltip.hint && (
+                        <div className="sankey-tooltip-hint">{sankeyTooltip.hint}</div>
+                      )}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="sankey-empty-state">
+                  <div className="sankey-empty-icon"><Icons.CashFlow /></div>
+                  <div className="sankey-empty-title">No cash flow data yet</div>
+                  <div className="sankey-empty-subtitle">
+                    Add income sources and expenses to see your money flow visualization
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Legend */}
+            {hasData && (
+              <div className="sankey-legend">
+                <div className="sankey-legend-item">
+                  <div className="sankey-legend-color" style={{ backgroundColor: '#4caf50' }}></div>
+                  <span>Income</span>
+                </div>
+                <div className="sankey-legend-item">
+                  <div className="sankey-legend-color" style={{ backgroundColor: '#d4af37' }}></div>
+                  <span>Total</span>
+                </div>
+                <div className="sankey-legend-item">
+                  <div className="sankey-legend-color" style={{ backgroundColor: '#ef5350' }}></div>
+                  <span>Expenses</span>
+                </div>
+              </div>
+            )}
+
+            {/* Category Detail Panel */}
+            {selectedCategory && (
+              <div className="cashflow-detail-panel">
+                <div className="cashflow-detail-header">
+                  <div className="cashflow-detail-title">
+                    {selectedCategory.startsWith('income:') ? (
+                      <>
+                        <span style={{ color: '#4caf50' }}><Icons.Money /></span>
+                        {selectedCategory.replace('income:', '')} Details
+                      </>
+                    ) : (
+                      <>
+                        <span style={{ color: '#ef5350' }}><Icons.Expense /></span>
+                        {selectedCategory} Details
+                      </>
+                    )}
+                  </div>
+                  <button className="cashflow-detail-close" onClick={() => setSelectedCategory(null)}>
+                    <Icons.X />
+                  </button>
+                </div>
+                <div className="cashflow-detail-list">
+                  {selectedCategory.startsWith('income:') ? (
+                    // Income source details
+                    (() => {
+                      const sourceName = selectedCategory.replace('income:', '');
+                      const source = payrolls.find(p => p.name === sourceName);
+                      if (!source) return <div style={{ color: '#808080', padding: '1rem' }}>No details available</div>;
+                      return (
+                        <>
+                          <div className="cashflow-detail-item">
+                            <span className="cashflow-detail-item-name">Amount per payment</span>
+                            <span className="cashflow-detail-item-amount">{formatCurrency(source.amount)}</span>
+                          </div>
+                          <div className="cashflow-detail-item">
+                            <span className="cashflow-detail-item-name">Frequency</span>
+                            <span className="cashflow-detail-item-amount" style={{ color: '#808080' }}>
+                              {source.frequency === 'weekly' ? 'Weekly' :
+                               source.frequency === 'biweekly' ? 'Every 2 weeks' :
+                               source.frequency === 'monthly' ? 'Monthly' :
+                               source.frequency === 'semimonthly' ? 'Twice monthly' :
+                               source.frequency === 'last-weekday-15th' ? '15th & last weekday' :
+                               source.frequency === 'last-weekday-eom' ? 'Last weekday of month' : source.frequency}
+                            </span>
+                          </div>
+                          <div className="cashflow-detail-item">
+                            <span className="cashflow-detail-item-name">YTD Total</span>
+                            <span className="cashflow-detail-item-amount" style={{ color: '#4caf50' }}>
+                              {formatCurrency(sankeyData.incomeSources?.find(s => s.name === sourceName)?.amount || 0)}
+                            </span>
+                          </div>
+                        </>
+                      );
+                    })()
+                  ) : (
+                    // Expense category details
+                    (() => {
+                      const details = sankeyData.expenseDetails[selectedCategory] || [];
+                      const total = details.reduce((sum, d) => sum + d.amount, 0);
+                      const recurringItems = recurringExpenses.filter(e => e.name === selectedCategory);
+                      const oneOffItems = oneOffExpenses.filter(e => e.name === selectedCategory && e.date.startsWith(dashboardYear.toString()));
+
+                      if (details.length === 0) return <div style={{ color: '#808080', padding: '1rem' }}>No details available</div>;
+
+                      return (
+                        <>
+                          {recurringItems.map((item, idx) => (
+                            <div key={`recurring-${idx}`} className="cashflow-detail-item">
+                              <span className="cashflow-detail-item-name">
+                                <span style={{ color: '#8b5cf6', marginRight: '0.5rem' }}><Icons.Recurring /></span>
+                                {item.frequency === 'monthly' ? 'Monthly' : item.frequency === 'weekly' ? 'Weekly' : 'Yearly'}
+                              </span>
+                              <span className="cashflow-detail-item-amount">{formatCurrency(item.amount)}/occurrence</span>
+                            </div>
+                          ))}
+                          {oneOffItems.map((item, idx) => (
+                            <div key={`oneoff-${idx}`} className="cashflow-detail-item">
+                              <span className="cashflow-detail-item-name">
+                                <span style={{ color: '#f59e0b', marginRight: '0.5rem' }}><Icons.OneTime /></span>
+                                {new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                              </span>
+                              <span className="cashflow-detail-item-amount">{formatCurrency(item.amount)}</span>
+                            </div>
+                          ))}
+                          <div className="cashflow-detail-item" style={{ marginTop: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '0.75rem' }}>
+                            <span className="cashflow-detail-item-name" style={{ fontWeight: '600' }}>YTD Total</span>
+                            <span className="cashflow-detail-item-amount" style={{ fontSize: '1rem' }}>{formatCurrency(total)}</span>
+                          </div>
+                        </>
+                      );
+                    })()
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      };
+
       const renderCalendar = () => {
         return (
           <div className="app-table-container" style={styles.tableContainer}>
@@ -1299,10 +2241,10 @@
                   )}
                 </div>
               </div>
-              <nav className="app-nav" style={styles.nav}><button className="app-nav-btn" style={styles.navButton(activeView === 'dashboard')} onClick={() => setActiveView('dashboard')}><Icons.Dashboard /> Dashboard</button><button className="app-nav-btn" style={styles.navButton(activeView === 'calendar')} onClick={() => setActiveView('calendar')}><Icons.Calendar /> Calendar</button></nav>
+              <nav className="app-nav" style={styles.nav}><button className="app-nav-btn" style={styles.navButton(activeView === 'dashboard')} onClick={() => setActiveView('dashboard')}><Icons.Dashboard /> Dashboard</button><button className="app-nav-btn" style={styles.navButton(activeView === 'cashflow')} onClick={() => setActiveView('cashflow')}><Icons.CashFlow /> Cash Flow</button><button className="app-nav-btn" style={styles.navButton(activeView === 'calendar')} onClick={() => setActiveView('calendar')}><Icons.Calendar /> Calendar</button></nav>
             </div>
           </header>
-          <main className="app-main" style={styles.main}>{activeView === 'dashboard' ? renderDashboard() : renderCalendar()}</main>
+          <main className="app-main" style={styles.main}>{activeView === 'dashboard' ? renderDashboard() : activeView === 'cashflow' ? renderCashFlow() : renderCalendar()}</main>
 
           {showPayrollForm && (
             <div style={styles.formOverlay} onClick={() => setShowPayrollForm(false)}>
