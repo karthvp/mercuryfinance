@@ -17,14 +17,15 @@ const PgSession = connectPgSimple(session);
 async function initDatabase() {
   const dbClient = await pool.connect();
   try {
+    // Session table for express-session (using 'sessions' to match PgSession config)
     await dbClient.query(`
-      CREATE TABLE IF NOT EXISTS session (
+      CREATE TABLE IF NOT EXISTS sessions (
         sid VARCHAR NOT NULL PRIMARY KEY,
         sess JSON NOT NULL,
         expire TIMESTAMP(6) NOT NULL
       )
     `);
-    await dbClient.query(`CREATE INDEX IF NOT EXISTS IDX_session_expire ON session (expire)`);
+    await dbClient.query(`CREATE INDEX IF NOT EXISTS IDX_sessions_expire ON sessions (expire)`);
 
     await dbClient.query(`
       CREATE TABLE IF NOT EXISTS users (
@@ -103,27 +104,19 @@ app.use((req, res, next) => {
 app.set('trust proxy', 1);
 
 const sessionTtl = 7 * 24 * 60 * 60 * 1000;
-if (!process.env.SESSION_SECRET) {
-  console.warn('Warning: SESSION_SECRET not set, using random secret (sessions will not persist across restarts)');
-}
 
-async function ensureSessionTable() {
-  try {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS sessions (
-        sid VARCHAR NOT NULL PRIMARY KEY,
-        sess JSON NOT NULL,
-        expire TIMESTAMP(6) NOT NULL
-      )
-    `);
-    await pool.query(`
-      CREATE INDEX IF NOT EXISTS IDX_session_expire ON sessions (expire)
-    `);
-  } catch (err) {
-    console.log('Session table setup:', err.message);
+// Session secret handling - fail in production if not set
+const isProduction = process.env.NODE_ENV === 'production';
+let sessionSecret = process.env.SESSION_SECRET;
+
+if (!sessionSecret) {
+  if (isProduction) {
+    console.error('FATAL: SESSION_SECRET must be set in production environment');
+    process.exit(1);
   }
+  console.warn('Warning: SESSION_SECRET not set, using ephemeral secret (sessions will not persist across restarts)');
+  sessionSecret = require('crypto').randomBytes(32).toString('hex');
 }
-ensureSessionTable();
 
 app.use(session({
   store: new PgSession({
@@ -132,7 +125,7 @@ app.use(session({
     createTableIfMissing: false,
     ttl: sessionTtl / 1000,
   }),
-  secret: process.env.SESSION_SECRET || require('crypto').randomBytes(32).toString('hex'),
+  secret: sessionSecret,
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -246,6 +239,72 @@ function isAuthenticated(req, res, next) {
   }
 }
 
+// Input validation helpers
+const validators = {
+  isValidPayroll: (payroll) => {
+    if (!payroll || typeof payroll !== 'object') return false;
+    if (typeof payroll.name !== 'string' || payroll.name.trim() === '') return false;
+    if (typeof payroll.amount !== 'number' || payroll.amount < 0) return false;
+    const validFrequencies = ['weekly', 'biweekly', 'monthly', 'semimonthly', 'last-weekday-15th', 'last-weekday-eom'];
+    if (!validFrequencies.includes(payroll.frequency)) return false;
+    return true;
+  },
+  isValidRecurringExpense: (expense) => {
+    if (!expense || typeof expense !== 'object') return false;
+    if (typeof expense.name !== 'string' || expense.name.trim() === '') return false;
+    if (typeof expense.amount !== 'number' || expense.amount < 0) return false;
+    const validFrequencies = ['weekly', 'monthly', 'yearly'];
+    if (!validFrequencies.includes(expense.frequency)) return false;
+    return true;
+  },
+  isValidOneOffExpense: (expense) => {
+    if (!expense || typeof expense !== 'object') return false;
+    if (typeof expense.name !== 'string' || expense.name.trim() === '') return false;
+    if (typeof expense.amount !== 'number' || expense.amount < 0) return false;
+    if (typeof expense.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(expense.date)) return false;
+    return true;
+  },
+  isValidFinancialData: (data) => {
+    if (!data || typeof data !== 'object') return { valid: false, error: 'Invalid data format' };
+
+    // Validate payrolls array
+    if (data.payrolls && Array.isArray(data.payrolls)) {
+      for (const payroll of data.payrolls) {
+        if (!validators.isValidPayroll(payroll)) {
+          return { valid: false, error: 'Invalid payroll entry' };
+        }
+      }
+    }
+
+    // Validate recurring expenses array
+    if (data.recurringExpenses && Array.isArray(data.recurringExpenses)) {
+      for (const expense of data.recurringExpenses) {
+        if (!validators.isValidRecurringExpense(expense)) {
+          return { valid: false, error: 'Invalid recurring expense entry' };
+        }
+      }
+    }
+
+    // Validate one-off expenses array
+    if (data.oneOffExpenses && Array.isArray(data.oneOffExpenses)) {
+      for (const expense of data.oneOffExpenses) {
+        if (!validators.isValidOneOffExpense(expense)) {
+          return { valid: false, error: 'Invalid one-off expense entry' };
+        }
+      }
+    }
+
+    // Validate currentYear if provided
+    if (data.currentYear !== undefined) {
+      if (typeof data.currentYear !== 'number' || data.currentYear < 2000 || data.currentYear > 2100) {
+        return { valid: false, error: 'Invalid year' };
+      }
+    }
+
+    return { valid: true };
+  }
+};
+
 app.get('/api/data', isAuthenticated, async (req, res) => {
   try {
     const userId = req.session.userId;
@@ -285,7 +344,13 @@ app.post('/api/data', isAuthenticated, async (req, res) => {
   try {
     const userId = req.session.userId;
     const data = req.body;
-    
+
+    // Validate incoming data
+    const validation = validators.isValidFinancialData(data);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
     await pool.query(`
       INSERT INTO mercury_data (user_id, version, initial_balances, payrolls, recurring_expenses, one_off_expenses, balance_overrides, current_year, archived_years, updated_at)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
@@ -323,25 +388,32 @@ app.patch('/api/data/:field', isAuthenticated, async (req, res) => {
     const userId = req.session.userId;
     const { field } = req.params;
     const { value } = req.body;
-    
-    const fieldMapping = {
-      'initialBalances': 'initial_balances',
-      'payrolls': 'payrolls',
-      'recurringExpenses': 'recurring_expenses',
-      'oneOffExpenses': 'one_off_expenses',
-      'balanceOverrides': 'balance_overrides',
-      'currentYear': 'current_year',
-      'archivedYears': 'archived_years'
+
+    // Use explicit query for each field to avoid SQL injection via string interpolation
+    // Each field has its own parameterized query with the column name hardcoded
+    const updateQueries = {
+      'initialBalances': 'UPDATE mercury_data SET initial_balances = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2',
+      'payrolls': 'UPDATE mercury_data SET payrolls = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2',
+      'recurringExpenses': 'UPDATE mercury_data SET recurring_expenses = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2',
+      'oneOffExpenses': 'UPDATE mercury_data SET one_off_expenses = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2',
+      'balanceOverrides': 'UPDATE mercury_data SET balance_overrides = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2',
+      'currentYear': 'UPDATE mercury_data SET current_year = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2',
+      'archivedYears': 'UPDATE mercury_data SET archived_years = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2'
     };
-    
-    const dbField = fieldMapping[field];
-    if (!dbField) {
+
+    const query = updateQueries[field];
+    if (!query) {
       return res.status(400).json({ error: 'Invalid field' });
     }
-    
-    const jsonValue = dbField === 'current_year' ? value : JSON.stringify(value);
-    await pool.query(`UPDATE mercury_data SET ${dbField} = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2`, [jsonValue, userId]);
-    
+
+    // Validate value is present
+    if (value === undefined) {
+      return res.status(400).json({ error: 'Missing value in request body' });
+    }
+
+    const paramValue = field === 'currentYear' ? value : JSON.stringify(value);
+    await pool.query(query, [paramValue, userId]);
+
     res.json({ success: true, timestamp: new Date().toISOString() });
   } catch (error) {
     console.error('Error updating field:', error);
@@ -355,12 +427,31 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-async function startServer() {
-  await initDatabase();
-  await setupOIDC();
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Mercury is running on port ${PORT}`);
+// Global error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(err.status || 500).json({
+    error: err.message || 'Internal server error',
+    ...(process.env.NODE_ENV !== 'production' && { stack: err.stack })
   });
+});
+
+// Async handler wrapper to catch errors in async route handlers
+const asyncHandler = (fn) => (req, res, next) => {
+  Promise.resolve(fn(req, res, next)).catch(next);
+};
+
+async function startServer() {
+  try {
+    await initDatabase();
+    await setupOIDC();
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Mercury is running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
 }
 
-startServer().catch(console.error);
+startServer();
