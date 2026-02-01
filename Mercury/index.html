@@ -594,7 +594,10 @@
     const isLeapYear = (year) => (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
     const getDaysInYear = (year) => isLeapYear(year) ? 366 : 365;
 
+    // Memoized date generation to avoid repeated calculations
+    const datesCache = {};
     const generateDatesForYear = (year) => {
+      if (datesCache[year]) return datesCache[year];
       const dates = [];
       const daysInYear = getDaysInYear(year);
       const startDate = new Date(year, 0, 1);
@@ -603,10 +606,88 @@
         date.setDate(startDate.getDate() + i);
         dates.push(date);
       }
+      datesCache[year] = dates;
       return dates;
     };
 
     const getCurrentYear = () => new Date().getFullYear();
+
+    // Utility: Convert date to YYYY-MM-DD string (replaces repeated toISOString().split('T')[0])
+    const toDateKey = (date) => date.toISOString().split('T')[0];
+
+    // Utility: Extract all commonly-needed date components at once
+    const getDateInfo = (date) => ({
+      dateKey: toDateKey(date),
+      dayOfMonth: date.getDate(),
+      dayOfWeekIdx: getDayOfWeekIndex(date),
+      month: date.getMonth(),
+      year: date.getFullYear()
+    });
+
+    // Utility: Get cutoff date for YTD calculations
+    const getYearCutoffDate = (year) => {
+      const today = new Date();
+      const todayStr = toDateKey(today);
+      return year === today.getFullYear() ? todayStr : `${year}-12-31`;
+    };
+
+    // Single source of truth for payroll frequency calculation
+    // Replaces duplicated logic in financialData, stats, and sankeyData useMemos
+    const isPayday = (date, payroll, referenceYear) => {
+      const { dayOfMonth, dayOfWeekIdx, month, year } = getDateInfo(date);
+
+      switch (payroll.frequency) {
+        case 'monthly':
+          return dayOfMonth === payroll.startDay;
+
+        case 'biweekly': {
+          const startDate = new Date(payroll.startYear || referenceYear, 0, payroll.startDay);
+          const diffDays = Math.floor((date - startDate) / (1000 * 60 * 60 * 24));
+          return diffDays >= 0 && diffDays % 14 === 0;
+        }
+
+        case 'weekly': {
+          const startDate = new Date(payroll.startYear || referenceYear, 0, payroll.startDay);
+          const diffDays = Math.floor((date - startDate) / (1000 * 60 * 60 * 24));
+          return diffDays >= 0 && diffDays % 7 === 0;
+        }
+
+        case 'semimonthly': {
+          const lastWeekdayBefore15th = getLastWeekdayOnOrBefore(year, month, 15);
+          const lastWeekdayOfMonth = getLastWeekdayOfMonth(year, month);
+          return dayOfMonth === lastWeekdayBefore15th || dayOfMonth === lastWeekdayOfMonth;
+        }
+
+        case 'last-weekday-15th': {
+          const lastWeekdayBefore15th = getLastWeekdayOnOrBefore(year, month, 15);
+          const lastWeekdayOfMonth = getLastWeekdayOfMonth(year, month);
+          return dayOfMonth === lastWeekdayBefore15th || dayOfMonth === lastWeekdayOfMonth;
+        }
+
+        case 'last-weekday-eom':
+          return dayOfMonth === getLastWeekdayOfMonth(year, month);
+
+        default:
+          return false;
+      }
+    };
+
+    // Single source of truth for recurring expense frequency calculation
+    // Replaces duplicated logic in financialData, stats, ytdExpensesByName, and sankeyData useMemos
+    const isExpenseDue = (date, expense) => {
+      const { dayOfMonth, dayOfWeekIdx, month } = getDateInfo(date);
+
+      switch (expense.frequency) {
+        case 'monthly':
+          return expense.dayOfMonth === dayOfMonth;
+        case 'weekly':
+          return expense.dayOfWeek === dayOfWeekIdx;
+        case 'yearly':
+          return expense.month === month && expense.day === dayOfMonth;
+        default:
+          return false;
+      }
+    };
 
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -1023,6 +1104,95 @@
       );
     }
 
+    // ========================================
+    // Reusable UI Components
+    // ========================================
+
+    // StatCard - Displays a single statistic with accent color and optional subtext
+    const StatCard = ({ label, value, subtext, accentColor, valueColor, styles }) => (
+      <div className="app-stat-card" style={styles.statCard()}>
+        <div style={styles.statCardAccent(accentColor)} />
+        <div style={styles.statLabel}>{label}</div>
+        <div className="app-stat-value" style={styles.statValue(valueColor || accentColor)}>{value}</div>
+        {subtext && <div style={styles.statSubtext}>{subtext}</div>}
+      </div>
+    );
+
+    // ItemRow - Displays a list item with name, meta info, amount, and delete action
+    const ItemRow = ({ name, meta, amount, isPositive, onDelete, styles }) => (
+      <div className="app-item-row" style={styles.itemRow}>
+        <div>
+          <div style={styles.itemName}>{name}</div>
+          <div style={styles.itemMeta}>{meta}</div>
+        </div>
+        <div className="app-item-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <span style={styles.itemAmount(isPositive)}>
+            {isPositive ? '+' : '-'}{amount}
+          </span>
+          <button style={styles.deleteBtn} onClick={onDelete}><Icons.Trash /></button>
+        </div>
+      </div>
+    );
+
+    // FormField - Standardized form input with label and optional hint
+    const FormField = ({ label, hint, children, styles }) => (
+      <div style={styles.formGroup}>
+        <label style={styles.formLabel}>{label}</label>
+        {children}
+        {hint && <div style={styles.formHint}>{hint}</div>}
+      </div>
+    );
+
+    // FormOverlay - Modal wrapper for forms with title, actions, and close handling
+    const FormOverlay = ({ title, onClose, onSubmit, submitLabel, children, styles }) => (
+      <div style={styles.formOverlay} onClick={onClose}>
+        <div className="app-form-card" style={styles.formCard} onClick={e => e.stopPropagation()}>
+          <h3 style={styles.formTitle}>{title}</h3>
+          {children}
+          <div className="app-form-actions" style={styles.formActions}>
+            <button style={styles.cancelBtn} onClick={onClose}>Cancel</button>
+            <button style={styles.submitBtn} onClick={onSubmit}>{submitLabel || 'Add'}</button>
+          </div>
+        </div>
+      </div>
+    );
+
+    // ========================================
+    // Form State Management
+    // ========================================
+
+    // Form state reducer - consolidates 7 useState calls into 1
+    const initialFormState = {
+      payroll: { name: '', amount: '', frequency: 'semimonthly', startDay: 1, dayOfWeek: 5 },
+      recurring: { name: '', amount: '', frequency: 'monthly', dayOfMonth: 1, dayOfWeek: 5, month: 0, day: 1 },
+      oneOff: { name: '', amount: '', date: '' },
+      activeForm: null, // 'payroll' | 'recurring' | 'oneOff' | null
+      calendarDate: null // for adding expense from calendar
+    };
+
+    const formReducer = (state, action) => {
+      switch (action.type) {
+        case 'UPDATE_PAYROLL':
+          return { ...state, payroll: { ...state.payroll, ...action.payload } };
+        case 'UPDATE_RECURRING':
+          return { ...state, recurring: { ...state.recurring, ...action.payload } };
+        case 'UPDATE_ONEOFF':
+          return { ...state, oneOff: { ...state.oneOff, ...action.payload } };
+        case 'SHOW_FORM':
+          return { ...state, activeForm: action.formType, calendarDate: action.calendarDate || null };
+        case 'HIDE_FORM':
+          return { ...state, activeForm: null, calendarDate: null };
+        case 'RESET_PAYROLL':
+          return { ...state, payroll: initialFormState.payroll, activeForm: null };
+        case 'RESET_RECURRING':
+          return { ...state, recurring: initialFormState.recurring, activeForm: null };
+        case 'RESET_ONEOFF':
+          return { ...state, oneOff: initialFormState.oneOff, activeForm: null, calendarDate: null };
+        default:
+          return state;
+      }
+    };
+
     function FinancialTracker({ onBackToHome, user }) {
       const today = new Date();
       const realCurrentYear = getCurrentYear();
@@ -1071,13 +1241,35 @@
       const [scrollToMonth, setScrollToMonth] = useState(today.getMonth());
       const [saveIndicator, setSaveIndicator] = useState(false);
 
-      const [newPayroll, setNewPayroll] = useState({ name: '', amount: '', frequency: 'semimonthly', startDay: 1, dayOfWeek: 5 });
-      const [newRecurringExpense, setNewRecurringExpense] = useState({ name: '', amount: '', frequency: 'monthly', dayOfMonth: 1, dayOfWeek: 5, month: 0, day: 1 });
-      const [newOneOffExpense, setNewOneOffExpense] = useState({ name: '', amount: '', date: '' });
-      const [showPayrollForm, setShowPayrollForm] = useState(false);
-      const [showRecurringExpenseForm, setShowRecurringExpenseForm] = useState(false);
-      const [showOneOffExpenseForm, setShowOneOffExpenseForm] = useState(false);
-      const [addOneOffFromCalendar, setAddOneOffFromCalendar] = useState(null);
+      // Consolidated form state using reducer (replaces 7 useState calls)
+      const [formState, formDispatch] = React.useReducer(formReducer, initialFormState);
+
+      // Derived values for backward compatibility with existing code
+      const newPayroll = formState.payroll;
+      const newRecurringExpense = formState.recurring;
+      const newOneOffExpense = formState.oneOff;
+      const showPayrollForm = formState.activeForm === 'payroll';
+      const showRecurringExpenseForm = formState.activeForm === 'recurring';
+      const showOneOffExpenseForm = formState.activeForm === 'oneOff';
+      const addOneOffFromCalendar = formState.calendarDate;
+
+      // Helper functions for form updates (maintaining similar API)
+      const setNewPayroll = (updater) => {
+        const newVal = typeof updater === 'function' ? updater(formState.payroll) : updater;
+        formDispatch({ type: 'UPDATE_PAYROLL', payload: newVal });
+      };
+      const setNewRecurringExpense = (updater) => {
+        const newVal = typeof updater === 'function' ? updater(formState.recurring) : updater;
+        formDispatch({ type: 'UPDATE_RECURRING', payload: newVal });
+      };
+      const setNewOneOffExpense = (updater) => {
+        const newVal = typeof updater === 'function' ? updater(formState.oneOff) : updater;
+        formDispatch({ type: 'UPDATE_ONEOFF', payload: newVal });
+      };
+      const setShowPayrollForm = (show) => formDispatch({ type: show ? 'SHOW_FORM' : 'HIDE_FORM', formType: 'payroll' });
+      const setShowRecurringExpenseForm = (show) => formDispatch({ type: show ? 'SHOW_FORM' : 'HIDE_FORM', formType: 'recurring' });
+      const setShowOneOffExpenseForm = (show) => formDispatch({ type: show ? 'SHOW_FORM' : 'HIDE_FORM', formType: 'oneOff' });
+      const setAddOneOffFromCalendar = (date) => formDispatch({ type: date ? 'SHOW_FORM' : 'HIDE_FORM', formType: 'oneOff', calendarDate: date });
       const [draggedExpenseId, setDraggedExpenseId] = useState(null);
 
       const moveOneOffExpense = (expenseId, newDate) => {
@@ -1192,57 +1384,40 @@
         let runningBalance = initialBalance;
 
         datesForYear.forEach((date) => {
-          const dateKey = date.toISOString().split('T')[0];
-          const dayOfMonth = date.getDate();
-          const dayOfWeekIdx = getDayOfWeekIndex(date);
-          const month = date.getMonth();
-          const year = date.getFullYear();
+          const { dateKey, dayOfMonth, dayOfWeekIdx, month, year } = getDateInfo(date);
 
           let startingBalance = balanceOverrides[dateKey] !== undefined ? balanceOverrides[dateKey] : runningBalance;
 
+          // Calculate payroll using utility function
           let payrollAmount = 0;
           const payrollDetails = [];
-
           payrolls.forEach(payroll => {
-            let isPayday = false;
-            if (payroll.frequency === 'monthly' && dayOfMonth === payroll.startDay) isPayday = true;
-            else if (payroll.frequency === 'biweekly') {
-              const startDate = new Date(payroll.startYear || activeYear, 0, payroll.startDay);
-              const diffDays = Math.floor((date - startDate) / (1000 * 60 * 60 * 24));
-              if (diffDays >= 0 && diffDays % 14 === 0) isPayday = true;
-            } else if (payroll.frequency === 'weekly') {
-              const startDate = new Date(payroll.startYear || activeYear, 0, payroll.startDay);
-              const diffDays = Math.floor((date - startDate) / (1000 * 60 * 60 * 24));
-              if (diffDays >= 0 && diffDays % 7 === 0) isPayday = true;
-            } else if (payroll.frequency === 'semimonthly') {
-              const lastWeekdayBefore15th = getLastWeekdayOnOrBefore(year, month, 15);
-              const lastWeekdayOfMonth = getLastWeekdayOfMonth(year, month);
-              if (dayOfMonth === lastWeekdayBefore15th || dayOfMonth === lastWeekdayOfMonth) isPayday = true;
-            } else if (payroll.frequency === 'last-weekday-15th') {
-              if (dayOfMonth === getLastWeekdayOnOrBefore(year, month, 15)) isPayday = true;
-            } else if (payroll.frequency === 'last-weekday-eom') {
-              if (dayOfMonth === getLastWeekdayOfMonth(year, month)) isPayday = true;
+            if (isPayday(date, payroll, activeYear)) {
+              payrollAmount += payroll.amount;
+              payrollDetails.push(payroll);
             }
-            if (isPayday) { payrollAmount += payroll.amount; payrollDetails.push(payroll); }
           });
 
           startingBalance += payrollAmount;
 
+          // Calculate recurring expenses using utility function
           let recurringExpenseAmount = 0;
           const recurringExpenseDetails = [];
-
           recurringExpenses.forEach(expense => {
-            let isDue = false;
-            if (expense.frequency === 'monthly' && expense.dayOfMonth === dayOfMonth) isDue = true;
-            else if (expense.frequency === 'weekly' && expense.dayOfWeek === dayOfWeekIdx) isDue = true;
-            else if (expense.frequency === 'yearly' && expense.month === month && expense.day === dayOfMonth) isDue = true;
-            if (isDue) { recurringExpenseAmount += expense.amount; recurringExpenseDetails.push({ ...expense, isRecurring: true }); }
+            if (isExpenseDue(date, expense)) {
+              recurringExpenseAmount += expense.amount;
+              recurringExpenseDetails.push({ ...expense, isRecurring: true });
+            }
           });
 
+          // Calculate one-off expenses
           let oneOffExpenseAmount = 0;
           const oneOffExpenseDetails = [];
           oneOffExpenses.forEach(expense => {
-            if (expense.date === dateKey) { oneOffExpenseAmount += expense.amount; oneOffExpenseDetails.push({ ...expense, isRecurring: false }); }
+            if (expense.date === dateKey) {
+              oneOffExpenseAmount += expense.amount;
+              oneOffExpenseDetails.push({ ...expense, isRecurring: false });
+            }
           });
 
           const totalExpenses = recurringExpenseAmount + oneOffExpenseAmount;
@@ -1273,51 +1448,33 @@
           const data = [];
 
           dates.forEach((date) => {
-            const dateKey = date.toISOString().split('T')[0];
-            const dayOfMonth = date.getDate();
-            const dayOfWeekIdx = getDayOfWeekIndex(date);
-            const month = date.getMonth();
-            const year = date.getFullYear();
+            const { dateKey } = getDateInfo(date);
 
             let startingBalance = balanceOverrides[dateKey] !== undefined ? balanceOverrides[dateKey] : runningBalance;
 
+            // Calculate payroll using utility function
             let payrollAmount = 0;
             payrolls.forEach(payroll => {
-              let isPayday = false;
-              if (payroll.frequency === 'monthly' && dayOfMonth === payroll.startDay) isPayday = true;
-              else if (payroll.frequency === 'biweekly') {
-                const startDate = new Date(payroll.startYear || dashboardYear, 0, payroll.startDay);
-                const diffDays = Math.floor((date - startDate) / (1000 * 60 * 60 * 24));
-                if (diffDays >= 0 && diffDays % 14 === 0) isPayday = true;
-              } else if (payroll.frequency === 'weekly') {
-                const startDate = new Date(payroll.startYear || dashboardYear, 0, payroll.startDay);
-                const diffDays = Math.floor((date - startDate) / (1000 * 60 * 60 * 24));
-                if (diffDays >= 0 && diffDays % 7 === 0) isPayday = true;
-              } else if (payroll.frequency === 'semimonthly') {
-                const lastWeekdayBefore15th = getLastWeekdayOnOrBefore(year, month, 15);
-                const lastWeekdayOfMonth = getLastWeekdayOfMonth(year, month);
-                if (dayOfMonth === lastWeekdayBefore15th || dayOfMonth === lastWeekdayOfMonth) isPayday = true;
-              } else if (payroll.frequency === 'last-weekday-15th') {
-                if (dayOfMonth === getLastWeekdayOnOrBefore(year, month, 15)) isPayday = true;
-              } else if (payroll.frequency === 'last-weekday-eom') {
-                if (dayOfMonth === getLastWeekdayOfMonth(year, month)) isPayday = true;
+              if (isPayday(date, payroll, dashboardYear)) {
+                payrollAmount += payroll.amount;
               }
-              if (isPayday) payrollAmount += payroll.amount;
             });
 
             startingBalance += payrollAmount;
 
+            // Calculate recurring expenses using utility function
             let recurringExp = 0;
             recurringExpenses.forEach(expense => {
-              let isDue = false;
-              if (expense.frequency === 'monthly' && expense.dayOfMonth === dayOfMonth) isDue = true;
-              else if (expense.frequency === 'weekly' && expense.dayOfWeek === dayOfWeekIdx) isDue = true;
-              else if (expense.frequency === 'yearly' && expense.month === month && expense.day === dayOfMonth) isDue = true;
-              if (isDue) recurringExp += expense.amount;
+              if (isExpenseDue(date, expense)) {
+                recurringExp += expense.amount;
+              }
             });
 
+            // Calculate one-off expenses
             let oneOffExp = 0;
-            oneOffExpenses.forEach(expense => { if (expense.date === dateKey) oneOffExp += expense.amount; });
+            oneOffExpenses.forEach(expense => {
+              if (expense.date === dateKey) oneOffExp += expense.amount;
+            });
 
             const totalExpenses = recurringExp + oneOffExp;
             const endingBalance = startingBalance - totalExpenses;
@@ -1332,56 +1489,73 @@
         const pastDays = yearData.filter(d => d.isPast);
         const futureDays = yearData.filter(d => !d.isPast);
 
+        // Optimize: compute lowest balance in single pass instead of twice
+        let lowestBalance = Infinity;
+        let lowestBalanceDate = null;
+        yearData.forEach(d => {
+          if (d.endingBalance < lowestBalance) {
+            lowestBalance = d.endingBalance;
+            lowestBalanceDate = d.date;
+          }
+        });
+
+        // Optimize: compute aggregates in single pass instead of 12+ reduce calls
+        const aggregates = { hist: { rec: 0, oneOff: 0, total: 0, payroll: 0 }, future: { rec: 0, oneOff: 0, total: 0, payroll: 0 }, full: { rec: 0, oneOff: 0, total: 0, payroll: 0 } };
+        yearData.forEach(d => {
+          const bucket = d.isPast ? aggregates.hist : aggregates.future;
+          bucket.rec += d.recurringExpenses;
+          bucket.oneOff += d.oneOffExpenses;
+          bucket.total += d.expenses;
+          bucket.payroll += d.payrollAmount;
+          aggregates.full.rec += d.recurringExpenses;
+          aggregates.full.oneOff += d.oneOffExpenses;
+          aggregates.full.total += d.expenses;
+          aggregates.full.payroll += d.payrollAmount;
+        });
+
         return {
           initialBalance: initialBalances[dashboardYear] || 5000,
           endOfYearBalance: yearData[yearData.length - 1]?.endingBalance || 0,
-          lowestBalance: Math.min(...yearData.map(d => d.endingBalance)),
-          lowestBalanceDate: yearData.find(d => d.endingBalance === Math.min(...yearData.map(x => x.endingBalance)))?.date,
-          historicalRecurringExpensesPaid: pastDays.reduce((sum, d) => sum + d.recurringExpenses, 0),
-          historicalOneOffExpensesPaid: pastDays.reduce((sum, d) => sum + d.oneOffExpenses, 0),
-          historicalTotalExpensesPaid: pastDays.reduce((sum, d) => sum + d.expenses, 0),
-          historicalPayrollReceived: pastDays.reduce((sum, d) => sum + d.payrollAmount, 0),
-          forecastedRecurringExpenses: futureDays.reduce((sum, d) => sum + d.recurringExpenses, 0),
-          forecastedOneOffExpenses: futureDays.reduce((sum, d) => sum + d.oneOffExpenses, 0),
-          forecastedTotalExpenses: futureDays.reduce((sum, d) => sum + d.expenses, 0),
-          forecastedPayroll: futureDays.reduce((sum, d) => sum + d.payrollAmount, 0),
-          totalRecurringExpensesForYear: yearData.reduce((sum, d) => sum + d.recurringExpenses, 0),
-          totalOneOffExpensesForYear: yearData.reduce((sum, d) => sum + d.oneOffExpenses, 0),
-          totalExpensesForYear: yearData.reduce((sum, d) => sum + d.expenses, 0),
-          totalPayrollForYear: yearData.reduce((sum, d) => sum + d.payrollAmount, 0),
-          netAnnual: yearData.reduce((sum, d) => sum + d.payrollAmount, 0) - yearData.reduce((sum, d) => sum + d.expenses, 0),
+          lowestBalance,
+          lowestBalanceDate,
+          historicalRecurringExpensesPaid: aggregates.hist.rec,
+          historicalOneOffExpensesPaid: aggregates.hist.oneOff,
+          historicalTotalExpensesPaid: aggregates.hist.total,
+          historicalPayrollReceived: aggregates.hist.payroll,
+          forecastedRecurringExpenses: aggregates.future.rec,
+          forecastedOneOffExpenses: aggregates.future.oneOff,
+          forecastedTotalExpenses: aggregates.future.total,
+          forecastedPayroll: aggregates.future.payroll,
+          totalRecurringExpensesForYear: aggregates.full.rec,
+          totalOneOffExpensesForYear: aggregates.full.oneOff,
+          totalExpensesForYear: aggregates.full.total,
+          totalPayrollForYear: aggregates.full.payroll,
+          netAnnual: aggregates.full.payroll - aggregates.full.total,
         };
       }, [financialData, dashboardYear, activeYear, initialBalances, payrolls, recurringExpenses, oneOffExpenses, balanceOverrides]);
 
       const ytdExpensesByName = useMemo(() => {
-        const today = new Date();
-        const todayStr = today.toISOString().split('T')[0];
+        const cutoffDate = getYearCutoffDate(dashboardYear);
         const yearStart = `${dashboardYear}-01-01`;
-        const yearEnd = `${dashboardYear}-12-31`;
-        const cutoffDate = dashboardYear === new Date().getFullYear() ? todayStr : yearEnd;
-        
         const expenseTotals = {};
-        
+
+        // Use cached dates from generateDatesForYear (now memoized)
+        const dates = generateDatesForYear(dashboardYear);
+
         recurringExpenses.forEach(expense => {
-          const dates = generateDatesForYear(dashboardYear);
           let total = 0;
           dates.forEach(date => {
-            const dateKey = date.toISOString().split('T')[0];
+            const dateKey = toDateKey(date);
             if (dateKey > cutoffDate) return;
-            const dayOfMonth = date.getDate();
-            const dayOfWeekIdx = getDayOfWeekIndex(date);
-            const month = date.getMonth();
-            let isDue = false;
-            if (expense.frequency === 'monthly' && expense.dayOfMonth === dayOfMonth) isDue = true;
-            else if (expense.frequency === 'weekly' && expense.dayOfWeek === dayOfWeekIdx) isDue = true;
-            else if (expense.frequency === 'yearly' && expense.month === month && expense.day === dayOfMonth) isDue = true;
-            if (isDue) total += expense.amount;
+            if (isExpenseDue(date, expense)) {
+              total += expense.amount;
+            }
           });
           if (total > 0) {
             expenseTotals[expense.name] = (expenseTotals[expense.name] || 0) + total;
           }
         });
-        
+
         oneOffExpenses.forEach(expense => {
           if (expense.date >= yearStart && expense.date <= cutoffDate) {
             expenseTotals[expense.name] = (expenseTotals[expense.name] || 0) + expense.amount;
@@ -1401,59 +1575,40 @@ const { theme, isDark } = useTheme();
       const [selectedCategory, setSelectedCategory] = useState(null);
 
       const sankeyData = useMemo(() => {
-        const today = new Date();
-        const todayStr = today.toISOString().split('T')[0];
+        const cutoffDate = getYearCutoffDate(dashboardYear);
         const yearStart = `${dashboardYear}-01-01`;
-        const yearEnd = `${dashboardYear}-12-31`;
-        const cutoffDate = dashboardYear === new Date().getFullYear() ? todayStr : yearEnd;
 
-        // Calculate income by source (payrolls)
+        // Use cached dates from memoized generateDatesForYear
+        const dates = generateDatesForYear(dashboardYear);
+
+        // Calculate income by source (payrolls) using utility function
         const incomeTotals = {};
         payrolls.forEach(payroll => {
-          const dates = generateDatesForYear(dashboardYear);
           let total = 0;
           dates.forEach(date => {
-            const dateKey = date.toISOString().split('T')[0];
+            const dateKey = toDateKey(date);
             if (dateKey > cutoffDate) return;
-            const dayOfMonth = date.getDate();
-            const dayOfWeekIdx = getDayOfWeekIndex(date);
-            const month = date.getMonth();
-            let isDue = false;
-            if (payroll.frequency === 'monthly' && payroll.startDay === dayOfMonth) isDue = true;
-            else if (payroll.frequency === 'biweekly' && payroll.dayOfWeek === dayOfWeekIdx) {
-              const startDate = new Date(payroll.startYear || dashboardYear, 0, 1);
-              while (getDayOfWeekIndex(startDate) !== payroll.dayOfWeek) startDate.setDate(startDate.getDate() + 1);
-              const diffDays = Math.floor((date - startDate) / (1000 * 60 * 60 * 24));
-              isDue = diffDays >= 0 && diffDays % 14 === 0;
-            } else if (payroll.frequency === 'weekly' && payroll.dayOfWeek === dayOfWeekIdx) isDue = true;
-            else if (payroll.frequency === 'semimonthly' && (dayOfMonth === 15 || dayOfMonth === getLastDayOfMonth(dashboardYear, month))) isDue = true;
-            else if (payroll.frequency === 'last-weekday-15th' && (dayOfMonth === 15 || (date.getTime() === getLastWeekdayOfMonth(dashboardYear, month).getTime()))) isDue = true;
-            else if (payroll.frequency === 'last-weekday-eom' && date.getTime() === getLastWeekdayOfMonth(dashboardYear, month).getTime()) isDue = true;
-            if (isDue) total += payroll.amount;
+            if (isPayday(date, payroll, dashboardYear)) {
+              total += payroll.amount;
+            }
           });
           if (total > 0) {
             incomeTotals[payroll.name] = (incomeTotals[payroll.name] || 0) + total;
           }
         });
 
-        // Calculate expenses by category
+        // Calculate expenses by category using utility function
         const expenseTotals = {};
         const expenseDetails = {};
 
         recurringExpenses.forEach(expense => {
-          const dates = generateDatesForYear(dashboardYear);
           let total = 0;
           dates.forEach(date => {
-            const dateKey = date.toISOString().split('T')[0];
+            const dateKey = toDateKey(date);
             if (dateKey > cutoffDate) return;
-            const dayOfMonth = date.getDate();
-            const dayOfWeekIdx = getDayOfWeekIndex(date);
-            const month = date.getMonth();
-            let isDue = false;
-            if (expense.frequency === 'monthly' && expense.dayOfMonth === dayOfMonth) isDue = true;
-            else if (expense.frequency === 'weekly' && expense.dayOfWeek === dayOfWeekIdx) isDue = true;
-            else if (expense.frequency === 'yearly' && expense.month === month && expense.day === dayOfMonth) isDue = true;
-            if (isDue) total += expense.amount;
+            if (isExpenseDue(date, expense)) {
+              total += expense.amount;
+            }
           });
           if (total > 0) {
             expenseTotals[expense.name] = (expenseTotals[expense.name] || 0) + total;
@@ -1871,13 +2026,13 @@ const { theme, isDark } = useTheme();
 
       const handleOverrideBalance = (dateKey, newBalance) => { setBalanceOverrides(prev => ({ ...prev, [dateKey]: parseFloat(newBalance) })); setEditingCell(null); };
       const clearOverride = (dateKey) => { setBalanceOverrides(prev => { const n = { ...prev }; delete n[dateKey]; return n; }); };
-      const addPayroll = () => { if (newPayroll.name && newPayroll.amount) { setPayrolls(prev => [...prev, { id: Date.now(), name: newPayroll.name, amount: parseFloat(newPayroll.amount), frequency: newPayroll.frequency, startDay: parseInt(newPayroll.startDay), dayOfWeek: parseInt(newPayroll.dayOfWeek), startYear: activeYear }]); setNewPayroll({ name: '', amount: '', frequency: 'semimonthly', startDay: 1, dayOfWeek: 5 }); setShowPayrollForm(false); } };
+      const addPayroll = () => { if (newPayroll.name && newPayroll.amount) { setPayrolls(prev => [...prev, { id: Date.now(), name: newPayroll.name, amount: parseFloat(newPayroll.amount), frequency: newPayroll.frequency, startDay: parseInt(newPayroll.startDay), dayOfWeek: parseInt(newPayroll.dayOfWeek), startYear: activeYear }]); formDispatch({ type: 'RESET_PAYROLL' }); } };
       const deletePayroll = (id) => { setPayrolls(prev => prev.filter(p => p.id !== id)); };
-      const addRecurringExpense = () => { if (newRecurringExpense.name && newRecurringExpense.amount) { setRecurringExpenses(prev => [...prev, { id: Date.now(), name: newRecurringExpense.name, amount: parseFloat(newRecurringExpense.amount), frequency: newRecurringExpense.frequency, dayOfMonth: parseInt(newRecurringExpense.dayOfMonth), dayOfWeek: parseInt(newRecurringExpense.dayOfWeek), month: parseInt(newRecurringExpense.month), day: parseInt(newRecurringExpense.day) }]); setNewRecurringExpense({ name: '', amount: '', frequency: 'monthly', dayOfMonth: 1, dayOfWeek: 5, month: 0, day: 1 }); setShowRecurringExpenseForm(false); } };
+      const addRecurringExpense = () => { if (newRecurringExpense.name && newRecurringExpense.amount) { setRecurringExpenses(prev => [...prev, { id: Date.now(), name: newRecurringExpense.name, amount: parseFloat(newRecurringExpense.amount), frequency: newRecurringExpense.frequency, dayOfMonth: parseInt(newRecurringExpense.dayOfMonth), dayOfWeek: parseInt(newRecurringExpense.dayOfWeek), month: parseInt(newRecurringExpense.month), day: parseInt(newRecurringExpense.day) }]); formDispatch({ type: 'RESET_RECURRING' }); } };
       const deleteRecurringExpense = (id) => { setRecurringExpenses(prev => prev.filter(e => e.id !== id)); };
-      const addOneOffExpense = () => { if (newOneOffExpense.name && newOneOffExpense.amount && newOneOffExpense.date) { setOneOffExpenses(prev => [...prev, { id: Date.now(), name: newOneOffExpense.name, amount: parseFloat(newOneOffExpense.amount), date: newOneOffExpense.date }]); setNewOneOffExpense({ name: '', amount: '', date: '' }); setShowOneOffExpenseForm(false); setAddOneOffFromCalendar(null); } };
+      const addOneOffExpense = () => { if (newOneOffExpense.name && newOneOffExpense.amount && newOneOffExpense.date) { setOneOffExpenses(prev => [...prev, { id: Date.now(), name: newOneOffExpense.name, amount: parseFloat(newOneOffExpense.amount), date: newOneOffExpense.date }]); formDispatch({ type: 'RESET_ONEOFF' }); } };
       const deleteOneOffExpense = (id) => { setOneOffExpenses(prev => prev.filter(e => e.id !== id)); };
-      const openOneOffFormForDate = (dateKey) => { setNewOneOffExpense({ name: '', amount: '', date: dateKey }); setAddOneOffFromCalendar(dateKey); setShowOneOffExpenseForm(true); };
+      const openOneOffFormForDate = (dateKey) => { formDispatch({ type: 'UPDATE_ONEOFF', payload: { name: '', amount: '', date: dateKey } }); formDispatch({ type: 'SHOW_FORM', formType: 'oneOff', calendarDate: dateKey }); };
       const updateInitialBalance = (year, value) => { setInitialBalances(prev => ({ ...prev, [year]: parseFloat(value) || 0 })); };
       const clearAllData = () => { if (confirm('Clear all data? This cannot be undone!')) { setInitialBalances({ [activeYear]: 5000 }); setPayrolls([]); setRecurringExpenses([]); setOneOffExpenses([]); setBalanceOverrides({}); setArchivedYears([]); } };
 
