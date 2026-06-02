@@ -15,98 +15,219 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-primary: #0a0f1a;
-      --bg-secondary: #0d1929;
-      --bg-tertiary: #0f1d2f;
-      --bg-gradient: linear-gradient(160deg, #0a0f1a 0%, #0d1929 40%, #0f1d2f 100%);
-      --bg-surface: rgba(255, 255, 255, 0.02);
-      --bg-surface-hover: rgba(255, 255, 255, 0.04);
-      --bg-overlay: rgba(10, 15, 26, 0.85);
-      --text-primary: #f5f5f0;
-      --text-secondary: #a0a0a0;
-      --text-muted: #707070;
-      --text-dim: #505050;
-      --border-subtle: rgba(255, 255, 255, 0.05);
+      /* ===== Quicksilver — Liquid Glass (dark) ===== */
+      --bg-primary: #060a12;
+      --bg-secondary: #0a111c;
+      --bg-tertiary: #0b1826;
+      --bg-gradient: linear-gradient(165deg, #060a12 0%, #0a111c 45%, #0a1622 100%);
+      --bg-surface: rgba(255, 255, 255, 0.035);
+      --bg-surface-hover: rgba(255, 255, 255, 0.06);
+      --bg-overlay: rgba(8, 14, 22, 0.68);
+      --text-primary: #eef5f8;
+      --text-secondary: #a3b6c1;
+      --text-muted: #6f8693;
+      --text-dim: #4b6271;
+      --border-subtle: rgba(255, 255, 255, 0.06);
       --border-light: rgba(255, 255, 255, 0.1);
-      --border-medium: rgba(255, 255, 255, 0.15);
-      --accent: #d4af37;
-      --accent-light: #f4e4ba;
-      --accent-dark: #b8860b;
-      --accent-bg: rgba(212, 175, 55, 0.08);
-      --accent-bg-hover: rgba(212, 175, 55, 0.12);
-      --accent-border: rgba(212, 175, 55, 0.2);
-      --accent-border-strong: rgba(212, 175, 55, 0.3);
-      --accent-text-on: #0a0f1a;
-      --success: #4ade80;
-      --success-bg: rgba(76, 175, 80, 0.1);
-      --danger: #ef5350;
-      --danger-bg: rgba(239, 83, 80, 0.1);
+      --border-medium: rgba(255, 255, 255, 0.16);
+      --accent: #22d3ee;
+      --accent-2: #38bdf8;
+      --accent-light: #a5f3fc;
+      --accent-dark: #0e9bb8;
+      --accent-gradient: linear-gradient(135deg, #2dd4bf 0%, #22d3ee 50%, #38bdf8 100%);
+      --accent-bg: rgba(34, 211, 238, 0.09);
+      --accent-bg-hover: rgba(34, 211, 238, 0.15);
+      --accent-border: rgba(34, 211, 238, 0.22);
+      --accent-border-strong: rgba(34, 211, 238, 0.42);
+      --accent-text-on: #03121a;
+      --success: #34d399;
+      --success-bg: rgba(52, 211, 153, 0.12);
+      --danger: #fb7185;
+      --danger-bg: rgba(251, 113, 133, 0.12);
       --warning: #fbbf24;
-      --purple: #ab47bc;
+      --warning-bg: rgba(251, 191, 36, 0.12);
       --scrollbar-track: rgba(255,255,255,0.02);
-      --scrollbar-thumb: rgba(212,175,55,0.25);
+      --scrollbar-thumb: rgba(34,211,238,0.28);
       --shadow-color: rgba(0, 0, 0, 0.5);
       --chart-grid: rgba(255, 255, 255, 0.05);
-      --rain-bg: rgba(10, 15, 26, 0.08);
-      --rain-color: rgba(212, 175, 55, 0.15);
+      --rain-bg: rgba(6, 10, 18, 0.09);
+      --rain-color: rgba(34, 211, 238, 0.16);
+      /* Liquid glass surfaces */
+      --glass-bg: rgba(255, 255, 255, 0.045);
+      --glass-bg-strong: rgba(16, 28, 40, 0.55);
+      --glass-border: rgba(255, 255, 255, 0.12);
+      --glass-highlight: rgba(255, 255, 255, 0.22);
+      --glass-blur: 18px;
+      --elev-1: 0 2px 10px rgba(0,0,0,0.28);
+      --elev-2: 0 12px 36px rgba(0,0,0,0.40);
+      --elev-3: 0 28px 70px rgba(0,0,0,0.50);
+      --glow-accent: 0 0 28px rgba(34, 211, 238, 0.28);
+      --aurora-1: rgba(34, 211, 238, 0.18);
+      --aurora-2: rgba(45, 212, 191, 0.16);
+      --aurora-3: rgba(56, 189, 248, 0.14);
+      --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+      --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
     }
-    
+
     [data-theme="light"] {
-      --bg-primary: #f8f9fa;
+      /* ===== Quicksilver — Liquid Glass (light) ===== */
+      --bg-primary: #eef2f7;
       --bg-secondary: #ffffff;
-      --bg-tertiary: #f0f2f5;
-      --bg-gradient: linear-gradient(160deg, #f8f9fa 0%, #ffffff 40%, #f0f2f5 100%);
-      --bg-surface: rgba(0, 0, 0, 0.02);
-      --bg-surface-hover: rgba(0, 0, 0, 0.04);
-      --bg-overlay: rgba(255, 255, 255, 0.9);
-      --text-primary: #1a1a2e;
-      --text-secondary: #4a4a5a;
-      --text-muted: #6a6a7a;
-      --text-dim: #8a8a9a;
-      --border-subtle: rgba(0, 0, 0, 0.06);
-      --border-light: rgba(0, 0, 0, 0.1);
-      --border-medium: rgba(0, 0, 0, 0.15);
-      --accent: #b8860b;
-      --accent-light: #d4af37;
-      --accent-dark: #8b6508;
-      --accent-bg: rgba(184, 134, 11, 0.08);
-      --accent-bg-hover: rgba(184, 134, 11, 0.12);
-      --accent-border: rgba(184, 134, 11, 0.25);
-      --accent-border-strong: rgba(184, 134, 11, 0.4);
+      --bg-tertiary: #e6edf5;
+      --bg-gradient: linear-gradient(165deg, #eef2f7 0%, #f7fafc 45%, #e6eef6 100%);
+      --bg-surface: rgba(255, 255, 255, 0.6);
+      --bg-surface-hover: rgba(255, 255, 255, 0.85);
+      --bg-overlay: rgba(255, 255, 255, 0.72);
+      --text-primary: #0c1b26;
+      --text-secondary: #3c5260;
+      --text-muted: #5c7382;
+      --text-dim: #8499a6;
+      --border-subtle: rgba(12, 27, 38, 0.07);
+      --border-light: rgba(12, 27, 38, 0.11);
+      --border-medium: rgba(12, 27, 38, 0.16);
+      --accent: #0e9bb8;
+      --accent-2: #0284c7;
+      --accent-light: #22d3ee;
+      --accent-dark: #0b7e96;
+      --accent-gradient: linear-gradient(135deg, #0d9488 0%, #0e9bb8 50%, #0284c7 100%);
+      --accent-bg: rgba(14, 155, 184, 0.1);
+      --accent-bg-hover: rgba(14, 155, 184, 0.16);
+      --accent-border: rgba(14, 155, 184, 0.26);
+      --accent-border-strong: rgba(14, 155, 184, 0.42);
       --accent-text-on: #ffffff;
-      --success: #22c55e;
-      --success-bg: rgba(34, 197, 94, 0.1);
-      --danger: #dc2626;
-      --danger-bg: rgba(220, 38, 38, 0.1);
-      --warning: #f59e0b;
-      --purple: #9333ea;
+      --success: #059669;
+      --success-bg: rgba(5, 150, 105, 0.1);
+      --danger: #e11d48;
+      --danger-bg: rgba(225, 29, 72, 0.1);
+      --warning: #d97706;
+      --warning-bg: rgba(217, 119, 6, 0.1);
       --scrollbar-track: rgba(0,0,0,0.03);
-      --scrollbar-thumb: rgba(184,134,11,0.3);
-      --shadow-color: rgba(0, 0, 0, 0.1);
-      --chart-grid: rgba(0, 0, 0, 0.08);
-      --rain-bg: rgba(248, 249, 250, 0.08);
-      --rain-color: rgba(184, 134, 11, 0.2);
+      --scrollbar-thumb: rgba(14,155,184,0.32);
+      --shadow-color: rgba(20, 40, 60, 0.14);
+      --chart-grid: rgba(12, 27, 38, 0.08);
+      --rain-bg: rgba(238, 242, 247, 0.1);
+      --rain-color: rgba(14, 155, 184, 0.22);
+      --glass-bg: rgba(255, 255, 255, 0.55);
+      --glass-bg-strong: rgba(255, 255, 255, 0.72);
+      --glass-border: rgba(255, 255, 255, 0.7);
+      --glass-highlight: rgba(255, 255, 255, 0.9);
+      --glass-blur: 16px;
+      --elev-1: 0 2px 10px rgba(20,40,60,0.08);
+      --elev-2: 0 12px 36px rgba(20,40,60,0.12);
+      --elev-3: 0 28px 70px rgba(20,40,60,0.16);
+      --glow-accent: 0 0 28px rgba(14, 155, 184, 0.22);
+      --aurora-1: rgba(14, 155, 184, 0.16);
+      --aurora-2: rgba(13, 148, 136, 0.14);
+      --aurora-3: rgba(2, 132, 199, 0.12);
+      --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+      --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
     }
     
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html { scroll-behavior: smooth; }
-    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg-gradient); min-height: 100vh; color: var(--text-primary); transition: background 0.3s ease, color 0.3s ease; }
-    #root { min-height: 100vh; }
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg-primary); min-height: 100vh; color: var(--text-primary); transition: background 0.4s ease, color 0.4s ease; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; position: relative; overflow-x: hidden; }
+    /* Ambient aurora field — subtle liquid-glass backdrop */
+    body::before { content: ''; position: fixed; inset: -20%; z-index: -2; background: var(--bg-gradient); pointer-events: none; }
+    body::after {
+      content: ''; position: fixed; inset: -30%; z-index: -1; pointer-events: none; opacity: 0.9;
+      background:
+        radial-gradient(40% 38% at 18% 14%, var(--aurora-1) 0%, transparent 60%),
+        radial-gradient(36% 34% at 84% 22%, var(--aurora-3) 0%, transparent 62%),
+        radial-gradient(44% 42% at 70% 86%, var(--aurora-2) 0%, transparent 64%);
+      filter: blur(20px); animation: auroraDrift 26s ease-in-out infinite alternate;
+    }
+    #root { min-height: 100vh; position: relative; z-index: 0; }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: var(--scrollbar-track); }
-    ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }
     ::-webkit-scrollbar-thumb:hover { background: var(--accent-border-strong); }
-    input:focus, select:focus { border-color: var(--accent-border-strong) !important; outline: none; }
+    input:focus, select:focus { border-color: var(--accent-border-strong) !important; outline: none; box-shadow: 0 0 0 3px var(--accent-bg-hover); }
+    button { -webkit-tap-highlight-color: transparent; }
+    button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
     option { background: var(--bg-secondary); color: var(--text-primary); }
     ::selection { background: var(--accent-border-strong); color: var(--text-primary); }
-    .loading-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; color: var(--accent); }
-    .loading-spinner { width: 40px; height: 40px; border: 3px solid var(--accent-border); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 1rem; }
+    .loading-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; color: var(--accent); gap: 0.25rem; }
+    .loading-spinner { width: 42px; height: 42px; border: 3px solid var(--accent-border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.9s linear infinite; margin-bottom: 1rem; box-shadow: var(--glow-accent); }
     @keyframes spin { to { transform: rotate(360deg); } }
     @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-20px); } }
     @keyframes shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
     @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; } }
     @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-    @keyframes glow { 0%, 100% { box-shadow: 0 0 20px rgba(212,175,55,0.3); } 50% { box-shadow: 0 0 40px rgba(212,175,55,0.5); } }
+    @keyframes glow { 0%, 100% { box-shadow: 0 0 22px rgba(34,211,238,0.30); } 50% { box-shadow: 0 0 44px rgba(34,211,238,0.55); } }
+    @keyframes auroraDrift {
+      0% { transform: translate3d(0,0,0) scale(1); }
+      50% { transform: translate3d(2%, -2%, 0) scale(1.08); }
+      100% { transform: translate3d(-2%, 1%, 0) scale(1.04); }
+    }
+    @keyframes popIn { from { opacity: 0; transform: scale(0.96) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+    @keyframes sheen { 0% { transform: translateX(-130%) skewX(-18deg); } 100% { transform: translateX(230%) skewX(-18deg); } }
+
+    /* ============ Liquid Glass surfaces ============ */
+    .glass, .app-panel, .app-stat-card, .app-form-card, .cashflow-stat-card,
+    .sankey-container, .cashflow-detail-panel, .mobile-feature-card, .mobile-demo-preview {
+      position: relative;
+      backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+      -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+    }
+    /* Ensure the specular ::before anchors to the card itself */
+    .app-panel, .cashflow-stat-card, .sankey-container, .cashflow-detail-panel { position: relative; }
+    .app-panel, .cashflow-stat-card { overflow: hidden; }
+    /* Specular top-edge highlight shared by glass cards */
+    .app-panel::before, .app-stat-card::before, .mobile-feature-card::before, .cashflow-stat-card::before {
+      content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+      background: linear-gradient(180deg, var(--glass-highlight) 0%, transparent 18%); opacity: 0.5;
+      -webkit-mask: linear-gradient(180deg, #000, transparent 40%); mask: linear-gradient(180deg, #000, transparent 40%);
+    }
+
+    /* ============ Micro-interactions ============ */
+    .app-stat-card, .mobile-feature-card, .cashflow-stat-card {
+      transition: transform 0.35s var(--ease-out), box-shadow 0.35s var(--ease-out), border-color 0.35s var(--ease-out);
+      will-change: transform;
+    }
+    .app-stat-card:hover, .mobile-feature-card:hover, .cashflow-stat-card:hover {
+      transform: translateY(-4px); box-shadow: var(--elev-2); border-color: var(--accent-border-strong) !important;
+    }
+    /* Reveal the feature card's top accent line on hover */
+    .mobile-feature-card > div:first-child { opacity: 0; transition: opacity 0.4s ease; }
+    .mobile-feature-card:hover > div:first-child { opacity: 1 !important; }
+    .app-panel { transition: border-color 0.3s ease, box-shadow 0.3s ease; }
+    .app-panel:hover { border-color: var(--border-light) !important; }
+    .app-item-row { transition: transform 0.2s var(--ease-out), background 0.2s ease, border-color 0.2s ease; }
+    .app-item-row:hover { transform: translateX(3px); background: var(--bg-surface-hover) !important; border-color: var(--accent-border) !important; }
+    /* Buttons: press + hover lift + sheen */
+    .app-nav-btn, .mobile-nav-cta, .mobile-primary-btn, .mobile-secondary-btn {
+      transition: transform 0.18s var(--ease-spring), box-shadow 0.3s ease, background 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+    }
+    .mobile-primary-btn, .mobile-nav-cta { position: relative; overflow: hidden; }
+    .mobile-primary-btn::after, .mobile-nav-cta::after {
+      content: ''; position: absolute; top: 0; left: 0; width: 45%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent); opacity: 0;
+    }
+    .mobile-primary-btn:hover, .mobile-nav-cta:hover { transform: translateY(-2px); box-shadow: 0 10px 30px var(--accent-border-strong); }
+    .mobile-primary-btn:hover::after, .mobile-nav-cta:hover::after { opacity: 1; animation: sheen 0.9s var(--ease-out); }
+    .mobile-secondary-btn:hover { transform: translateY(-2px); background: var(--accent-bg) !important; border-color: var(--accent-border-strong) !important; }
+    button:active { transform: scale(0.97); }
+    .app-nav-btn:hover { color: var(--text-primary) !important; background: var(--bg-surface-hover) !important; }
+    .app-add-btn, button[style*="addButton"] { transition: transform 0.18s var(--ease-spring), box-shadow 0.3s ease; }
+    .icon-btn { transition: transform 0.18s var(--ease-spring), color 0.2s ease, background 0.2s ease, border-color 0.2s ease; }
+    .icon-btn:hover { transform: translateY(-1px) scale(1.06); }
+    .app-stat-value { transition: color 0.3s ease; }
+
+    /* Theme toggle pill */
+    .theme-toggle {
+      display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px;
+      border-radius: 50%; cursor: pointer; color: var(--text-secondary);
+      background: var(--glass-bg); border: 1px solid var(--glass-border);
+      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      transition: transform 0.4s var(--ease-spring), color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    .theme-toggle:hover { color: var(--accent); border-color: var(--accent-border-strong); transform: rotate(18deg) scale(1.08); box-shadow: var(--glow-accent); }
+    .theme-toggle svg { width: 18px; height: 18px; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+      body::after { animation: none; }
+    }
     
     /* Mobile Responsive Styles */
     @media (max-width: 768px) {
@@ -161,10 +282,14 @@
       .app-panel-header { flex-direction: column; align-items: stretch !important; }
       .app-item-row { flex-direction: column; align-items: stretch !important; gap: 0.5rem; padding: 0.75rem !important; }
       .app-item-actions { display: flex; justify-content: space-between; align-items: center; width: 100%; }
-      .app-table-container { overflow-x: auto; }
-      .app-table-header, .app-table-row { grid-template-columns: 80px 45px 1fr 90px 90px !important; min-width: 450px; }
-      .app-table-header-cell, .app-table-cell { font-size: 0.625rem !important; }
+      .app-table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      /* 5 visible columns on mobile: Date · Day · Activity · Starting · Ending */
+      .app-table-header, .app-table-row { grid-template-columns: 64px 38px minmax(120px, 1fr) 92px 92px !important; min-width: 430px; }
+      .app-table-header-cell, .app-table-cell { font-size: 0.6875rem !important; }
       .app-hide-mobile { display: none !important; }
+      .app-table-row { padding-top: 0.6rem !important; padding-bottom: 0.6rem !important; }
+      /* Keep the inline balance editor from overflowing its column on phones */
+      .app-table-row input[type="number"] { width: 58px !important; padding: 0.2rem 0.3rem !important; }
       .app-form-card { padding: 1.25rem !important; margin: 1rem; max-width: calc(100% - 2rem) !important; }
       .app-form-actions { flex-direction: column; }
       .app-month-selector { padding: 0.5rem !important; }
@@ -174,7 +299,13 @@
     @media (max-width: 480px) {
       .app-logo-text { font-size: 1.25rem !important; }
       .app-year-badge { display: none; }
-      .app-table-header, .app-table-row { grid-template-columns: 70px 40px 1fr 80px !important; min-width: 350px; }
+      /* Drop the weekday column so the calendar fits a phone with no sideways scroll.
+         4 aligned columns: Date · Activity · Starting · Ending */
+      .app-hide-xs { display: none !important; }
+      .app-table-header, .app-table-row { grid-template-columns: 54px minmax(88px, 1fr) 76px 76px !important; min-width: 0; }
+      .app-table-header-cell, .app-table-cell { font-size: 0.625rem !important; }
+      .app-table-row { padding-left: 0.75rem !important; padding-right: 0.75rem !important; }
+      .app-table-header { padding-left: 0.75rem !important; padding-right: 0.75rem !important; }
     }
 
     /* Sankey Diagram Styles */
@@ -196,14 +327,14 @@
       font-family: 'Playfair Display', serif;
       font-size: 1.75rem;
       font-weight: 600;
-      color: #f5f5f0;
+      color: var(--text-primary);
       display: flex;
       align-items: center;
       gap: 0.75rem;
     }
 
     .cashflow-title-icon {
-      color: #d4af37;
+      color: var(--accent);
     }
 
     .cashflow-stats-row {
@@ -214,45 +345,42 @@
     }
 
     .cashflow-stat-card {
-      background: rgba(15, 29, 47, 0.6);
-      border: 1px solid rgba(212, 175, 55, 0.15);
-      border-radius: 12px;
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
       padding: 1.25rem;
-      transition: all 0.3s ease;
-    }
-
-    .cashflow-stat-card:hover {
-      border-color: rgba(212, 175, 55, 0.3);
-      transform: translateY(-2px);
+      box-shadow: var(--elev-1);
     }
 
     .cashflow-stat-label {
       font-size: 0.75rem;
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      color: #808080;
+      color: var(--text-muted);
       margin-bottom: 0.5rem;
     }
 
     .cashflow-stat-value {
       font-size: 1.5rem;
       font-weight: 600;
-      color: #f5f5f0;
+      color: var(--text-primary);
+      font-family: 'Playfair Display', serif;
     }
 
-    .cashflow-stat-value.income { color: #4caf50; }
-    .cashflow-stat-value.expense { color: #ef5350; }
-    .cashflow-stat-value.positive { color: #4caf50; }
-    .cashflow-stat-value.negative { color: #ef5350; }
+    .cashflow-stat-value.income { color: var(--success); }
+    .cashflow-stat-value.expense { color: var(--danger); }
+    .cashflow-stat-value.positive { color: var(--success); }
+    .cashflow-stat-value.negative { color: var(--danger); }
 
     .sankey-container {
-      background: rgba(15, 29, 47, 0.5);
-      border: 1px solid rgba(212, 175, 55, 0.1);
-      border-radius: 16px;
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
       padding: 1.5rem;
       min-height: 500px;
       position: relative;
       overflow: hidden;
+      box-shadow: var(--elev-1);
     }
 
     .sankey-container svg {
@@ -299,30 +427,32 @@
     .sankey-label {
       font-family: 'Inter', sans-serif;
       font-size: 12px;
-      fill: #f5f5f0;
+      fill: var(--text-primary);
       pointer-events: none;
     }
 
     .sankey-label-amount {
       font-weight: 600;
-      fill: #d4af37;
+      fill: var(--accent);
     }
 
     .sankey-label-percent {
       font-size: 10px;
-      fill: #808080;
+      fill: var(--text-muted);
     }
 
     .sankey-tooltip {
       position: absolute;
-      background: rgba(13, 25, 41, 0.95);
-      border: 1px solid rgba(212, 175, 55, 0.3);
-      border-radius: 8px;
+      background: var(--glass-bg-strong);
+      backdrop-filter: blur(16px) saturate(160%);
+      -webkit-backdrop-filter: blur(16px) saturate(160%);
+      border: 1px solid var(--accent-border-strong);
+      border-radius: 12px;
       padding: 0.75rem 1rem;
       pointer-events: none;
       z-index: 100;
       min-width: 150px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      box-shadow: var(--elev-2);
       animation: tooltipFadeIn 0.15s ease-out;
     }
 
@@ -334,27 +464,27 @@
     .sankey-tooltip-title {
       font-size: 0.875rem;
       font-weight: 600;
-      color: #f5f5f0;
+      color: var(--text-primary);
       margin-bottom: 0.375rem;
     }
 
     .sankey-tooltip-amount {
       font-size: 1.125rem;
       font-weight: 700;
-      color: #d4af37;
+      color: var(--accent);
       margin-bottom: 0.25rem;
     }
 
     .sankey-tooltip-percent {
       font-size: 0.75rem;
-      color: #808080;
+      color: var(--text-muted);
     }
 
     .sankey-tooltip-hint {
       font-size: 0.6875rem;
-      color: #606060;
+      color: var(--text-dim);
       margin-top: 0.5rem;
-      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      border-top: 1px solid var(--border-light);
       padding-top: 0.5rem;
     }
 
@@ -371,7 +501,7 @@
       align-items: center;
       gap: 0.5rem;
       font-size: 0.8125rem;
-      color: #808080;
+      color: var(--text-muted);
     }
 
     .sankey-legend-color {
@@ -386,7 +516,7 @@
       align-items: center;
       justify-content: center;
       min-height: 400px;
-      color: #606060;
+      color: var(--text-dim);
       text-align: center;
       padding: 2rem;
     }
@@ -399,13 +529,13 @@
 
     .sankey-empty-title {
       font-size: 1.125rem;
-      color: #808080;
+      color: var(--text-muted);
       margin-bottom: 0.5rem;
     }
 
     .sankey-empty-subtitle {
       font-size: 0.875rem;
-      color: #606060;
+      color: var(--text-dim);
     }
 
     /* Sankey Animation */
@@ -422,11 +552,12 @@
     /* Category detail panel */
     .cashflow-detail-panel {
       margin-top: 1.5rem;
-      background: rgba(15, 29, 47, 0.6);
-      border: 1px solid rgba(212, 175, 55, 0.15);
-      border-radius: 12px;
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
       padding: 1.25rem;
-      animation: fadeInUp 0.3s ease-out;
+      box-shadow: var(--elev-1);
+      animation: popIn 0.3s var(--ease-out);
     }
 
     .cashflow-detail-header {
@@ -435,13 +566,13 @@
       align-items: center;
       margin-bottom: 1rem;
       padding-bottom: 0.75rem;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      border-bottom: 1px solid var(--border-light);
     }
 
     .cashflow-detail-title {
       font-size: 1rem;
       font-weight: 600;
-      color: #f5f5f0;
+      color: var(--text-primary);
       display: flex;
       align-items: center;
       gap: 0.5rem;
@@ -450,15 +581,16 @@
     .cashflow-detail-close {
       background: none;
       border: none;
-      color: #808080;
+      color: var(--text-muted);
       cursor: pointer;
       font-size: 1.25rem;
       padding: 0.25rem;
-      transition: color 0.2s ease;
+      transition: color 0.2s ease, transform 0.2s ease;
     }
 
     .cashflow-detail-close:hover {
-      color: #f5f5f0;
+      color: var(--text-primary);
+      transform: rotate(90deg);
     }
 
     .cashflow-detail-list {
@@ -472,24 +604,27 @@
       justify-content: space-between;
       align-items: center;
       padding: 0.625rem 0.75rem;
-      background: rgba(255, 255, 255, 0.02);
-      border-radius: 8px;
-      transition: background 0.2s ease;
+      background: var(--bg-surface);
+      border-radius: 10px;
+      transition: background 0.2s ease, transform 0.2s ease;
     }
 
     .cashflow-detail-item:hover {
-      background: rgba(255, 255, 255, 0.05);
+      background: var(--bg-surface-hover);
+      transform: translateX(3px);
     }
 
     .cashflow-detail-item-name {
       font-size: 0.875rem;
-      color: #f5f5f0;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
     }
 
     .cashflow-detail-item-amount {
       font-size: 0.875rem;
       font-weight: 600;
-      color: #d4af37;
+      color: var(--accent);
     }
 
     /* Responsive adjustments for Sankey */
@@ -515,13 +650,18 @@
   <script type="text/babel">
     const { useState, useEffect, useMemo, Fragment, useCallback, useRef } = React;
 
+    const THEME_KEY = 'mercury-theme';
+    const systemTheme = () =>
+      (typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
+    const storedTheme = () => {
+      try { const v = localStorage.getItem(THEME_KEY); return v === 'light' || v === 'dark' ? v : null; }
+      catch (e) { return null; }
+    };
+
+    // useTheme supports an explicit user override (persisted) that falls back to the
+    // OS preference. All hook instances stay in sync via a custom event + storage event.
     function useTheme() {
-      const [theme, setTheme] = useState(() => {
-        if (typeof window !== 'undefined') {
-          return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
-        }
-        return 'dark';
-      });
+      const [theme, setThemeState] = useState(() => storedTheme() || systemTheme());
 
       useEffect(() => {
         document.documentElement.setAttribute('data-theme', theme);
@@ -529,12 +669,30 @@
 
       useEffect(() => {
         const mediaQuery = window.matchMedia('(prefers-color-scheme: light)');
-        const handleChange = (e) => setTheme(e.matches ? 'light' : 'dark');
-        mediaQuery.addEventListener('change', handleChange);
-        return () => mediaQuery.removeEventListener('change', handleChange);
+        // OS changes only apply when the user hasn't chosen an explicit theme.
+        const handleSystem = (e) => { if (!storedTheme()) setThemeState(e.matches ? 'light' : 'dark'); };
+        const handleSync = () => setThemeState(storedTheme() || systemTheme());
+        mediaQuery.addEventListener('change', handleSystem);
+        window.addEventListener('mercury-theme-change', handleSync);
+        window.addEventListener('storage', handleSync);
+        return () => {
+          mediaQuery.removeEventListener('change', handleSystem);
+          window.removeEventListener('mercury-theme-change', handleSync);
+          window.removeEventListener('storage', handleSync);
+        };
       }, []);
 
-      return { theme, setTheme, isDark: theme === 'dark' };
+      const setTheme = useCallback((next) => {
+        try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+        setThemeState(next);
+        window.dispatchEvent(new Event('mercury-theme-change'));
+      }, []);
+
+      const toggleTheme = useCallback(() => {
+        setTheme((storedTheme() || systemTheme()) === 'dark' ? 'light' : 'dark');
+      }, [setTheme]);
+
+      return { theme, setTheme, toggleTheme, isDark: theme === 'dark' };
     }
 
     const DATA_VERSION = 1;
@@ -612,8 +770,18 @@
 
     const getCurrentYear = () => new Date().getFullYear();
 
-    // Utility: Convert date to YYYY-MM-DD string (replaces repeated toISOString().split('T')[0])
-    const toDateKey = (date) => date.toISOString().split('T')[0];
+    // Utility: Convert date to YYYY-MM-DD string using LOCAL date components.
+    // (Using toISOString() here caused off-by-one date keys for users east of UTC,
+    //  because the calendar dates are created at local midnight.)
+    const toDateKey = (date) => {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    };
+
+    // Parse a YYYY-MM-DD key as a LOCAL date (avoids UTC-shift display bugs)
+    const parseDateKey = (key) => new Date(key + 'T00:00:00');
 
     // Utility: Extract all commonly-needed date components at once
     const getDateInfo = (date) => ({
@@ -631,6 +799,14 @@
       return year === today.getFullYear() ? todayStr : `${year}-12-31`;
     };
 
+    // Returns true if `date` is the configured day-of-month, clamped to the last day
+    // of the month so a "31st" schedule still fires on Feb 28/30-day months.
+    const matchesDayOfMonth = (date, targetDay) => {
+      const { dayOfMonth, month, year } = getDateInfo(date);
+      const clamped = Math.min(targetDay, getLastDayOfMonth(year, month));
+      return dayOfMonth === clamped;
+    };
+
     // Single source of truth for payroll frequency calculation
     // Replaces duplicated logic in financialData, stats, and sankeyData useMemos
     const isPayday = (date, payroll, referenceYear) => {
@@ -638,7 +814,7 @@
 
       switch (payroll.frequency) {
         case 'monthly':
-          return dayOfMonth === payroll.startDay;
+          return matchesDayOfMonth(date, payroll.startDay);
 
         case 'biweekly': {
           const startDate = new Date(payroll.startYear || referenceYear, 0, payroll.startDay);
@@ -679,11 +855,11 @@
 
       switch (expense.frequency) {
         case 'monthly':
-          return expense.dayOfMonth === dayOfMonth;
+          return matchesDayOfMonth(date, expense.dayOfMonth);
         case 'weekly':
           return expense.dayOfWeek === dayOfWeekIdx;
         case 'yearly':
-          return expense.month === month && expense.day === dayOfMonth;
+          return expense.month === month && matchesDayOfMonth(date, expense.day);
         default:
           return false;
       }
@@ -721,7 +897,25 @@
       ChevronDown: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>,
       User: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
       LogOut: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
+      Sun: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>,
+      Moon: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>,
     };
+
+    // Glassy light/dark toggle, synced through useTheme
+    function ThemeToggle() {
+      const { isDark, toggleTheme } = useTheme();
+      return (
+        <button
+          type="button"
+          className="theme-toggle"
+          onClick={toggleTheme}
+          aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+          title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          {isDark ? <Icons.Sun /> : <Icons.Moon />}
+        </button>
+      );
+    }
 
     function MoneyRain({ containerRef }) {
       const canvasRef = useRef(null);
@@ -739,9 +933,9 @@
         const charArray = chars.split('');
         const fontSize = 18;
         
-        const bgFade = isDark ? 'rgba(10, 15, 26, 0.08)' : 'rgba(248, 249, 250, 0.08)';
-        const charColor = isDark ? 'rgba(212, 175, 55, 0.15)' : 'rgba(184, 134, 11, 0.2)';
-        const glowColor = isDark ? '#d4af37' : '#b8860b';
+        const bgFade = isDark ? 'rgba(6, 10, 18, 0.09)' : 'rgba(238, 242, 247, 0.10)';
+        const charColor = isDark ? 'rgba(34, 211, 238, 0.16)' : 'rgba(14, 155, 184, 0.22)';
+        const glowColor = isDark ? '#22d3ee' : '#0e9bb8';
         
         let columns = Math.floor(container.offsetWidth / fontSize);
         let drops = new Array(columns).fill(0).map(() => Math.random() * -100);
@@ -790,7 +984,7 @@
               const alpha = 0.3 + brightness * 0.7;
               ctx.shadowBlur = 25 * brightness;
               ctx.shadowColor = glowColor;
-              ctx.fillStyle = isDark ? `rgba(212, 175, 55, ${alpha})` : `rgba(184, 134, 11, ${alpha})`;
+              ctx.fillStyle = isDark ? `rgba(34, 211, 238, ${alpha})` : `rgba(14, 155, 184, ${alpha})`;
             } else {
               ctx.shadowBlur = 0;
               ctx.fillStyle = charColor;
@@ -900,6 +1094,7 @@
                 <span className="mobile-logo-text" style={heroStyles.logoText}>Mercury</span>
               </div>
               <div className="mobile-nav-actions" style={heroStyles.navActions}>
+                <ThemeToggle />
                 {user ? (
                   <>
                     <div className="mobile-user-info" style={heroStyles.userInfo}>
@@ -919,7 +1114,7 @@
                   </>
                 ) : (
                   <a href="/api/login" className="mobile-nav-cta" style={heroStyles.navCta}>
-                    Sign In with Google <Icons.ArrowRight />
+                    Sign In <Icons.ArrowRight />
                   </a>
                 )}
               </div>
@@ -949,7 +1144,7 @@
                   </button>
                 ) : (
                   <a href="/api/login" className="mobile-primary-btn" style={{ ...heroStyles.primaryBtn, textDecoration: 'none' }}>
-                    Sign In with Google <Icons.ArrowRight />
+                    Get Started — Free <Icons.ArrowRight />
                   </a>
                 )}
                 <button className="mobile-secondary-btn" style={heroStyles.secondaryBtn} onClick={() => document.getElementById('features').scrollIntoView({ behavior: 'smooth' })}>
@@ -1070,7 +1265,7 @@
                   </div>
                   <div style={heroStyles.demoCard}>
                     <div style={heroStyles.demoCardLabel}>Year-End Projection</div>
-                    <div style={{ ...heroStyles.demoCardValue, color: '#8b5cf6' }}>$12,450.00</div>
+                    <div style={{ ...heroStyles.demoCardValue, color: 'var(--accent)' }}>$12,450.00</div>
                   </div>
                   <div style={heroStyles.demoCard}>
                     <div style={heroStyles.demoCardLabel}>Net Cashflow</div>
@@ -1092,7 +1287,7 @@
               </button>
             ) : (
               <a href="/api/login" className="mobile-primary-btn" style={{ ...heroStyles.primaryBtn, textDecoration: 'none' }}>
-                Sign In with Google <Icons.ArrowRight />
+                Get Started — Free <Icons.ArrowRight />
               </a>
             )}
           </section>
@@ -1239,7 +1434,8 @@
       const [editingCell, setEditingCell] = useState(null);
       const [editValue, setEditValue] = useState('');
       const [scrollToMonth, setScrollToMonth] = useState(today.getMonth());
-      const [saveIndicator, setSaveIndicator] = useState(false);
+      const [saveState, setSaveState] = useState('idle'); // 'idle' | 'saving' | 'saved' | 'error'
+      const savedTimeoutRef = useRef(null);
 
       // Consolidated form state using reducer (replaces 7 useState calls)
       const [formState, formDispatch] = React.useReducer(formReducer, initialFormState);
@@ -1362,12 +1558,19 @@
             currentYear: activeYear,
             archivedYears
           };
+          setSaveState('saving');
           api.saveData(data)
             .then(() => {
-              setSaveIndicator(true);
-              setTimeout(() => setSaveIndicator(false), 1500);
+              setSaveState('saved');
+              if (savedTimeoutRef.current) clearTimeout(savedTimeoutRef.current);
+              savedTimeoutRef.current = setTimeout(() => setSaveState('idle'), 1800);
             })
-            .catch(err => console.error('Save failed:', err));
+            .catch(err => {
+              console.error('Save failed:', err);
+              setSaveState('error');
+              if (savedTimeoutRef.current) clearTimeout(savedTimeoutRef.current);
+              savedTimeoutRef.current = setTimeout(() => setSaveState('idle'), 3000);
+            });
         }, 500);
       }, [initialBalances, payrolls, recurringExpenses, oneOffExpenses, balanceOverrides, activeYear, archivedYears]);
 
@@ -1573,6 +1776,17 @@ const { theme, isDark } = useTheme();
       const sankeyRef = useRef(null);
       const [sankeyTooltip, setSankeyTooltip] = useState(null);
       const [selectedCategory, setSelectedCategory] = useState(null);
+      const [sankeyTick, setSankeyTick] = useState(0);
+
+      // Re-render the Sankey when the viewport (and therefore the container width) changes
+      useEffect(() => {
+        if (activeView !== 'cashflow') return;
+        let t;
+        const onResize = () => { clearTimeout(t); t = setTimeout(() => setSankeyTick(v => v + 1), 160); };
+        window.addEventListener('resize', onResize);
+        window.addEventListener('orientationchange', onResize);
+        return () => { clearTimeout(t); window.removeEventListener('resize', onResize); window.removeEventListener('orientationchange', onResize); };
+      }, [activeView]);
 
       const sankeyData = useMemo(() => {
         const cutoffDate = getYearCutoffDate(dashboardYear);
@@ -1700,13 +1914,14 @@ const { theme, isDark } = useTheme();
         }
         
         const ctx = ytdChartRef.current.getContext('2d');
-        const colors = ['#ef5350', '#f59e0b', '#8b5cf6', '#ec4899', '#6366f1', '#14b8a6', '#f97316', '#a855f7', '#06b6d4', '#84cc16'];
+        // Purple-free categorical palette tuned for the Quicksilver theme
+        const colors = ['#22d3ee', '#34d399', '#fb7185', '#fbbf24', '#38bdf8', '#2dd4bf', '#f97316', '#f472b6', '#a3e635', '#60a5fa'];
         
-        const tooltipBg = isDark ? 'rgba(13, 25, 41, 0.95)' : 'rgba(255, 255, 255, 0.95)';
-        const tooltipTitle = isDark ? '#f5f5f0' : '#1a1a2e';
-        const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.08)';
-        const tickColor = isDark ? '#808080' : '#6a6a7a';
-        const labelColor = isDark ? '#f5f5f0' : '#1a1a2e';
+        const tooltipBg = isDark ? 'rgba(10, 18, 28, 0.95)' : 'rgba(255, 255, 255, 0.96)';
+        const tooltipTitle = isDark ? '#eef5f8' : '#0c1b26';
+        const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(12, 27, 38, 0.08)';
+        const tickColor = isDark ? '#6f8693' : '#5c7382';
+        const labelColor = isDark ? '#eef5f8' : '#0c1b26';
         
         ytdChartInstance.current = new Chart(ctx, {
           type: 'bar',
@@ -1729,8 +1944,8 @@ const { theme, isDark } = useTheme();
               tooltip: {
                 backgroundColor: tooltipBg,
                 titleColor: tooltipTitle,
-                bodyColor: isDark ? '#d4af37' : '#b8860b',
-                borderColor: isDark ? 'rgba(212, 175, 55, 0.3)' : 'rgba(184, 134, 11, 0.4)',
+                bodyColor: isDark ? '#22d3ee' : '#0e9bb8',
+                borderColor: isDark ? 'rgba(34, 211, 238, 0.35)' : 'rgba(14, 155, 184, 0.45)',
                 borderWidth: 1,
                 callbacks: {
                   label: (context) => `$${context.raw.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
@@ -1765,36 +1980,51 @@ const { theme, isDark } = useTheme();
         d3.select(sankeyRef.current).selectAll('*').remove();
 
         const container = sankeyRef.current;
-        const width = container.clientWidth || 800;
-        const height = Math.max(500, sankeyData.nodes.filter(n => n.type === 'expense').length * 45 + 100);
-        const margin = { top: 20, right: 150, bottom: 20, left: 150 };
+        const width = Math.max(280, container.clientWidth || 800);
+        const isNarrow = width < 640;
+        const expenseCount = sankeyData.nodes.filter(n => n.type === 'expense').length;
+        const height = Math.max(isNarrow ? 380 : 500, expenseCount * (isNarrow ? 38 : 45) + 100);
+        // Label gutters must shrink on small screens or the diagram has no room to draw.
+        const gutter = isNarrow ? 74 : 150;
+        const margin = { top: 24, right: gutter, bottom: 24, left: gutter };
 
         const svg = d3.select(container)
           .append('svg')
-          .attr('width', width)
+          .attr('width', '100%')
           .attr('height', height)
           .attr('viewBox', `0 0 ${width} ${height}`)
-          .attr('preserveAspectRatio', 'xMidYMid meet');
+          .attr('preserveAspectRatio', 'xMidYMid meet')
+          .style('max-width', '100%');
+
+        // Theme-aware palette
+        const incomeColor = isDark ? '#34d399' : '#059669';
+        const aggregateColor = isDark ? '#22d3ee' : '#0e9bb8';
+        const labelColor = isDark ? '#eef5f8' : '#0c1b26';
+        const mutedColor = isDark ? '#6f8693' : '#5c7382';
+        const truncate = (s, n) => (s && s.length > n ? s.slice(0, n - 1) + '…' : s);
+        const nameMax = isNarrow ? 11 : 20;
 
         // Define gradients
         const defs = svg.append('defs');
 
-        // Income gradient (green)
+        // Income gradient (emerald)
         const incomeGradient = defs.append('linearGradient')
           .attr('id', 'income-gradient')
           .attr('x1', '0%').attr('y1', '0%').attr('x2', '100%').attr('y2', '0%');
-        incomeGradient.append('stop').attr('offset', '0%').attr('stop-color', '#4caf50');
-        incomeGradient.append('stop').attr('offset', '100%').attr('stop-color', '#66bb6a');
+        incomeGradient.append('stop').attr('offset', '0%').attr('stop-color', incomeColor);
+        incomeGradient.append('stop').attr('offset', '100%').attr('stop-color', '#6ee7b7');
 
-        // Expense colors
-        const expenseColors = ['#d4af37', '#ef5350', '#8b5cf6', '#ec4899', '#6366f1', '#14b8a6', '#f97316', '#a855f7', '#06b6d4', '#84cc16', '#f59e0b', '#10b981'];
+        // Expense colors — purple-free Quicksilver categorical palette
+        const expenseColors = ['#22d3ee', '#fb7185', '#fbbf24', '#38bdf8', '#2dd4bf', '#f97316', '#f472b6', '#a3e635', '#60a5fa', '#fb923c', '#14b8a6', '#facc15'];
 
-        // Create sankey layout
+        // Create sankey layout.
+        // NOTE: links in sankeyData reference nodes by numeric index, so we rely on
+        // d3-sankey's default index-based nodeId. Setting .nodeId(d => d.id) here
+        // previously made d3 throw "missing: 0" and the diagram never rendered.
         const sankeyLayout = d3.sankey()
-          .nodeWidth(20)
-          .nodePadding(15)
+          .nodeWidth(isNarrow ? 14 : 20)
+          .nodePadding(isNarrow ? 12 : 15)
           .extent([[margin.left, margin.top], [width - margin.right, height - margin.bottom]])
-          .nodeId(d => d.id)
           .nodeAlign(d3.sankeyLeft);
 
         const { nodes, links } = sankeyLayout({
@@ -1811,10 +2041,10 @@ const { theme, isDark } = useTheme();
             .attr('x1', link.source.x1)
             .attr('x2', link.target.x0);
 
-          const sourceColor = link.source.type === 'income' ? '#4caf50' :
-                             link.source.type === 'aggregate' ? '#d4af37' : expenseColors[nodes.indexOf(link.source) % expenseColors.length];
+          const sourceColor = link.source.type === 'income' ? incomeColor :
+                             link.source.type === 'aggregate' ? aggregateColor : expenseColors[nodes.indexOf(link.source) % expenseColors.length];
           const targetColor = link.target.type === 'expense' ? expenseColors[nodes.filter(n => n.type === 'expense').indexOf(link.target) % expenseColors.length] :
-                             link.target.type === 'aggregate' ? '#d4af37' : '#4caf50';
+                             link.target.type === 'aggregate' ? aggregateColor : incomeColor;
 
           gradient.append('stop').attr('offset', '0%').attr('stop-color', sourceColor).attr('stop-opacity', 0.8);
           gradient.append('stop').attr('offset', '100%').attr('stop-color', targetColor).attr('stop-opacity', 0.8);
@@ -1868,8 +2098,8 @@ const { theme, isDark } = useTheme();
           .attr('width', d => d.x1 - d.x0)
           .attr('height', d => Math.max(1, d.y1 - d.y0))
           .attr('fill', d => {
-            if (d.type === 'income') return '#4caf50';
-            if (d.type === 'aggregate') return '#d4af37';
+            if (d.type === 'income') return incomeColor;
+            if (d.type === 'aggregate') return aggregateColor;
             const expenseIndex = nodes.filter(n => n.type === 'expense').indexOf(d);
             return expenseColors[expenseIndex % expenseColors.length];
           })
@@ -1941,15 +2171,15 @@ const { theme, isDark } = useTheme();
               .attr('x', x)
               .attr('y', y - 6)
               .attr('text-anchor', 'end')
-              .attr('fill', '#f5f5f0')
-              .text(d.name);
+              .attr('fill', labelColor)
+              .text(truncate(d.name, nameMax));
 
             g.append('text')
               .attr('class', 'sankey-label-amount')
               .attr('x', x)
               .attr('y', y + 10)
               .attr('text-anchor', 'end')
-              .attr('fill', '#4caf50')
+              .attr('fill', incomeColor)
               .attr('font-weight', '600')
               .text(formatCurrency(d.value));
           });
@@ -1970,7 +2200,7 @@ const { theme, isDark } = useTheme();
               .attr('x', x)
               .attr('y', y)
               .attr('text-anchor', 'middle')
-              .attr('fill', '#d4af37')
+              .attr('fill', aggregateColor)
               .attr('font-weight', '600')
               .attr('font-size', '14px')
               .text(formatCurrency(d.value));
@@ -1992,15 +2222,15 @@ const { theme, isDark } = useTheme();
               .attr('x', x)
               .attr('y', y - 6)
               .attr('text-anchor', 'start')
-              .attr('fill', '#f5f5f0')
-              .text(d.name);
+              .attr('fill', labelColor)
+              .text(truncate(d.name, nameMax));
 
             g.append('text')
               .attr('class', 'sankey-label-amount')
               .attr('x', x)
               .attr('y', y + 8)
               .attr('text-anchor', 'start')
-              .attr('fill', '#d4af37')
+              .attr('fill', aggregateColor)
               .attr('font-weight', '600')
               .text(formatCurrency(d.value));
 
@@ -2009,7 +2239,7 @@ const { theme, isDark } = useTheme();
               .attr('x', x)
               .attr('y', y + 22)
               .attr('text-anchor', 'start')
-              .attr('fill', '#808080')
+              .attr('fill', mutedColor)
               .attr('font-size', '11px')
               .text(`${d.percent}%`);
           });
@@ -2022,7 +2252,7 @@ const { theme, isDark } = useTheme();
           .delay((d, i) => 400 + i * 30)
           .style('opacity', 1);
 
-      }, [sankeyData, activeView, dashboardYear]);
+      }, [sankeyData, activeView, dashboardYear, isDark, sankeyTick]);
 
       const handleOverrideBalance = (dateKey, newBalance) => { setBalanceOverrides(prev => ({ ...prev, [dateKey]: parseFloat(newBalance) })); setEditingCell(null); };
       const clearOverride = (dateKey) => { setBalanceOverrides(prev => { const n = { ...prev }; delete n[dateKey]; return n; }); };
@@ -2048,7 +2278,16 @@ const { theme, isDark } = useTheme();
         logoText: { fontSize: '1.5rem', fontWeight: '600', fontFamily: '"Playfair Display", serif', background: 'linear-gradient(135deg, var(--accent), var(--accent-light))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '0.02em' },
         yearBadge: { padding: '0.25rem 0.75rem', background: 'var(--accent-bg)', border: '1px solid var(--accent-border)', borderRadius: '20px', fontSize: '0.75rem', color: 'var(--accent)', fontWeight: '500', letterSpacing: '0.05em' },
         headerActions: { display: 'flex', alignItems: 'center', gap: '0.75rem' },
-        saveIndicator: { display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.375rem 0.625rem', background: 'var(--success-bg)', border: '1px solid var(--success)', borderRadius: '6px', fontSize: '0.6875rem', color: 'var(--success)', opacity: saveIndicator ? 1 : 0, transition: 'opacity 0.3s ease' },
+        saveIndicator: (state) => {
+          const map = {
+            saving: { bg: 'var(--accent-bg)', bd: 'var(--accent-border)', fg: 'var(--accent)' },
+            saved: { bg: 'var(--success-bg)', bd: 'var(--success)', fg: 'var(--success)' },
+            error: { bg: 'var(--danger-bg)', bd: 'var(--danger)', fg: 'var(--danger)' },
+            idle: { bg: 'var(--success-bg)', bd: 'var(--success)', fg: 'var(--success)' },
+          };
+          const c = map[state] || map.idle;
+          return { display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.375rem 0.625rem', background: c.bg, border: `1px solid ${c.bd}`, borderRadius: '8px', fontSize: '0.6875rem', color: c.fg, opacity: state === 'idle' ? 0 : 1, transform: state === 'idle' ? 'translateY(-2px)' : 'translateY(0)', transition: 'opacity 0.3s ease, transform 0.3s ease', whiteSpace: 'nowrap' };
+        },
         cloudIndicator: { display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.375rem 0.625rem', background: 'var(--accent-bg)', border: '1px solid var(--accent-border)', borderRadius: '6px', fontSize: '0.6875rem', color: 'var(--accent)' },
         nav: { display: 'flex', gap: '0.5rem' },
         navButton: (isActive) => ({ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.625rem 1.25rem', background: isActive ? 'var(--accent-bg)' : 'transparent', border: isActive ? '1px solid var(--accent-border)' : '1px solid transparent', borderRadius: '8px', color: isActive ? 'var(--accent)' : 'var(--text-muted)', fontSize: '0.875rem', fontWeight: '500', cursor: 'pointer', transition: 'all 0.3s ease', fontFamily: 'inherit' }),
@@ -2096,7 +2335,7 @@ const { theme, isDark } = useTheme();
         expenseCell: { color: 'var(--danger)', fontWeight: '500' },
         payrollBadge: { display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.125rem 0.375rem', background: 'var(--success-bg)', border: '1px solid var(--success)', borderRadius: '4px', fontSize: '0.625rem', color: 'var(--success)', marginRight: '0.3125rem', marginBottom: '0.1875rem' },
         recurringExpenseBadge: { display: 'inline-flex', alignItems: 'center', padding: '0.125rem 0.375rem', background: 'var(--danger-bg)', border: '1px solid var(--danger)', borderRadius: '4px', fontSize: '0.625rem', color: 'var(--danger)', marginRight: '0.3125rem', marginBottom: '0.1875rem' },
-        oneOffExpenseBadge: { display: 'inline-flex', alignItems: 'center', padding: '0.125rem 0.375rem', background: 'rgba(156, 39, 176, 0.1)', border: '1px solid var(--purple)', borderRadius: '4px', fontSize: '0.625rem', color: 'var(--purple)', marginRight: '0.3125rem', marginBottom: '0.1875rem' },
+        oneOffExpenseBadge: { display: 'inline-flex', alignItems: 'center', padding: '0.125rem 0.375rem', background: 'var(--warning-bg)', border: '1px solid var(--warning)', borderRadius: '4px', fontSize: '0.625rem', color: 'var(--warning)', marginRight: '0.3125rem', marginBottom: '0.1875rem' },
         overrideBadge: { display: 'inline-flex', alignItems: 'center', padding: '0.0625rem 0.3125rem', background: 'var(--accent-bg)', border: '1px solid var(--accent-border)', borderRadius: '4px', fontSize: '0.5625rem', color: 'var(--accent)', marginLeft: '0.3125rem', cursor: 'pointer' },
         editButton: { padding: '0.25rem', background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', marginLeft: '0.3125rem', opacity: 0.6, transition: 'opacity 0.2s ease' },
         addExpenseBtn: { padding: '0.25rem', background: 'var(--accent-bg)', border: '1px solid var(--accent-border)', borderRadius: '4px', color: 'var(--accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease' },
@@ -2149,18 +2388,18 @@ const { theme, isDark } = useTheme();
 
           <div style={styles.sectionTitle}><Icons.TrendUp /> Overview</div>
           <div className="app-dashboard-grid" style={styles.dashboardGrid}>
-            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('#4ade80')} /><div style={styles.statLabel}>Starting Balance (Jan 1)</div><div className="app-stat-value" style={styles.statValue('#4ade80')}>{formatCurrency(stats.initialBalance)}</div></div>
-            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('#8b5cf6')} /><div style={styles.statLabel}>Projected Year-End</div><div className="app-stat-value" style={styles.statValue(stats.endOfYearBalance >= 0 ? '#4ade80' : '#f87171')}>{formatCurrency(stats.endOfYearBalance)}</div><div style={styles.statSubtext}>Dec 31, {dashboardYear}</div></div>
-            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('#f87171')} /><div style={styles.statLabel}>Lowest Balance Point</div><div className="app-stat-value" style={styles.statValue('#f87171')}>{formatCurrency(stats.lowestBalance)}</div><div style={styles.statSubtext}>{stats.lowestBalanceDate && formatFullDate(stats.lowestBalanceDate)}</div></div>
-            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('#10b981')} /><div style={styles.statLabel}>Net Annual Cashflow</div><div className="app-stat-value" style={styles.statValue(stats.netAnnual >= 0 ? '#4ade80' : '#f87171')}>{formatCurrency(stats.netAnnual)}</div><div style={styles.statSubtext}>Income - Expenses</div></div>
+            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--success)')} /><div style={styles.statLabel}>Starting Balance (Jan 1)</div><div className="app-stat-value" style={styles.statValue('var(--success)')}>{formatCurrency(stats.initialBalance)}</div></div>
+            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--accent)')} /><div style={styles.statLabel}>Projected Year-End</div><div className="app-stat-value" style={styles.statValue(stats.endOfYearBalance >= 0 ? 'var(--success)' : 'var(--danger)')}>{formatCurrency(stats.endOfYearBalance)}</div><div style={styles.statSubtext}>Dec 31, {dashboardYear}</div></div>
+            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--danger)')} /><div style={styles.statLabel}>Lowest Balance Point</div><div className="app-stat-value" style={styles.statValue('var(--danger)')}>{formatCurrency(stats.lowestBalance)}</div><div style={styles.statSubtext}>{stats.lowestBalanceDate && formatFullDate(stats.lowestBalanceDate)}</div></div>
+            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--accent-2)')} /><div style={styles.statLabel}>Net Annual Cashflow</div><div className="app-stat-value" style={styles.statValue(stats.netAnnual >= 0 ? 'var(--success)' : 'var(--danger)')}>{formatCurrency(stats.netAnnual)}</div><div style={styles.statSubtext}>Income − Expenses</div></div>
           </div>
 
           <div style={styles.sectionTitle}><Icons.Expense /> Expense Tracking</div>
           <div className="app-dashboard-grid" style={styles.dashboardGrid}>
-            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('#f87171')} /><div style={styles.statLabel}>Forecasted Recurring Expenses</div><div className="app-stat-value" style={styles.statValue('#f87171')}>{formatCurrency(stats.forecastedRecurringExpenses)}</div><div style={styles.statSubtext}>Until Dec 31</div></div>
-            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('#fbbf24')} /><div style={styles.statLabel}>Forecasted Total Expenses</div><div className="app-stat-value" style={styles.statValue('#fbbf24')}>{formatCurrency(stats.forecastedTotalExpenses)}</div><div style={styles.statSubtext}>Recurring + One-off until Dec 31</div></div>
-            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('#a855f7')} /><div style={styles.statLabel}>Paid Recurring Expenses YTD</div><div className="app-stat-value" style={styles.statValue('#a855f7')}>{formatCurrency(stats.historicalRecurringExpensesPaid)}</div><div style={styles.statSubtext}>Year to date</div></div>
-            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('#ec4899')} /><div style={styles.statLabel}>Paid Total Expenses YTD</div><div className="app-stat-value" style={styles.statValue('#ec4899')}>{formatCurrency(stats.historicalTotalExpensesPaid)}</div><div style={styles.statSubtext}>Recurring + One-off YTD</div></div>
+            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--danger)')} /><div style={styles.statLabel}>Forecasted Recurring Expenses</div><div className="app-stat-value" style={styles.statValue('var(--danger)')}>{formatCurrency(stats.forecastedRecurringExpenses)}</div><div style={styles.statSubtext}>Until Dec 31</div></div>
+            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--warning)')} /><div style={styles.statLabel}>Forecasted Total Expenses</div><div className="app-stat-value" style={styles.statValue('var(--warning)')}>{formatCurrency(stats.forecastedTotalExpenses)}</div><div style={styles.statSubtext}>Recurring + One-off until Dec 31</div></div>
+            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--accent)')} /><div style={styles.statLabel}>Paid Recurring Expenses YTD</div><div className="app-stat-value" style={styles.statValue('var(--accent)')}>{formatCurrency(stats.historicalRecurringExpensesPaid)}</div><div style={styles.statSubtext}>Year to date</div></div>
+            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--accent-2)')} /><div style={styles.statLabel}>Paid Total Expenses YTD</div><div className="app-stat-value" style={styles.statValue('var(--accent-2)')}>{formatCurrency(stats.historicalTotalExpensesPaid)}</div><div style={styles.statSubtext}>Recurring + One-off YTD</div></div>
           </div>
 
           {ytdExpensesByName.length > 0 && (
@@ -2174,10 +2413,10 @@ const { theme, isDark } = useTheme();
 
           <div style={styles.sectionTitle}><Icons.Calendar /> Full Year Summary ({dashboardYear})</div>
           <div className="app-dashboard-grid" style={styles.dashboardGrid}>
-            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('#22d3ee')} /><div style={styles.statLabel}>Total Income</div><div className="app-stat-value" style={styles.statValue('#4ade80')}>{formatCurrency(stats.totalPayrollForYear)}</div></div>
-            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('#6366f1')} /><div style={styles.statLabel}>Total Recurring Expenses</div><div className="app-stat-value" style={styles.statValue('#f87171')}>{formatCurrency(stats.totalRecurringExpensesForYear)}</div></div>
-            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('#f59e0b')} /><div style={styles.statLabel}>Total One-Off Expenses</div><div className="app-stat-value" style={styles.statValue('#fbbf24')}>{formatCurrency(stats.totalOneOffExpensesForYear)}</div></div>
-            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('#ef4444')} /><div style={styles.statLabel}>Total All Expenses</div><div className="app-stat-value" style={styles.statValue('#f87171')}>{formatCurrency(stats.totalExpensesForYear)}</div></div>
+            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--accent)')} /><div style={styles.statLabel}>Total Income</div><div className="app-stat-value" style={styles.statValue('var(--success)')}>{formatCurrency(stats.totalPayrollForYear)}</div></div>
+            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--accent-2)')} /><div style={styles.statLabel}>Total Recurring Expenses</div><div className="app-stat-value" style={styles.statValue('var(--danger)')}>{formatCurrency(stats.totalRecurringExpensesForYear)}</div></div>
+            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--warning)')} /><div style={styles.statLabel}>Total One-Off Expenses</div><div className="app-stat-value" style={styles.statValue('var(--warning)')}>{formatCurrency(stats.totalOneOffExpensesForYear)}</div></div>
+            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--danger)')} /><div style={styles.statLabel}>Total All Expenses</div><div className="app-stat-value" style={styles.statValue('var(--danger)')}>{formatCurrency(stats.totalExpensesForYear)}</div></div>
           </div>
 
           <div className="app-three-column" style={styles.threeColumn}>
@@ -2189,7 +2428,7 @@ const { theme, isDark } = useTheme();
               {payrolls.length === 0 ? <div style={styles.emptyState}>No income sources added yet</div> : payrolls.map(payroll => (
                 <div key={payroll.id} className="app-item-row" style={styles.itemRow}>
                   <div><div style={styles.itemName}>{payroll.name}</div><div style={styles.itemMeta}>{frequencyLabels[payroll.frequency]}</div></div>
-                  <div className="app-item-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}><span style={styles.itemAmount(true)}>+{formatCurrency(payroll.amount)}</span><button style={styles.deleteBtn} onClick={() => deletePayroll(payroll.id)}><Icons.Trash /></button></div>
+                  <div className="app-item-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}><span style={styles.itemAmount(true)}>+{formatCurrency(payroll.amount)}</span><button className="icon-btn" aria-label={`Delete income source ${payroll.name}`} style={styles.deleteBtn} onClick={() => deletePayroll(payroll.id)}><Icons.Trash /></button></div>
                 </div>
               ))}
             </div>
@@ -2202,7 +2441,7 @@ const { theme, isDark } = useTheme();
               {recurringExpenses.length === 0 ? <div style={styles.emptyState}>No recurring expenses added yet</div> : recurringExpenses.map(expense => (
                 <div key={expense.id} className="app-item-row" style={styles.itemRow}>
                   <div><div style={styles.itemName}>{expense.name}</div><div style={styles.itemMeta}>{getExpenseFrequencyLabel(expense)}</div></div>
-                  <div className="app-item-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}><span style={styles.itemAmount()}>-{formatCurrency(expense.amount)}</span><button style={styles.deleteBtn} onClick={() => deleteRecurringExpense(expense.id)}><Icons.Trash /></button></div>
+                  <div className="app-item-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}><span style={styles.itemAmount()}>-{formatCurrency(expense.amount)}</span><button className="icon-btn" aria-label={`Delete recurring expense ${expense.name}`} style={styles.deleteBtn} onClick={() => deleteRecurringExpense(expense.id)}><Icons.Trash /></button></div>
                 </div>
               ))}
             </div>
@@ -2214,8 +2453,8 @@ const { theme, isDark } = useTheme();
               </div>
               {oneOffExpenses.filter(e => e.date.startsWith(String(dashboardYear))).length === 0 ? <div style={styles.emptyState}>No one-off expenses for {dashboardYear}</div> : oneOffExpenses.filter(e => e.date.startsWith(String(dashboardYear))).sort((a, b) => a.date.localeCompare(b.date)).map(expense => (
                 <div key={expense.id} className="app-item-row" style={styles.itemRow}>
-                  <div><div style={styles.itemName}>{expense.name}</div><div style={styles.itemMeta}>{formatFullDate(new Date(expense.date + 'T00:00:00'))}</div></div>
-                  <div className="app-item-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}><span style={styles.itemAmount()}>-{formatCurrency(expense.amount)}</span><button style={styles.deleteBtn} onClick={() => deleteOneOffExpense(expense.id)}><Icons.Trash /></button></div>
+                  <div><div style={styles.itemName}>{expense.name}</div><div style={styles.itemMeta}>{formatFullDate(parseDateKey(expense.date))}</div></div>
+                  <div className="app-item-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}><span style={styles.itemAmount()}>-{formatCurrency(expense.amount)}</span><button className="icon-btn" aria-label={`Delete one-off expense ${expense.name}`} style={styles.deleteBtn} onClick={() => deleteOneOffExpense(expense.id)}><Icons.Trash /></button></div>
                 </div>
               ))}
             </div>
@@ -2238,7 +2477,7 @@ const { theme, isDark } = useTheme();
                 <select value={dashboardYear} onChange={e => setDashboardYear(parseInt(e.target.value))} style={styles.yearSelect}>
                   {availableYears.map(year => <option key={year} value={year}>{year}</option>)}
                 </select>
-                <span style={{ fontSize: '0.75rem', color: '#808080' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                   {dashboardYear === new Date().getFullYear() ? 'Year to date' : 'Full year'}
                 </span>
               </div>
@@ -2305,15 +2544,15 @@ const { theme, isDark } = useTheme();
             {hasData && (
               <div className="sankey-legend">
                 <div className="sankey-legend-item">
-                  <div className="sankey-legend-color" style={{ backgroundColor: '#4caf50' }}></div>
+                  <div className="sankey-legend-color" style={{ backgroundColor: 'var(--success)' }}></div>
                   <span>Income</span>
                 </div>
                 <div className="sankey-legend-item">
-                  <div className="sankey-legend-color" style={{ backgroundColor: '#d4af37' }}></div>
+                  <div className="sankey-legend-color" style={{ backgroundColor: 'var(--accent)' }}></div>
                   <span>Total</span>
                 </div>
                 <div className="sankey-legend-item">
-                  <div className="sankey-legend-color" style={{ backgroundColor: '#ef5350' }}></div>
+                  <div className="sankey-legend-color" style={{ backgroundColor: 'var(--danger)' }}></div>
                   <span>Expenses</span>
                 </div>
               </div>
@@ -2326,12 +2565,12 @@ const { theme, isDark } = useTheme();
                   <div className="cashflow-detail-title">
                     {selectedCategory.startsWith('income:') ? (
                       <>
-                        <span style={{ color: '#4caf50' }}><Icons.Money /></span>
+                        <span style={{ color: 'var(--success)' }}><Icons.Money /></span>
                         {selectedCategory.replace('income:', '')} Details
                       </>
                     ) : (
                       <>
-                        <span style={{ color: '#ef5350' }}><Icons.Expense /></span>
+                        <span style={{ color: 'var(--danger)' }}><Icons.Expense /></span>
                         {selectedCategory} Details
                       </>
                     )}
@@ -2346,7 +2585,7 @@ const { theme, isDark } = useTheme();
                     (() => {
                       const sourceName = selectedCategory.replace('income:', '');
                       const source = payrolls.find(p => p.name === sourceName);
-                      if (!source) return <div style={{ color: '#808080', padding: '1rem' }}>No details available</div>;
+                      if (!source) return <div style={{ color: 'var(--text-muted)', padding: '1rem' }}>No details available</div>;
                       return (
                         <>
                           <div className="cashflow-detail-item">
@@ -2355,7 +2594,7 @@ const { theme, isDark } = useTheme();
                           </div>
                           <div className="cashflow-detail-item">
                             <span className="cashflow-detail-item-name">Frequency</span>
-                            <span className="cashflow-detail-item-amount" style={{ color: '#808080' }}>
+                            <span className="cashflow-detail-item-amount" style={{ color: 'var(--text-muted)' }}>
                               {source.frequency === 'weekly' ? 'Weekly' :
                                source.frequency === 'biweekly' ? 'Every 2 weeks' :
                                source.frequency === 'monthly' ? 'Monthly' :
@@ -2366,7 +2605,7 @@ const { theme, isDark } = useTheme();
                           </div>
                           <div className="cashflow-detail-item">
                             <span className="cashflow-detail-item-name">YTD Total</span>
-                            <span className="cashflow-detail-item-amount" style={{ color: '#4caf50' }}>
+                            <span className="cashflow-detail-item-amount" style={{ color: 'var(--success)' }}>
                               {formatCurrency(sankeyData.incomeSources?.find(s => s.name === sourceName)?.amount || 0)}
                             </span>
                           </div>
@@ -2381,14 +2620,14 @@ const { theme, isDark } = useTheme();
                       const recurringItems = recurringExpenses.filter(e => e.name === selectedCategory);
                       const oneOffItems = oneOffExpenses.filter(e => e.name === selectedCategory && e.date.startsWith(dashboardYear.toString()));
 
-                      if (details.length === 0) return <div style={{ color: '#808080', padding: '1rem' }}>No details available</div>;
+                      if (details.length === 0) return <div style={{ color: 'var(--text-muted)', padding: '1rem' }}>No details available</div>;
 
                       return (
                         <>
                           {recurringItems.map((item, idx) => (
                             <div key={`recurring-${idx}`} className="cashflow-detail-item">
                               <span className="cashflow-detail-item-name">
-                                <span style={{ color: '#8b5cf6', marginRight: '0.5rem' }}><Icons.Recurring /></span>
+                                <span style={{ color: 'var(--accent)', marginRight: '0.5rem' }}><Icons.Recurring /></span>
                                 {item.frequency === 'monthly' ? 'Monthly' : item.frequency === 'weekly' ? 'Weekly' : 'Yearly'}
                               </span>
                               <span className="cashflow-detail-item-amount">{formatCurrency(item.amount)}/occurrence</span>
@@ -2398,7 +2637,7 @@ const { theme, isDark } = useTheme();
                             <div key={`oneoff-${idx}`} className="cashflow-detail-item">
                               <span className="cashflow-detail-item-name">
                                 <span style={{ color: '#f59e0b', marginRight: '0.5rem' }}><Icons.OneTime /></span>
-                                {new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                {parseDateKey(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                               </span>
                               <span className="cashflow-detail-item-amount">{formatCurrency(item.amount)}</span>
                             </div>
@@ -2426,7 +2665,7 @@ const { theme, isDark } = useTheme();
             </div>
             <div className="app-table-header" style={styles.tableHeader}>
               <div className="app-table-header-cell" style={styles.tableHeaderCell}>Date</div>
-              <div className="app-table-header-cell" style={styles.tableHeaderCell}>Day</div>
+              <div className="app-table-header-cell app-hide-xs" style={styles.tableHeaderCell}>Day</div>
               <div className="app-table-header-cell" style={styles.tableHeaderCell}>Activity</div>
               <div className="app-table-header-cell" style={styles.tableHeaderCell}>Starting</div>
               <div className="app-table-header-cell app-hide-mobile" style={styles.tableHeaderCell}>Expenses</div>
@@ -2444,7 +2683,7 @@ const { theme, isDark } = useTheme();
                     {showMonthDivider && (<div style={styles.monthDivider} ref={el => monthRefs.current[day.month] = el}><span style={styles.monthLabel}>{months[day.month]} {day.year}</span></div>)}
                     <div ref={day.isToday ? todayRowRef : null} className="app-table-row" style={styles.tableRow(day.isToday, day.isPast, isMonthStart)} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, day.dateKey)}>
                       <div className="app-table-cell" style={styles.tableCell}>{formatDate(day.date)}</div>
-                      <div className="app-table-cell" style={styles.tableCell}>{day.dayOfWeek}</div>
+                      <div className="app-table-cell app-hide-xs" style={styles.tableCell}>{day.dayOfWeek}</div>
                       <div className="app-table-cell" style={{ ...styles.tableCell, flexWrap: 'wrap' }}>
                         <div style={styles.expensesList}>
                           {day.payrollDetails.map((p, i) => (<span key={i} style={styles.payrollBadge}>+${p.amount} {p.name}</span>))}
@@ -2460,21 +2699,21 @@ const { theme, isDark } = useTheme();
                           <div style={{ display: 'flex', alignItems: 'center' }}>
                             <input type="number" value={editValue} onChange={(e) => setEditValue(e.target.value)} style={styles.inlineInput} autoFocus onKeyDown={(e) => { if (e.key === 'Enter') handleOverrideBalance(day.dateKey, editValue); if (e.key === 'Escape') setEditingCell(null); }} />
                             <div style={styles.inlineActions}>
-                              <button style={styles.inlineBtn('76, 175, 80')} onClick={() => handleOverrideBalance(day.dateKey, editValue)}><Icons.Check style={{ color: '#4caf50' }} /></button>
-                              <button style={styles.inlineBtn('239, 83, 80')} onClick={() => setEditingCell(null)}><Icons.X style={{ color: '#ef5350' }} /></button>
+                              <button className="icon-btn" aria-label="Save balance override" style={{ ...styles.inlineBtn('52, 211, 153'), color: 'var(--success)' }} onClick={() => handleOverrideBalance(day.dateKey, editValue)}><Icons.Check /></button>
+                              <button className="icon-btn" aria-label="Cancel edit" style={{ ...styles.inlineBtn('251, 113, 133'), color: 'var(--danger)' }} onClick={() => setEditingCell(null)}><Icons.X /></button>
                             </div>
                           </div>
                         ) : (
                           <span style={day.startingBalance >= 0 ? styles.balancePositive : styles.balanceNegative}>
                             {formatCurrency(day.startingBalance)}
                             {day.isOverridden && (<span style={styles.overrideBadge} onClick={() => clearOverride(day.dateKey)} title="Click to clear override">Override</span>)}
-                            <button style={styles.editButton} onClick={() => { setEditingCell(day.dateKey); setEditValue(day.startingBalance.toString()); }}><Icons.Edit /></button>
+                            <button className="icon-btn" aria-label="Edit starting balance" title="Override starting balance" style={styles.editButton} onClick={() => { setEditingCell(day.dateKey); setEditValue(day.startingBalance.toString()); }}><Icons.Edit /></button>
                           </span>
                         )}
                       </div>
                       <div className="app-table-cell app-hide-mobile" style={{ ...styles.tableCell, ...styles.expenseCell }}>{day.expenses > 0 ? `-${formatCurrency(day.expenses)}` : '-'}</div>
                       <div className="app-table-cell" style={styles.tableCell}><span style={day.endingBalance >= 0 ? styles.balancePositive : styles.balanceNegative}>{formatCurrency(day.endingBalance)}</span></div>
-                      <div className="app-table-cell app-hide-mobile" style={styles.tableCell}><button style={styles.addExpenseBtn} onClick={() => openOneOffFormForDate(day.dateKey)} title="Add expense"><Icons.Plus /></button></div>
+                      <div className="app-table-cell app-hide-mobile" style={styles.tableCell}><button className="icon-btn" aria-label="Add one-off expense on this day" style={styles.addExpenseBtn} onClick={() => openOneOffFormForDate(day.dateKey)} title="Add expense"><Icons.Plus /></button></div>
                     </div>
                   </Fragment>
                 );
@@ -2491,8 +2730,11 @@ const { theme, isDark } = useTheme();
               <div className="app-header-top">
                 <div style={styles.logo} onClick={onBackToHome}><div style={styles.logoIcon}><Icons.TrendUp /></div><span className="app-logo-text" style={styles.logoText}>Mercury</span><span className="app-year-badge" style={styles.yearBadge}>{activeYear}</span></div>
                 <div className="app-header-actions" style={styles.headerActions}>
+                  <ThemeToggle />
                   <div className="app-hide-mobile" style={styles.cloudIndicator}><Icons.Cloud /> Cloud Sync</div>
-                  <div style={styles.saveIndicator}><Icons.Save /> Saved</div>
+                  <div style={styles.saveIndicator(saveState)} role="status" aria-live="polite">
+                    {saveState === 'saving' ? <><Icons.Cloud /> Saving…</> : saveState === 'error' ? <><Icons.Warning /> Save failed</> : <><Icons.Check /> Saved</>}
+                  </div>
                   {user && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.375rem 0.75rem', background: 'var(--bg-surface)', borderRadius: '8px', border: '1px solid var(--border-light)' }}>
                       {user.profile_image ? (
