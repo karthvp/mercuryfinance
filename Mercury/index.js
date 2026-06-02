@@ -45,6 +45,7 @@ async function initDatabase() {
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         version INTEGER DEFAULT 1,
+        app_data JSONB DEFAULT '{}',
         initial_balances JSONB DEFAULT '{}',
         payrolls JSONB DEFAULT '[]',
         recurring_expenses JSONB DEFAULT '[]',
@@ -60,9 +61,35 @@ async function initDatabase() {
     `);
 
     await dbClient.query(`ALTER TABLE mercury_data DROP CONSTRAINT IF EXISTS single_row`);
-    // Backfill columns for databases created before these fields existed
+    // Legacy per-feature columns (kept for back-compat on existing DBs).
     await dbClient.query(`ALTER TABLE mercury_data ADD COLUMN IF NOT EXISTS one_off_incomes JSONB DEFAULT '[]'`);
     await dbClient.query(`ALTER TABLE mercury_data ADD COLUMN IF NOT EXISTS debts JSONB DEFAULT '[]'`);
+    // Single-document store. ALL app data now lives here, so no future feature ever
+    // needs a new column (which is what triggered Replit's destructive DROP COLUMN
+    // migrations). This is the only column the app reads/writes going forward.
+    await dbClient.query(`ALTER TABLE mercury_data ADD COLUMN IF NOT EXISTS app_data JSONB DEFAULT '{}'`);
+    // One-time, idempotent migration: copy any data still living in the legacy columns
+    // into app_data. After this runs, the legacy columns are safe to drop (their data
+    // is preserved in app_data), so Replit dropping them no longer loses anything.
+    try {
+      await dbClient.query(`
+        UPDATE mercury_data SET app_data = jsonb_build_object(
+          'version', COALESCE(version, 1),
+          'initialBalances', COALESCE(initial_balances, '{}'::jsonb),
+          'payrolls', COALESCE(payrolls, '[]'::jsonb),
+          'recurringExpenses', COALESCE(recurring_expenses, '[]'::jsonb),
+          'oneOffExpenses', COALESCE(one_off_expenses, '[]'::jsonb),
+          'oneOffIncomes', COALESCE(one_off_incomes, '[]'::jsonb),
+          'debts', COALESCE(debts, '[]'::jsonb),
+          'balanceOverrides', COALESCE(balance_overrides, '{}'::jsonb),
+          'currentYear', COALESCE(current_year, EXTRACT(YEAR FROM CURRENT_DATE)::int),
+          'archivedYears', COALESCE(archived_years, '[]'::jsonb)
+        )
+        WHERE app_data IS NULL OR app_data = '{}'::jsonb
+      `);
+    } catch (e) {
+      console.error('app_data migration skipped:', e.message);
+    }
   } finally {
     dbClient.release();
   }
@@ -343,39 +370,52 @@ const validators = {
   }
 };
 
+// ===== Single-document persistence =====
+// All app data lives in the app_data JSONB column. These helpers normalize what we
+// return to the client and fall back to the legacy per-feature columns for rows that
+// haven't been migrated yet.
+const DOC_FIELDS = ['version', 'initialBalances', 'payrolls', 'recurringExpenses', 'oneOffExpenses', 'oneOffIncomes', 'debts', 'balanceOverrides', 'currentYear', 'archivedYears'];
+
+function emptyDoc() {
+  return { version: 2, initialBalances: {}, payrolls: [], recurringExpenses: [], oneOffExpenses: [], oneOffIncomes: [], debts: [], balanceOverrides: {}, currentYear: new Date().getFullYear(), archivedYears: [] };
+}
+
+function rowToDoc(row) {
+  const legacy = {
+    version: row.version,
+    initialBalances: row.initial_balances,
+    payrolls: row.payrolls,
+    recurringExpenses: row.recurring_expenses,
+    oneOffExpenses: row.one_off_expenses,
+    oneOffIncomes: row.one_off_incomes,
+    debts: row.debts,
+    balanceOverrides: row.balance_overrides,
+    currentYear: row.current_year,
+    archivedYears: row.archived_years,
+  };
+  const src = (row.app_data && typeof row.app_data === 'object' && Object.keys(row.app_data).length) ? row.app_data : legacy;
+  const base = emptyDoc();
+  const out = {};
+  for (const k of DOC_FIELDS) out[k] = (src[k] !== undefined && src[k] !== null) ? src[k] : base[k];
+  return out;
+}
+
+// Build the persisted document from a validated request body.
+function buildDoc(data) {
+  const base = emptyDoc();
+  const out = {};
+  for (const k of DOC_FIELDS) out[k] = (data[k] !== undefined && data[k] !== null) ? data[k] : base[k];
+  out.version = data.version || 2;
+  out.currentYear = data.currentYear || new Date().getFullYear();
+  return out;
+}
+
 app.get('/api/data', isAuthenticated, async (req, res) => {
   try {
     const userId = req.session.userId;
     const result = await pool.query('SELECT * FROM mercury_data WHERE user_id = $1', [userId]);
-    
-    if (result.rows.length === 0) {
-      return res.json({
-        version: 1,
-        initialBalances: {},
-        payrolls: [],
-        recurringExpenses: [],
-        oneOffExpenses: [],
-        oneOffIncomes: [],
-        debts: [],
-        balanceOverrides: {},
-        currentYear: new Date().getFullYear(),
-        archivedYears: []
-      });
-    }
-
-    const row = result.rows[0];
-    res.json({
-      version: row.version,
-      initialBalances: row.initial_balances,
-      payrolls: row.payrolls,
-      recurringExpenses: row.recurring_expenses,
-      oneOffExpenses: row.one_off_expenses,
-      oneOffIncomes: row.one_off_incomes || [],
-      debts: row.debts || [],
-      balanceOverrides: row.balance_overrides,
-      currentYear: row.current_year,
-      archivedYears: row.archived_years
-    });
+    if (result.rows.length === 0) return res.json(emptyDoc());
+    res.json(rowToDoc(result.rows[0]));
   } catch (error) {
     console.error('Error reading data:', error);
     res.status(500).json({ error: 'Failed to read data' });
@@ -393,34 +433,17 @@ app.post('/api/data', isAuthenticated, async (req, res) => {
       return res.status(400).json({ error: validation.error });
     }
 
+    // Persist the whole document into the single app_data column (version kept as a
+    // plain column too, since it's harmless and predates this change).
+    const doc = buildDoc(data);
     await pool.query(`
-      INSERT INTO mercury_data (user_id, version, initial_balances, payrolls, recurring_expenses, one_off_expenses, one_off_incomes, debts, balance_overrides, current_year, archived_years, updated_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP)
+      INSERT INTO mercury_data (user_id, version, app_data, updated_at)
+      VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
       ON CONFLICT (user_id) DO UPDATE SET
         version = EXCLUDED.version,
-        initial_balances = EXCLUDED.initial_balances,
-        payrolls = EXCLUDED.payrolls,
-        recurring_expenses = EXCLUDED.recurring_expenses,
-        one_off_expenses = EXCLUDED.one_off_expenses,
-        one_off_incomes = EXCLUDED.one_off_incomes,
-        debts = EXCLUDED.debts,
-        balance_overrides = EXCLUDED.balance_overrides,
-        current_year = EXCLUDED.current_year,
-        archived_years = EXCLUDED.archived_years,
+        app_data = EXCLUDED.app_data,
         updated_at = CURRENT_TIMESTAMP
-    `, [
-      userId,
-      data.version || 1,
-      JSON.stringify(data.initialBalances || {}),
-      JSON.stringify(data.payrolls || []),
-      JSON.stringify(data.recurringExpenses || []),
-      JSON.stringify(data.oneOffExpenses || []),
-      JSON.stringify(data.oneOffIncomes || []),
-      JSON.stringify(data.debts || []),
-      JSON.stringify(data.balanceOverrides || {}),
-      data.currentYear || new Date().getFullYear(),
-      JSON.stringify(data.archivedYears || [])
-    ]);
+    `, [userId, doc.version, JSON.stringify(doc)]);
     
     res.json({ success: true, timestamp: new Date().toISOString() });
   } catch (error) {
@@ -435,32 +458,22 @@ app.patch('/api/data/:field', isAuthenticated, async (req, res) => {
     const { field } = req.params;
     const { value } = req.body;
 
-    // Use explicit query for each field to avoid SQL injection via string interpolation
-    // Each field has its own parameterized query with the column name hardcoded
-    const updateQueries = {
-      'initialBalances': 'UPDATE mercury_data SET initial_balances = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2',
-      'payrolls': 'UPDATE mercury_data SET payrolls = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2',
-      'recurringExpenses': 'UPDATE mercury_data SET recurring_expenses = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2',
-      'oneOffExpenses': 'UPDATE mercury_data SET one_off_expenses = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2',
-      'oneOffIncomes': 'UPDATE mercury_data SET one_off_incomes = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2',
-      'debts': 'UPDATE mercury_data SET debts = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2',
-      'balanceOverrides': 'UPDATE mercury_data SET balance_overrides = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2',
-      'currentYear': 'UPDATE mercury_data SET current_year = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2',
-      'archivedYears': 'UPDATE mercury_data SET archived_years = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2'
-    };
-
-    const query = updateQueries[field];
-    if (!query) {
+    // Only known document keys may be patched (whitelist; the key is the JSON path
+    // inside app_data, so no column changes and no injection surface).
+    if (!DOC_FIELDS.includes(field)) {
       return res.status(400).json({ error: 'Invalid field' });
     }
-
-    // Validate value is present
     if (value === undefined) {
       return res.status(400).json({ error: 'Missing value in request body' });
     }
 
-    const paramValue = field === 'currentYear' ? value : JSON.stringify(value);
-    await pool.query(query, [paramValue, userId]);
+    await pool.query(
+      `UPDATE mercury_data
+         SET app_data = jsonb_set(COALESCE(app_data, '{}'::jsonb), ARRAY[$1], $2::jsonb, true),
+             updated_at = CURRENT_TIMESTAMP
+       WHERE user_id = $3`,
+      [field, JSON.stringify(value), userId]
+    );
 
     res.json({ success: true, timestamp: new Date().toISOString() });
   } catch (error) {
