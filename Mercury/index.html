@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mercury - Personal Finance Tracker</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2322d3ee'/%3E%3Cg fill='none' stroke='%23042027' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M11 6 Q16 11 21 6'/%3E%3Ccircle cx='16' cy='15' r='5'/%3E%3Cline x1='16' y1='20' x2='16' y2='27'/%3E%3Cline x1='12.5' y1='23.6' x2='19.5' y2='23.6'/%3E%3C/g%3E%3C/svg%3E">
+  <meta name="theme-color" content="#22d3ee">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
@@ -1101,6 +1103,7 @@
       User: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
       LogOut: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
       Debt: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="15" x2="10" y2="15"/></svg>,
+      Mercury: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3 Q12 7.6 16 3"/><circle cx="12" cy="11" r="4"/><line x1="12" y1="15" x2="12" y2="21"/><line x1="9" y1="18.2" x2="15" y2="18.2"/></svg>,
     };
 
     // Per-occurrence editor — adjust the amount, move the date, or skip a single
@@ -1317,7 +1320,7 @@
           <nav className="mobile-nav" style={heroStyles.nav}>
             <div className="mobile-nav-content" style={heroStyles.navContent}>
               <div style={heroStyles.logo}>
-                <div style={heroStyles.logoIcon}><Icons.TrendUp /></div>
+                <div style={heroStyles.logoIcon}><Icons.Mercury /></div>
                 <span className="mobile-logo-text" style={heroStyles.logoText}>Mercury</span>
               </div>
               <div className="mobile-nav-actions" style={heroStyles.navActions}>
@@ -3428,7 +3431,7 @@ const { theme, isDark } = useTheme();
         <div style={styles.container}>
           <header className="app-header" style={styles.header}>
             <div className="app-header-content" style={styles.headerContent}>
-              <div className="app-header-brand" style={styles.logo} onClick={onBackToHome}><div style={styles.logoIcon}><Icons.TrendUp /></div><span className="app-logo-text" style={styles.logoText}>Mercury</span><span className="app-year-badge" style={styles.yearBadge}>{activeYear}</span></div>
+              <div className="app-header-brand" style={styles.logo} onClick={onBackToHome}><div style={styles.logoIcon}><Icons.Mercury /></div><span className="app-logo-text" style={styles.logoText}>Mercury</span><span className="app-year-badge" style={styles.yearBadge}>{activeYear}</span></div>
               <nav className="app-nav" style={styles.nav}><button className="app-nav-btn" style={styles.navButton(activeView === 'dashboard')} onClick={() => setActiveView('dashboard')}><Icons.Dashboard /> Dashboard</button><button className="app-nav-btn" style={styles.navButton(activeView === 'cashflow')} onClick={() => setActiveView('cashflow')}><Icons.CashFlow /> Cash Flow</button><button className="app-nav-btn" style={styles.navButton(activeView === 'debt')} onClick={() => setActiveView('debt')}><Icons.Debt /> Debt</button><button className="app-nav-btn" style={styles.navButton(activeView === 'calendar')} onClick={() => setActiveView('calendar')}><Icons.Calendar /> Calendar</button></nav>
               <div className="app-header-actions" style={styles.headerActions}>
                 <div className="app-hide-mobile" style={styles.saveIndicator(saveState)} role="status" aria-live="polite">
