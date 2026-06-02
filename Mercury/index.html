@@ -700,7 +700,7 @@
       return { theme, setTheme, toggleTheme, isDark: theme === 'dark' };
     }
 
-    const DATA_VERSION = 1;
+    const DATA_VERSION = 2;
 
     const api = {
       async getUser() {
@@ -873,6 +873,110 @@
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
+    // ===== Debt payoff (amortization) =====
+    // Monthly-equivalent of a recurring expense, used to value a linked debt payment.
+    const monthlyEquivalent = (expense) => {
+      switch (expense.frequency) {
+        case 'weekly': return expense.amount * 52 / 12;
+        case 'yearly': return expense.amount / 12;
+        case 'monthly':
+        default: return expense.amount;
+      }
+    };
+
+    // Effective monthly payment toward a debt: summed monthly-equivalent of any LINKED
+    // recurring expenses (the source of truth), else the debt's own monthlyPayment;
+    // plus extraPayment. Returns null when there is no payment source at all.
+    const effectivePaymentForDebt = (debt, recurringExpenses) => {
+      const linked = (recurringExpenses || []).filter(e => e.debtId != null && String(e.debtId) === String(debt.id));
+      const extra = (debt.extraPayment > 0) ? debt.extraPayment : 0;
+      if (linked.length > 0) return linked.reduce((s, e) => s + monthlyEquivalent(e), 0) + extra;
+      if (typeof debt.monthlyPayment === 'number' && debt.monthlyPayment > 0) return debt.monthlyPayment + extra;
+      return null;
+    };
+
+    // Amortize a balance at a fixed monthly payment. The month-by-month loop (capped at
+    // 1200 months) is the source of truth for interest and the final partial payment.
+    const amortize = (balance, apr, payment) => {
+      const r = (apr / 100) / 12;
+      if (!(balance > 0)) return { months: 0, totalInterest: 0, totalPaid: 0, neverPays: false };
+      if (!(payment > 0)) return { months: Infinity, totalInterest: Infinity, totalPaid: Infinity, neverPays: true };
+      if (r > 0 && payment <= balance * r) return { months: Infinity, totalInterest: Infinity, totalPaid: Infinity, neverPays: true };
+      let bal = balance, totalInterest = 0, totalPaid = 0, months = 0;
+      while (bal > 0 && months < 1200) {
+        const interest = bal * r;
+        const principal = Math.min(payment - interest, bal);
+        bal -= principal;
+        totalInterest += interest;
+        totalPaid += principal + interest;
+        months++;
+      }
+      return { months, totalInterest, totalPaid, neverPays: bal > 0 };
+    };
+
+    // Whole-month payoff date key from today (never via toISOString — see toDateKey).
+    const payoffDateKeyFrom = (today, months) => {
+      if (!isFinite(months)) return null;
+      return toDateKey(new Date(today.getFullYear(), today.getMonth() + months, today.getDate()));
+    };
+
+    // Per-debt plan + a payoffDateByDebtId map. PURE over (debts, recurringExpenses) —
+    // never reads financialData, so there is no circular memo dependency.
+    const computeDebtPlan = (debts, recurringExpenses, today) => {
+      const byDebt = {};
+      const payoffDateByDebtId = {};
+      (debts || []).forEach(debt => {
+        const linkedNames = (recurringExpenses || [])
+          .filter(e => e.debtId != null && String(e.debtId) === String(debt.id))
+          .map(e => e.name);
+        const payment = effectivePaymentForDebt(debt, recurringExpenses);
+        if (payment == null) {
+          byDebt[debt.id] = { payment: null, months: null, payoffDateKey: null, totalInterest: 0, totalPaid: 0, neverPays: false, noSource: true, linkedNames };
+          return;
+        }
+        const a = amortize(debt.balance, debt.apr, payment);
+        const payoffDateKey = a.neverPays ? null : payoffDateKeyFrom(today, a.months);
+        byDebt[debt.id] = { payment, months: a.neverPays ? null : a.months, payoffDateKey, totalInterest: a.totalInterest, totalPaid: a.totalPaid, neverPays: a.neverPays, noSource: false, linkedNames };
+        if (payoffDateKey) payoffDateByDebtId[debt.id] = payoffDateKey;
+      });
+      return { byDebt, payoffDateByDebtId };
+    };
+
+    // A debt-linked recurring expense stops occurring once its debt is paid off.
+    // Unknown / never-pays debts => always active (the expense keeps appearing).
+    const isRecurringActiveOn = (dateKey, expense, payoffDateByDebtId) =>
+      expense.debtId == null
+      || !payoffDateByDebtId[expense.debtId]
+      || dateKey <= payoffDateByDebtId[expense.debtId];
+
+    // Month-by-month total remaining balance across all payable debts, for the
+    // motivating "watch your debt shrink to zero" chart. Non-payable debts (no
+    // payment source / never-pays) are held flat as a residual so the line stays honest.
+    const computeDebtProjection = (debts, debtPlan, today, maxMonths = 360) => {
+      const sims = (debts || []).map(d => {
+        const p = debtPlan.byDebt[d.id] || {};
+        const payable = !!(p.payment && !p.neverPays && !p.noSource);
+        return { bal: d.balance || 0, r: (d.apr / 100) / 12, pay: payable ? p.payment : 0, payable, months: p.months || 0 };
+      });
+      const payable = sims.filter(s => s.payable);
+      if (payable.length === 0) return { points: [], months: 0, totalInterest: 0, hasResidual: sims.some(s => s.bal > 0) };
+      const horizon = Math.min(maxMonths, payable.reduce((m, s) => Math.max(m, s.months), 0));
+      const points = [{ date: new Date(today.getFullYear(), today.getMonth(), 1), total: sims.reduce((t, s) => t + s.bal, 0) }];
+      let totalInterest = 0;
+      for (let m = 1; m <= horizon; m++) {
+        sims.forEach(s => {
+          if (s.payable && s.bal > 0) {
+            const interest = s.bal * s.r;
+            const principal = Math.min(s.pay - interest, s.bal);
+            s.bal = Math.max(0, s.bal - principal);
+            totalInterest += interest;
+          }
+        });
+        points.push({ date: new Date(today.getFullYear(), today.getMonth() + m, 1), total: sims.reduce((t, s) => t + s.bal, 0) });
+      }
+      return { points, months: horizon, totalInterest, hasResidual: sims.some(s => !s.payable && s.bal > 0) };
+    };
+
     // ===== Occurrence engine =====
     // Recurring rules expand into concrete dated occurrences, applying per-occurrence
     // exceptions keyed by the rule's natural ("origin") date:
@@ -887,7 +991,7 @@
       return { amount, dateKey, moved: !!(e && e.moveTo), adjusted: !!(e && typeof e.amount === 'number'), skippable: true };
     };
 
-    const generateOccurrences = (year, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes) => {
+    const generateOccurrences = (year, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes, payoffDateByDebtId = {}) => {
       const dates = generateDatesForYear(year);
       const incomeByDate = {};
       const expenseByDate = {};
@@ -908,6 +1012,9 @@
         dates.forEach(date => {
           if (!isExpenseDue(date, x)) return;
           const origin = toDateKey(date);
+          // A debt-linked expense terminates once the debt is paid off (single
+          // integration point => Calendar, Dashboard, and Cash Flow can't drift).
+          if (!isRecurringActiveOn(origin, x, payoffDateByDebtId)) return;
           const occ = resolveOccurrence(x.amount, origin, ex);
           if (!occ) return;
           add(expenseByDate, occ.dateKey, { name: x.name, amount: occ.amount, id: x.id, kind: 'recurring', origin, moved: occ.moved, adjusted: occ.adjusted });
@@ -978,6 +1085,7 @@
       ChevronDown: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>,
       User: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
       LogOut: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
+      Debt: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="15" x2="10" y2="15"/></svg>,
     };
 
     // Per-occurrence editor — adjust the amount, move the date, or skip a single
@@ -1462,15 +1570,16 @@
     // Form state reducer - consolidates 7 useState calls into 1
     const initialFormState = {
       payroll: { name: '', amount: '', frequency: 'semimonthly', startDay: 1, dayOfWeek: 5 },
-      recurring: { name: '', amount: '', frequency: 'monthly', dayOfMonth: 1, dayOfWeek: 5, month: 0, day: 1 },
+      recurring: { name: '', amount: '', frequency: 'monthly', dayOfMonth: 1, dayOfWeek: 5, month: 0, day: 1, debtId: '' },
       oneOff: { name: '', amount: '', date: '' },
       oneOffIncome: { name: '', amount: '', date: '' },
-      activeForm: null, // 'payroll' | 'recurring' | 'oneOff' | 'oneOffIncome' | null
+      debt: { name: '', type: 'credit-card', balance: '', apr: '', monthlyPayment: '', extraPayment: '' },
+      activeForm: null, // 'payroll' | 'recurring' | 'oneOff' | 'oneOffIncome' | 'debt' | null
       calendarDate: null, // for adding from calendar
       editingId: null // id of the entry being edited (null = creating new)
     };
 
-    const formKeyFor = { payroll: 'payroll', recurring: 'recurring', oneOff: 'oneOff', oneOffIncome: 'oneOffIncome' };
+    const formKeyFor = { payroll: 'payroll', recurring: 'recurring', oneOff: 'oneOff', oneOffIncome: 'oneOffIncome', debt: 'debt' };
 
     const formReducer = (state, action) => {
       switch (action.type) {
@@ -1482,6 +1591,8 @@
           return { ...state, oneOff: { ...state.oneOff, ...action.payload } };
         case 'UPDATE_ONEOFF_INCOME':
           return { ...state, oneOffIncome: { ...state.oneOffIncome, ...action.payload } };
+        case 'UPDATE_DEBT':
+          return { ...state, debt: { ...state.debt, ...action.payload } };
         case 'SHOW_FORM':
           return { ...state, activeForm: action.formType, calendarDate: action.calendarDate || null, editingId: null };
         case 'EDIT_ENTRY':
@@ -1496,6 +1607,8 @@
           return { ...state, oneOff: initialFormState.oneOff, activeForm: null, calendarDate: null, editingId: null };
         case 'RESET_ONEOFF_INCOME':
           return { ...state, oneOffIncome: initialFormState.oneOffIncome, activeForm: null, calendarDate: null, editingId: null };
+        case 'RESET_DEBT':
+          return { ...state, debt: initialFormState.debt, activeForm: null, editingId: null };
         default:
           return state;
       }
@@ -1516,11 +1629,13 @@
       const [recurringExpenses, setRecurringExpenses] = useState([]);
       const [oneOffExpenses, setOneOffExpenses] = useState([]);
       const [oneOffIncomes, setOneOffIncomes] = useState([]);
+      const [debts, setDebts] = useState([]);
       const [balanceOverrides, setBalanceOverrides] = useState({});
       const getInitialActiveView = () => {
         const hash = window.location.hash;
         if (hash.includes('/calendar')) return 'calendar';
         if (hash.includes('/cashflow')) return 'cashflow';
+        if (hash.includes('/debt')) return 'debt';
         return 'dashboard';
       };
       const [activeView, setActiveViewState] = useState(getInitialActiveView);
@@ -1537,6 +1652,8 @@
             setActiveViewState('calendar');
           } else if (hash.includes('/cashflow')) {
             setActiveViewState('cashflow');
+          } else if (hash.includes('/debt')) {
+            setActiveViewState('debt');
           } else if (hash.includes('/dashboard')) {
             setActiveViewState('dashboard');
           }
@@ -1563,6 +1680,8 @@
       const showRecurringExpenseForm = formState.activeForm === 'recurring';
       const showOneOffExpenseForm = formState.activeForm === 'oneOff';
       const showOneOffIncomeForm = formState.activeForm === 'oneOffIncome';
+      const newDebt = formState.debt;
+      const showDebtForm = formState.activeForm === 'debt';
       const isEditing = formState.editingId != null;
       const addOneOffFromCalendar = formState.calendarDate;
 
@@ -1584,6 +1703,11 @@
         formDispatch({ type: 'UPDATE_ONEOFF_INCOME', payload: newVal });
       };
       const setShowOneOffIncomeForm = (show) => formDispatch({ type: show ? 'SHOW_FORM' : 'HIDE_FORM', formType: 'oneOffIncome' });
+      const setNewDebt = (updater) => {
+        const newVal = typeof updater === 'function' ? updater(formState.debt) : updater;
+        formDispatch({ type: 'UPDATE_DEBT', payload: newVal });
+      };
+      const setShowDebtForm = (show) => formDispatch({ type: show ? 'SHOW_FORM' : 'HIDE_FORM', formType: 'debt' });
       const setShowPayrollForm = (show) => formDispatch({ type: show ? 'SHOW_FORM' : 'HIDE_FORM', formType: 'payroll' });
       const setShowRecurringExpenseForm = (show) => formDispatch({ type: show ? 'SHOW_FORM' : 'HIDE_FORM', formType: 'recurring' });
       const setShowOneOffExpenseForm = (show) => formDispatch({ type: show ? 'SHOW_FORM' : 'HIDE_FORM', formType: 'oneOff' });
@@ -1625,6 +1749,8 @@
       const ytdChartInstance = useRef(null);
       const balanceChartRef = useRef(null);
       const balanceChartInstance = useRef(null);
+      const debtChartRef = useRef(null);
+      const debtChartInstance = useRef(null);
 
       useEffect(() => {
         if (monthRefs.current[scrollToMonth]) {
@@ -1649,6 +1775,7 @@
             if (data.recurringExpenses) setRecurringExpenses(data.recurringExpenses);
             if (data.oneOffExpenses) setOneOffExpenses(data.oneOffExpenses);
             if (data.oneOffIncomes) setOneOffIncomes(data.oneOffIncomes);
+            setDebts(Array.isArray(data.debts) ? data.debts : []);
             if (data.balanceOverrides) setBalanceOverrides(data.balanceOverrides);
             if (data.currentYear) {
               setActiveYear(data.currentYear);
@@ -1678,6 +1805,7 @@
             recurringExpenses,
             oneOffExpenses,
             oneOffIncomes,
+            debts,
             balanceOverrides,
             currentYear: activeYear,
             archivedYears
@@ -1696,21 +1824,27 @@
               savedTimeoutRef.current = setTimeout(() => setSaveState('idle'), 3000);
             });
         }, 500);
-      }, [initialBalances, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes, balanceOverrides, activeYear, archivedYears]);
+      }, [initialBalances, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes, debts, balanceOverrides, activeYear, archivedYears]);
 
       useEffect(() => {
         if (!isLoading) saveToServer();
-      }, [initialBalances, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes, balanceOverrides, activeYear, archivedYears]);
+      }, [initialBalances, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes, debts, balanceOverrides, activeYear, archivedYears]);
 
       const datesForYear = useMemo(() => generateDatesForYear(activeYear), [activeYear]);
       const availableYears = useMemo(() => Array.from(new Set([activeYear, ...archivedYears])).sort((a, b) => b - a), [activeYear, archivedYears]);
 
       const todayKey = toDateKey(today);
 
+      // Debt payoff plan — pure over (debts, recurringExpenses). Drives both the Debt
+      // view and the payoff-based termination of linked expenses in the forecast.
+      const debtPlan = useMemo(() => computeDebtPlan(debts, recurringExpenses, today), [debts, recurringExpenses, todayKey]);
+      const payoffDateByDebtId = debtPlan.payoffDateByDebtId;
+      const debtProjection = useMemo(() => computeDebtProjection(debts, debtPlan, today), [debts, debtPlan, todayKey]);
+
       // Expand all rules (+ one-offs) into dated occurrences for the active year.
       const activeOccurrences = useMemo(
-        () => generateOccurrences(activeYear, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes),
-        [activeYear, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes]
+        () => generateOccurrences(activeYear, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes, payoffDateByDebtId),
+        [activeYear, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes, payoffDateByDebtId]
       );
 
       const financialData = useMemo(
@@ -1723,9 +1857,9 @@
       // the dashboard chart and all aggregate stats read from.
       const dashboardSeries = useMemo(() => {
         if (dashboardYear === activeYear) return financialData;
-        const occ = generateOccurrences(dashboardYear, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes);
+        const occ = generateOccurrences(dashboardYear, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes, payoffDateByDebtId);
         return buildYearSeries(dashboardYear, occ, initialBalances[dashboardYear] || 5000, balanceOverrides, today, todayKey);
-      }, [financialData, dashboardYear, activeYear, initialBalances, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes, balanceOverrides, todayKey]);
+      }, [financialData, dashboardYear, activeYear, initialBalances, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes, payoffDateByDebtId, balanceOverrides, todayKey]);
 
       const stats = useMemo(() => {
         const yearData = dashboardSeries;
@@ -1835,8 +1969,8 @@
 
       // Occurrences for the viewed year (reuses the active-year expansion when possible).
       const dashboardOccurrences = useMemo(
-        () => dashboardYear === activeYear ? activeOccurrences : generateOccurrences(dashboardYear, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes),
-        [dashboardYear, activeYear, activeOccurrences, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes]
+        () => dashboardYear === activeYear ? activeOccurrences : generateOccurrences(dashboardYear, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes, payoffDateByDebtId),
+        [dashboardYear, activeYear, activeOccurrences, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes, payoffDateByDebtId]
       );
 
       const ytdExpensesByName = useMemo(() => {
@@ -2118,6 +2252,55 @@ const { theme, isDark } = useTheme();
 
         return () => { cancelAnimationFrame(raf); if (balanceChartInstance.current) { balanceChartInstance.current.destroy(); balanceChartInstance.current = null; } };
       }, [dashboardSeries, forecast, activeView, isDark]);
+
+      // Debt-payoff projection chart — total debt shrinking toward $0 (motivating!).
+      useEffect(() => {
+        if (activeView !== 'debt') return;
+        const raf = requestAnimationFrame(() => {
+          const el = debtChartRef.current;
+          if (!el || debtProjection.points.length === 0) return;
+          try {
+            if (debtChartInstance.current) { debtChartInstance.current.destroy(); debtChartInstance.current = null; }
+            const pts = debtProjection.points;
+            const success = isDark ? '#34d399' : '#059669';
+            const grid = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(12,27,38,0.08)';
+            const tick = isDark ? '#6f8693' : '#5c7382';
+            debtChartInstance.current = new Chart(el.getContext('2d'), {
+              type: 'line',
+              data: {
+                labels: pts.map(p => p.date),
+                datasets: [{
+                  data: pts.map(p => p.total),
+                  borderColor: success, borderWidth: 2.5, tension: 0.2,
+                  pointRadius: pts.map((p, i) => i === pts.length - 1 ? 5 : 0),
+                  pointBackgroundColor: success, pointBorderColor: isDark ? '#06121c' : '#ffffff', pointBorderWidth: 2,
+                  fill: { target: 'origin', above: isDark ? 'rgba(52,211,153,0.14)' : 'rgba(5,150,105,0.10)' },
+                }],
+              },
+              options: {
+                responsive: true, maintainAspectRatio: false, interaction: { intersect: false, mode: 'index' },
+                plugins: {
+                  legend: { display: false },
+                  tooltip: {
+                    backgroundColor: isDark ? 'rgba(10,18,28,0.95)' : 'rgba(255,255,255,0.96)',
+                    titleColor: isDark ? '#eef5f8' : '#0c1b26', bodyColor: isDark ? '#a3b6c1' : '#3c5260',
+                    borderColor: isDark ? 'rgba(52,211,153,0.35)' : 'rgba(5,150,105,0.45)', borderWidth: 1, padding: 12,
+                    callbacks: {
+                      title: (items) => { const d = pts[items[0].dataIndex].date; return months[d.getMonth()] + ' ' + d.getFullYear(); },
+                      label: (item) => 'Remaining debt: ' + formatCurrency(item.raw),
+                    },
+                  },
+                },
+                scales: {
+                  x: { grid: { display: false }, ticks: { color: tick, maxRotation: 0, autoSkip: true, maxTicksLimit: 8, callback: (v, idx) => { const d = pts[idx] && pts[idx].date; return d ? months[d.getMonth()].slice(0, 3) + " '" + String(d.getFullYear()).slice(2) : ''; } } },
+                  y: { grid: { color: grid }, beginAtZero: true, ticks: { color: tick, callback: (v) => '$' + Math.round(v).toLocaleString() } },
+                },
+              },
+            });
+          } catch (err) { console.error('Debt chart render failed:', err); }
+        });
+        return () => { cancelAnimationFrame(raf); if (debtChartInstance.current) { debtChartInstance.current.destroy(); debtChartInstance.current = null; } };
+      }, [debtProjection, activeView, isDark]);
 
       // D3 Sankey rendering effect
       useEffect(() => {
@@ -2416,9 +2599,30 @@ const { theme, isDark } = useTheme();
       const deletePayroll = (id) => { setPayrolls(prev => prev.filter(p => p.id !== id)); };
       const editPayroll = (p) => formDispatch({ type: 'EDIT_ENTRY', formType: 'payroll', id: p.id, values: { name: p.name, amount: String(p.amount), frequency: p.frequency, startDay: p.startDay ?? 1, dayOfWeek: p.dayOfWeek ?? 5 } });
 
-      const addRecurringExpense = () => { if (newRecurringExpense.name && newRecurringExpense.amount !== '') { upsert(setRecurringExpenses, { name: newRecurringExpense.name.trim(), amount: Math.abs(parseFloat(newRecurringExpense.amount)) || 0, frequency: newRecurringExpense.frequency, dayOfMonth: parseInt(newRecurringExpense.dayOfMonth), dayOfWeek: parseInt(newRecurringExpense.dayOfWeek), month: parseInt(newRecurringExpense.month), day: parseInt(newRecurringExpense.day) }); formDispatch({ type: 'RESET_RECURRING' }); } };
+      const addRecurringExpense = () => { if (newRecurringExpense.name && newRecurringExpense.amount !== '') { upsert(setRecurringExpenses, { name: newRecurringExpense.name.trim(), amount: Math.abs(parseFloat(newRecurringExpense.amount)) || 0, frequency: newRecurringExpense.frequency, dayOfMonth: parseInt(newRecurringExpense.dayOfMonth), dayOfWeek: parseInt(newRecurringExpense.dayOfWeek), month: parseInt(newRecurringExpense.month), day: parseInt(newRecurringExpense.day), debtId: newRecurringExpense.debtId ? newRecurringExpense.debtId : null }); formDispatch({ type: 'RESET_RECURRING' }); } };
       const deleteRecurringExpense = (id) => { setRecurringExpenses(prev => prev.filter(e => e.id !== id)); };
-      const editRecurringExpense = (e) => formDispatch({ type: 'EDIT_ENTRY', formType: 'recurring', id: e.id, values: { name: e.name, amount: String(e.amount), frequency: e.frequency, dayOfMonth: e.dayOfMonth ?? 1, dayOfWeek: e.dayOfWeek ?? 5, month: e.month ?? 0, day: e.day ?? 1 } });
+      const editRecurringExpense = (e) => formDispatch({ type: 'EDIT_ENTRY', formType: 'recurring', id: e.id, values: { name: e.name, amount: String(e.amount), frequency: e.frequency, dayOfMonth: e.dayOfMonth ?? 1, dayOfWeek: e.dayOfWeek ?? 5, month: e.month ?? 0, day: e.day ?? 1, debtId: e.debtId != null ? String(e.debtId) : '' } });
+
+      // ===== Debt handlers (referential integrity with recurring expenses) =====
+      const addDebt = () => {
+        if (!newDebt.name || newDebt.balance === '' || newDebt.apr === '') return;
+        const fields = {
+          name: newDebt.name.trim(),
+          type: newDebt.type || 'other',
+          balance: Math.abs(parseFloat(newDebt.balance)) || 0,
+          apr: Math.abs(parseFloat(newDebt.apr)) || 0,
+          monthlyPayment: newDebt.monthlyPayment !== '' ? Math.abs(parseFloat(newDebt.monthlyPayment)) || 0 : null,
+          extraPayment: newDebt.extraPayment !== '' ? Math.abs(parseFloat(newDebt.extraPayment)) || 0 : 0,
+        };
+        upsert(setDebts, fields);
+        formDispatch({ type: 'RESET_DEBT' });
+      };
+      const editDebt = (d) => formDispatch({ type: 'EDIT_ENTRY', formType: 'debt', id: d.id, values: { name: d.name, type: d.type || 'other', balance: String(d.balance), apr: String(d.apr), monthlyPayment: d.monthlyPayment != null ? String(d.monthlyPayment) : '', extraPayment: d.extraPayment ? String(d.extraPayment) : '' } });
+      // Deleting a debt unlinks any recurring expenses that referenced it.
+      const deleteDebt = (id) => {
+        setDebts(prev => prev.filter(d => d.id !== id));
+        setRecurringExpenses(prev => prev.map(e => (e.debtId != null && String(e.debtId) === String(id)) ? { ...e, debtId: null } : e));
+      };
 
       const addOneOffExpense = () => { if (newOneOffExpense.name && newOneOffExpense.amount !== '' && newOneOffExpense.date) { upsert(setOneOffExpenses, { name: newOneOffExpense.name.trim(), amount: Math.abs(parseFloat(newOneOffExpense.amount)) || 0, date: newOneOffExpense.date }); formDispatch({ type: 'RESET_ONEOFF' }); } };
       const deleteOneOffExpense = (id) => { setOneOffExpenses(prev => prev.filter(e => e.id !== id)); };
@@ -2697,7 +2901,7 @@ const { theme, isDark } = useTheme();
               </div>
               {recurringExpenses.length === 0 ? <div style={styles.emptyState}>No recurring expenses added yet</div> : recurringExpenses.map(expense => (
                 <div key={expense.id} className="app-item-row" style={styles.itemRow}>
-                  <div><div style={styles.itemName}>{expense.name}</div><div style={styles.itemMeta}>{getExpenseFrequencyLabel(expense)}</div></div>
+                  <div><div style={styles.itemName}>{expense.name}{expense.debtId != null && <span title="Pays down a linked debt" style={{ marginLeft: '0.4rem', fontSize: '0.5625rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--accent)', background: 'var(--accent-bg)', border: '1px solid var(--accent-border)', borderRadius: '999px', padding: '0.0625rem 0.375rem', verticalAlign: 'middle' }}>Debt</span>}</div><div style={styles.itemMeta}>{getExpenseFrequencyLabel(expense)}</div></div>
                   <div className="app-item-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><span style={styles.itemAmount()}>-{formatCurrency(expense.amount)}</span><button className="icon-btn" aria-label={`Edit recurring expense ${expense.name}`} style={editBtn} onClick={() => editRecurringExpense(expense)}><Icons.Edit /></button><button className="icon-btn" aria-label={`Delete recurring expense ${expense.name}`} style={styles.deleteBtn} onClick={() => deleteRecurringExpense(expense.id)}><Icons.Trash /></button></div>
                 </div>
               ))}
@@ -2938,6 +3142,113 @@ const { theme, isDark } = useTheme();
         );
       };
 
+      const renderDebt = () => {
+        const debtTypeLabels = { 'credit-card': 'Credit card', 'loan': 'Loan', 'auto': 'Auto loan', 'student': 'Student loan', 'other': 'Other' };
+        const totalDebt = debts.reduce((s, d) => s + (d.balance || 0), 0);
+        const totalMonthly = debts.reduce((s, d) => { const p = debtPlan.byDebt[d.id]; return s + (p && p.payment ? p.payment : 0); }, 0);
+        const weightedApr = totalDebt > 0 ? debts.reduce((s, d) => s + (d.balance || 0) * (d.apr || 0), 0) / totalDebt : 0;
+        let latestPayoff = null, anyUnresolved = false;
+        debts.forEach(d => { const p = debtPlan.byDebt[d.id]; if (p && p.payoffDateKey) { if (!latestPayoff || p.payoffDateKey > latestPayoff) latestPayoff = p.payoffDateKey; } if (p && (p.neverPays || p.noSource)) anyUnresolved = true; });
+        const editBtn = { padding: '0.375rem', background: 'var(--accent-bg)', border: '1px solid var(--accent-border)', borderRadius: '6px', color: 'var(--accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' };
+        const warnBox = { display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.875rem', padding: '0.625rem 0.875rem', background: 'var(--warning-bg)', border: '1px solid var(--warning)', borderRadius: '10px', fontSize: '0.8125rem', color: 'var(--warning)', lineHeight: 1.45 };
+
+        return (
+          <div>
+            <div style={{ ...styles.yearSelector, justifyContent: 'space-between', flexWrap: 'wrap' }} className="app-year-selector">
+              <div style={styles.panelTitle}><Icons.Debt /> Debt Payoff Planner</div>
+              <button style={styles.addButton} onClick={() => setShowDebtForm(true)}><Icons.Plus /> Add Debt</button>
+            </div>
+
+            {debts.length === 0 ? (
+              <div className="app-panel" style={styles.panel}>
+                <div style={{ ...styles.emptyState, padding: '2.5rem 1.5rem', lineHeight: 1.6 }}>
+                  No debts yet. Add a credit card, loan, or other debt — then link it to the recurring expense that pays it, and Mercury will project your payoff date, interest, and stop the payment in your forecast once it&rsquo;s cleared.
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="app-dashboard-grid" style={styles.dashboardGrid}>
+                  <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--danger)')} /><div style={styles.statLabel}>Total Debt</div><div className="app-stat-value" style={styles.statValue('var(--danger)')}>{formatCurrency(totalDebt)}</div></div>
+                  <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--accent)')} /><div style={styles.statLabel}>Monthly Debt Payment</div><div className="app-stat-value" style={styles.statValue('var(--accent)')}>{formatCurrency(totalMonthly)}</div><div style={styles.statSubtext}>Across all debts</div></div>
+                  <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--warning)')} /><div style={styles.statLabel}>Avg APR (weighted)</div><div className="app-stat-value" style={styles.statValue('var(--warning)')}>{weightedApr.toFixed(2)}%</div></div>
+                  <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--success)')} /><div style={styles.statLabel}>Debt-Free By</div><div className="app-stat-value" style={styles.statValue(anyUnresolved ? 'var(--warning)' : 'var(--success)')}>{latestPayoff ? formatFullDate(parseDateKey(latestPayoff)) : '—'}</div><div style={styles.statSubtext}>{anyUnresolved ? 'Some debts need a payment' : (latestPayoff ? 'Latest payoff across debts' : '')}</div></div>
+                </div>
+
+                {debtProjection.points.length > 0 && (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.625rem', padding: '0.875rem 1.125rem', background: 'var(--success-bg)', border: '1px solid var(--success)', borderRadius: '14px', marginBottom: '1.5rem', lineHeight: 1.5 }}>
+                      <span style={{ color: 'var(--success)', display: 'flex', flexShrink: 0, marginTop: '2px' }}><Icons.TrendUp /></span>
+                      <div style={{ fontSize: '0.9375rem', color: 'var(--text-secondary)' }}>
+                        On your current plan you&rsquo;ll be <strong style={{ color: 'var(--text-primary)' }}>debt-free in {debtProjection.months} months</strong>{latestPayoff && <> — by <strong style={{ color: 'var(--success)' }}>{formatFullDate(parseDateKey(latestPayoff))}</strong></>}, paying <strong style={{ color: 'var(--warning)' }}>{formatCurrency(debtProjection.totalInterest)}</strong> in interest along the way. Even a small extra payment each month gets you there sooner and saves interest.{debtProjection.hasResidual && <span style={{ color: 'var(--text-muted)' }}> (Some debts have no payment plan yet — set one to include them.)</span>}
+                      </div>
+                    </div>
+
+                    <div className="app-panel" style={{ ...styles.panel, marginBottom: '1.5rem' }}>
+                      <div style={styles.panelTitle}><Icons.TrendUp /> Watch your debt disappear</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.25rem 0 0.5rem' }}>Projected total balance across debts with a payment plan, shrinking to $0.</div>
+                      <div style={{ height: 280 }}><canvas ref={debtChartRef}></canvas></div>
+                    </div>
+                  </>
+                )}
+
+                <div style={{ marginTop: '0.5rem' }}>
+                  {debts.map(debt => {
+                    const p = debtPlan.byDebt[debt.id] || {};
+                    const principalW = (debt.balance || 0);
+                    const interestW = isFinite(p.totalInterest) ? p.totalInterest : 0;
+                    const totalW = principalW + interestW || 1;
+                    return (
+                      <div key={debt.id} className="app-panel" style={{ ...styles.panel, marginBottom: '1rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap' }}>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: '1.0625rem', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                              {debt.name}
+                              <span style={{ fontSize: '0.625rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)', background: 'var(--bg-surface)', border: '1px solid var(--border-light)', borderRadius: '999px', padding: '0.125rem 0.5rem' }}>{debtTypeLabels[debt.type] || 'Other'}</span>
+                            </div>
+                            <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                              {debt.apr}% APR · {p.payment ? <>{formatCurrency(p.payment)}/mo {p.linkedNames && p.linkedNames.length > 0 ? <>from <strong style={{ color: 'var(--text-secondary)' }}>{p.linkedNames.join(', ')}</strong></> : '(manual)'}</> : 'no payment set'}
+                            </div>
+                          </div>
+                          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                            <div style={{ fontFamily: '"Playfair Display", serif', fontSize: '1.5rem', fontWeight: 600, color: 'var(--danger)', lineHeight: 1.1 }}>{formatCurrency(debt.balance)}</div>
+                            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                              <button className="icon-btn" aria-label={`Edit debt ${debt.name}`} style={editBtn} onClick={() => editDebt(debt)}><Icons.Edit /></button>
+                              <button className="icon-btn" aria-label={`Delete debt ${debt.name}`} style={styles.deleteBtn} onClick={() => deleteDebt(debt.id)}><Icons.Trash /></button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {(p.noSource || p.neverPays) ? (
+                          <div style={warnBox}>
+                            <span style={{ display: 'flex', flexShrink: 0 }}><Icons.Warning /></span>
+                            {p.noSource ? 'No payment source — link a recurring expense or set a monthly payment to see the payoff.' : 'The payment doesn’t cover the monthly interest, so this debt never pays off. Increase the payment or add an extra payment.'}
+                          </div>
+                        ) : (
+                          <>
+                            <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginTop: '0.875rem', fontSize: '0.8125rem' }}>
+                              <div><span style={{ color: 'var(--text-muted)' }}>Payoff </span><strong style={{ color: 'var(--text-primary)' }}>{p.payoffDateKey ? formatFullDate(parseDateKey(p.payoffDateKey)) : '—'}</strong>{p.months != null && <span style={{ color: 'var(--text-dim)' }}> ({p.months} mo)</span>}</div>
+                              <div><span style={{ color: 'var(--text-muted)' }}>Total interest </span><strong style={{ color: 'var(--warning)' }}>{formatCurrency(p.totalInterest || 0)}</strong></div>
+                            </div>
+                            <div style={{ marginTop: '0.625rem', height: '8px', borderRadius: '999px', overflow: 'hidden', display: 'flex', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }} title={`Principal ${formatCurrency(principalW)} vs interest ${formatCurrency(interestW)}`}>
+                              <div style={{ width: `${(principalW / totalW) * 100}%`, background: 'var(--accent)' }} />
+                              <div style={{ width: `${(interestW / totalW) * 100}%`, background: 'var(--warning)' }} />
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.375rem', fontSize: '0.6875rem', color: 'var(--text-dim)' }}>
+                              <span>Principal {formatCurrency(principalW)}</span>
+                              <span>Interest {formatCurrency(interestW)}</span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+        );
+      };
+
       const renderCalendar = () => {
         return (
           <div className="app-table-container" style={styles.tableContainer}>
@@ -3013,7 +3324,7 @@ const { theme, isDark } = useTheme();
           <header className="app-header" style={styles.header}>
             <div className="app-header-content" style={styles.headerContent}>
               <div className="app-header-brand" style={styles.logo} onClick={onBackToHome}><div style={styles.logoIcon}><Icons.TrendUp /></div><span className="app-logo-text" style={styles.logoText}>Mercury</span><span className="app-year-badge" style={styles.yearBadge}>{activeYear}</span></div>
-              <nav className="app-nav" style={styles.nav}><button className="app-nav-btn" style={styles.navButton(activeView === 'dashboard')} onClick={() => setActiveView('dashboard')}><Icons.Dashboard /> Dashboard</button><button className="app-nav-btn" style={styles.navButton(activeView === 'cashflow')} onClick={() => setActiveView('cashflow')}><Icons.CashFlow /> Cash Flow</button><button className="app-nav-btn" style={styles.navButton(activeView === 'calendar')} onClick={() => setActiveView('calendar')}><Icons.Calendar /> Calendar</button></nav>
+              <nav className="app-nav" style={styles.nav}><button className="app-nav-btn" style={styles.navButton(activeView === 'dashboard')} onClick={() => setActiveView('dashboard')}><Icons.Dashboard /> Dashboard</button><button className="app-nav-btn" style={styles.navButton(activeView === 'cashflow')} onClick={() => setActiveView('cashflow')}><Icons.CashFlow /> Cash Flow</button><button className="app-nav-btn" style={styles.navButton(activeView === 'debt')} onClick={() => setActiveView('debt')}><Icons.Debt /> Debt</button><button className="app-nav-btn" style={styles.navButton(activeView === 'calendar')} onClick={() => setActiveView('calendar')}><Icons.Calendar /> Calendar</button></nav>
               <div className="app-header-actions" style={styles.headerActions}>
                 <div className="app-hide-mobile" style={styles.saveIndicator(saveState)} role="status" aria-live="polite">
                   {saveState === 'saving' ? <><Icons.Cloud /> Saving…</> : saveState === 'error' ? <><Icons.Warning /> Save failed</> : <><Icons.Check /> Saved</>}
@@ -3032,7 +3343,7 @@ const { theme, isDark } = useTheme();
               </div>
             </div>
           </header>
-          <main className="app-main" style={styles.main}>{activeView === 'dashboard' ? renderDashboard() : activeView === 'cashflow' ? renderCashFlow() : renderCalendar()}</main>
+          <main className="app-main" style={styles.main}>{activeView === 'dashboard' ? renderDashboard() : activeView === 'cashflow' ? renderCashFlow() : activeView === 'debt' ? renderDebt() : renderCalendar()}</main>
 
           {showPayrollForm && (
             <div style={styles.formOverlay} onClick={() => setShowPayrollForm(false)}>
@@ -3057,6 +3368,16 @@ const { theme, isDark } = useTheme();
                 {newRecurringExpense.frequency === 'weekly' && (<div style={styles.formGroup}><label style={styles.formLabel}>Day of Week</label><select value={newRecurringExpense.dayOfWeek} onChange={e => setNewRecurringExpense(p => ({ ...p, dayOfWeek: parseInt(e.target.value) }))} style={styles.formSelect}>{dayNames.map((day, idx) => <option key={day} value={idx}>{day}</option>)}</select></div>)}
                 {newRecurringExpense.frequency === 'monthly' && (<div style={styles.formGroup}><label style={styles.formLabel}>Day of Month (1-31)</label><input type="number" min="1" max="31" value={newRecurringExpense.dayOfMonth} onChange={e => setNewRecurringExpense(p => ({ ...p, dayOfMonth: e.target.value }))} style={styles.formInput} /></div>)}
                 {newRecurringExpense.frequency === 'yearly' && (<><div style={styles.formGroup}><label style={styles.formLabel}>Month</label><select value={newRecurringExpense.month} onChange={e => setNewRecurringExpense(p => ({ ...p, month: parseInt(e.target.value) }))} style={styles.formSelect}>{months.map((month, idx) => <option key={month} value={idx}>{month}</option>)}</select></div><div style={styles.formGroup}><label style={styles.formLabel}>Day</label><input type="number" min="1" max="31" value={newRecurringExpense.day} onChange={e => setNewRecurringExpense(p => ({ ...p, day: e.target.value }))} style={styles.formInput} /></div></>)}
+                {debts.length > 0 && (
+                  <div style={styles.formGroup}>
+                    <label style={styles.formLabel}>Link to debt (optional)</label>
+                    <select value={newRecurringExpense.debtId || ''} onChange={e => setNewRecurringExpense(p => ({ ...p, debtId: e.target.value }))} style={styles.formSelect}>
+                      <option value="">None</option>
+                      {debts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                    </select>
+                    {newRecurringExpense.debtId && <div style={styles.formHint}>This payment drives the linked debt&rsquo;s payoff, and stops automatically once the debt is cleared.</div>}
+                  </div>
+                )}
                 <div className="app-form-actions" style={styles.formActions}><button style={styles.cancelBtn} onClick={() => setShowRecurringExpenseForm(false)}>Cancel</button><button style={styles.submitBtn} onClick={addRecurringExpense}>{isEditing ? 'Save Changes' : 'Add Expense'}</button></div>
               </div>
             </div>
@@ -3086,6 +3407,21 @@ const { theme, isDark } = useTheme();
             </div>
           )}
 
+          {showDebtForm && (
+            <div style={styles.formOverlay} onClick={() => setShowDebtForm(false)}>
+              <div className="app-form-card" style={styles.formCard} onClick={e => e.stopPropagation()}>
+                <h3 style={styles.formTitle}>{isEditing ? 'Edit Debt' : 'Add Debt'}</h3>
+                <div style={styles.formGroup}><label style={styles.formLabel}>Name</label><input type="text" placeholder="e.g., Chase Sapphire, Car loan" value={newDebt.name} onChange={e => setNewDebt(p => ({ ...p, name: e.target.value }))} style={styles.formInput} /></div>
+                <div style={styles.formGroup}><label style={styles.formLabel}>Type</label><select value={newDebt.type} onChange={e => setNewDebt(p => ({ ...p, type: e.target.value }))} style={styles.formSelect}><option value="credit-card">Credit card</option><option value="loan">Loan</option><option value="auto">Auto loan</option><option value="student">Student loan</option><option value="other">Other</option></select></div>
+                <div style={styles.formGroup}><label style={styles.formLabel}>Current Balance</label><input type="number" placeholder="0.00" value={newDebt.balance} onChange={e => setNewDebt(p => ({ ...p, balance: e.target.value }))} style={styles.formInput} /></div>
+                <div style={styles.formGroup}><label style={styles.formLabel}>APR (annual %)</label><input type="number" step="0.01" placeholder="e.g., 19.99" value={newDebt.apr} onChange={e => setNewDebt(p => ({ ...p, apr: e.target.value }))} style={styles.formInput} /></div>
+                <div style={styles.formGroup}><label style={styles.formLabel}>Monthly Payment (optional)</label><input type="number" placeholder="Used only if no recurring expense is linked" value={newDebt.monthlyPayment} onChange={e => setNewDebt(p => ({ ...p, monthlyPayment: e.target.value }))} style={styles.formInput} /><div style={styles.formHint}>Tip: instead, link the recurring expense that pays this debt — its amount becomes the source of truth.</div></div>
+                <div style={styles.formGroup}><label style={styles.formLabel}>Extra Monthly Payment (optional)</label><input type="number" placeholder="0.00" value={newDebt.extraPayment} onChange={e => setNewDebt(p => ({ ...p, extraPayment: e.target.value }))} style={styles.formInput} /></div>
+                <div className="app-form-actions" style={styles.formActions}><button style={styles.cancelBtn} onClick={() => setShowDebtForm(false)}>Cancel</button><button style={styles.submitBtn} onClick={addDebt}>{isEditing ? 'Save Changes' : 'Add Debt'}</button></div>
+              </div>
+            </div>
+          )}
+
           {occEditor && <OccurrenceEditor editor={occEditor} onClose={() => setOccEditor(null)} onApply={applyOccurrenceException} onReset={resetOccurrence} styles={styles} />}
         </div>
       );
@@ -3107,7 +3443,8 @@ const { theme, isDark } = useTheme();
         if (view === 'home') {
           window.history.replaceState(null, '', window.location.pathname);
         } else {
-          const subView = window.location.hash.includes('/calendar') ? '/calendar' : '/dashboard';
+          const m = window.location.hash.match(/#app(\/[a-z]+)?/);
+          const subView = (m && m[1]) ? m[1] : '/dashboard';
           window.history.replaceState(null, '', '#app' + subView);
         }
       };
