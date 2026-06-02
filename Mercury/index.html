@@ -1631,6 +1631,8 @@
       const [oneOffIncomes, setOneOffIncomes] = useState([]);
       const [debts, setDebts] = useState([]);
       const [balanceOverrides, setBalanceOverrides] = useState({});
+      const [rolloverNotice, setRolloverNotice] = useState(null); // summary of an automatic year rollover
+      const didRolloverRef = useRef(false);
       const getInitialActiveView = () => {
         const hash = window.location.hash;
         if (hash.includes('/calendar')) return 'calendar';
@@ -1840,6 +1842,38 @@
       const debtPlan = useMemo(() => computeDebtPlan(debts, recurringExpenses, today), [debts, recurringExpenses, todayKey]);
       const payoffDateByDebtId = debtPlan.payoffDateByDebtId;
       const debtProjection = useMemo(() => computeDebtProjection(debts, debtPlan, today), [debts, debtPlan, todayKey]);
+
+      // ===== Year rollover =====
+      // When the real calendar year has advanced past the stored year, archive each
+      // completed year and carry its Dec 31 ending balance into the next year's start
+      // (only when that start isn't already set). Idempotent and non-destructive.
+      const performRollover = useCallback(() => {
+        if (realCurrentYear <= activeYear) return;
+        const inits = { ...initialBalances };
+        const archived = [...archivedYears];
+        const summary = [];
+        for (let y = activeYear; y < realCurrentYear; y++) {
+          const occ = generateOccurrences(y, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes, payoffDateByDebtId);
+          const startBal = inits[y] != null ? inits[y] : 5000;
+          const series = buildYearSeries(y, occ, startBal, balanceOverrides, today, todayKey);
+          const yearEnd = series.length ? series[series.length - 1].endingBalance : startBal;
+          if (!archived.includes(y)) archived.push(y);
+          if (inits[y + 1] === undefined) { inits[y + 1] = yearEnd; summary.push({ year: y, carried: yearEnd, preset: false }); }
+          else { summary.push({ year: y, carried: inits[y + 1], preset: true }); }
+        }
+        setInitialBalances(inits);
+        setArchivedYears(archived);
+        setActiveYear(realCurrentYear);
+        setDashboardYear(realCurrentYear);
+        setRolloverNotice(summary);
+      }, [realCurrentYear, activeYear, initialBalances, archivedYears, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes, payoffDateByDebtId, balanceOverrides, todayKey]);
+
+      // Run the rollover once, after the user's data has loaded.
+      useEffect(() => {
+        if (isLoading || didRolloverRef.current) return;
+        didRolloverRef.current = true;
+        performRollover();
+      }, [isLoading, performRollover]);
 
       // Expand all rules (+ one-offs) into dated occurrences for the active year.
       const activeOccurrences = useMemo(
@@ -2786,13 +2820,28 @@ const { theme, isDark } = useTheme();
 
         return (
         <div>
+          {rolloverNotice && rolloverNotice.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.625rem', padding: '0.875rem 1.125rem', background: 'var(--accent-bg)', border: '1px solid var(--accent-border)', borderRadius: '14px', marginBottom: '1.5rem', lineHeight: 1.5 }}>
+              <span style={{ color: 'var(--accent)', display: 'flex', flexShrink: 0, marginTop: '2px' }}><Icons.Calendar /></span>
+              <div style={{ flex: 1, fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                <strong style={{ color: 'var(--text-primary)' }}>Welcome to {realCurrentYear}.</strong> {rolloverNotice.map(r => r.preset
+                  ? `${r.year} archived (you'd already set ${r.year + 1}'s starting balance).`
+                  : `${r.year} archived; carried its year-end of ${formatCurrency(r.carried)} into ${r.year + 1}.`).join(' ')}
+              </div>
+              <button onClick={() => setRolloverNotice(null)} aria-label="Dismiss" className="icon-btn" style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', padding: '0.25rem', flexShrink: 0 }}><Icons.X /></button>
+            </div>
+          )}
+
           <div className="app-year-selector" style={{ ...styles.yearSelector, justifyContent: 'space-between', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
               <span style={styles.yearLabel}>Viewing Year:</span>
               <select value={dashboardYear} onChange={(e) => setDashboardYear(parseInt(e.target.value))} style={styles.yearSelect}>
                 {availableYears.map(year => <option key={year} value={year}>{year}</option>)}
               </select>
               {dashboardYear !== activeYear && <span style={{ fontSize: '0.6875rem', color: 'var(--warning)' }}>(Archived)</span>}
+              {realCurrentYear > activeYear && (
+                <button style={{ ...styles.addButton, background: 'var(--warning-bg)', color: 'var(--warning)', border: '1px solid var(--warning)', boxShadow: 'none' }} onClick={performRollover} title={`Archive ${activeYear} and start ${realCurrentYear}`}><Icons.Calendar /> Roll over to {realCurrentYear}</button>
+              )}
             </div>
             <div className="app-initial-balance-section" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <span style={styles.initialBalanceLabel}>Starting Balance (Jan 1, {dashboardYear}):</span>
