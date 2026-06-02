@@ -956,29 +956,40 @@
     // Month-by-month total remaining balance across all payable debts, for the
     // motivating "watch your debt shrink to zero" chart. Non-payable debts (no
     // payment source / never-pays) are held flat as a residual so the line stays honest.
-    const computeDebtProjection = (debts, debtPlan, today, maxMonths = 360) => {
+    // Month-by-month total remaining balance across payable debts, for the motivating
+    // payoff chart. mode 'snowball' rolls a paid-off debt's payment into the remaining
+    // debts (smallest balance first); 'independent' pays each on its own. Non-payable
+    // debts are held flat as a residual so the line stays honest.
+    const computeDebtProjection = (debts, debtPlan, today, mode = 'independent', maxMonths = 1200) => {
       const sims = (debts || []).map(d => {
         const p = debtPlan.byDebt[d.id] || {};
         const payable = !!(p.payment && !p.neverPays && !p.noSource);
-        return { bal: d.balance || 0, r: (d.apr / 100) / 12, pay: payable ? p.payment : 0, payable, months: p.months || 0 };
+        return { bal: d.balance || 0, r: (d.apr / 100) / 12, min: payable ? p.payment : 0, payable };
       });
       const payable = sims.filter(s => s.payable);
-      if (payable.length === 0) return { points: [], months: 0, totalInterest: 0, hasResidual: sims.some(s => s.bal > 0) };
-      const horizon = Math.min(maxMonths, payable.reduce((m, s) => Math.max(m, s.months), 0));
-      const points = [{ date: new Date(today.getFullYear(), today.getMonth(), 1), total: sims.reduce((t, s) => t + s.bal, 0) }];
-      let totalInterest = 0;
-      for (let m = 1; m <= horizon; m++) {
-        sims.forEach(s => {
-          if (s.payable && s.bal > 0) {
-            const interest = s.bal * s.r;
-            const principal = Math.min(s.pay - interest, s.bal);
-            s.bal = Math.max(0, s.bal - principal);
-            totalInterest += interest;
-          }
-        });
-        points.push({ date: new Date(today.getFullYear(), today.getMonth() + m, 1), total: sims.reduce((t, s) => t + s.bal, 0) });
+      const hasResidual = sims.some(s => !s.payable && s.bal > 0);
+      if (payable.length === 0) return { points: [], months: 0, totalInterest: 0, hasResidual };
+      const pool = payable.reduce((t, s) => t + s.min, 0); // constant total paid each month (snowball)
+      const totalOf = () => sims.reduce((t, s) => t + s.bal, 0);
+      const dateAt = (m) => new Date(today.getFullYear(), today.getMonth() + m, 1);
+      const points = [{ date: dateAt(0), total: totalOf() }];
+      let totalInterest = 0, month = 0;
+      while (sims.some(s => s.payable && s.bal > 0.005) && month < maxMonths) {
+        month++;
+        sims.forEach(s => { if (s.payable && s.bal > 0) { const i = s.bal * s.r; s.bal += i; totalInterest += i; } });
+        if (mode === 'snowball') {
+          // Active debts smallest-balance first; pay each its minimum, then cascade the
+          // freed-up pool (minimums of already-cleared debts) onto the smallest balances.
+          const active = sims.filter(s => s.payable && s.bal > 0).sort((a, b) => a.bal - b.bal);
+          let avail = pool;
+          active.forEach(s => { const pay = Math.min(s.min, s.bal, avail); s.bal -= pay; avail -= pay; });
+          for (const s of active) { if (avail <= 0.005) break; if (s.bal <= 0) continue; const pay = Math.min(s.bal, avail); s.bal -= pay; avail -= pay; }
+        } else {
+          sims.forEach(s => { if (s.payable && s.bal > 0) { s.bal = Math.max(0, s.bal - Math.min(s.min, s.bal)); } });
+        }
+        points.push({ date: dateAt(month), total: totalOf() });
       }
-      return { points, months: horizon, totalInterest, hasResidual: sims.some(s => !s.payable && s.bal > 0) };
+      return { points, months: month, totalInterest, hasResidual };
     };
 
     // ===== Occurrence engine =====
@@ -1636,6 +1647,7 @@
       const [debts, setDebts] = useState([]);
       const [balanceOverrides, setBalanceOverrides] = useState({});
       const [rolloverNotice, setRolloverNotice] = useState(null); // summary of an automatic year rollover
+      const [snowballMode, setSnowballMode] = useState(false); // debt projection: snowball vs independent
       const didRolloverRef = useRef(false);
       const getInitialActiveView = () => {
         const hash = window.location.hash;
@@ -1845,7 +1857,9 @@
       // view and the payoff-based termination of linked expenses in the forecast.
       const debtPlan = useMemo(() => computeDebtPlan(debts, recurringExpenses, today), [debts, recurringExpenses, todayKey]);
       const payoffDateByDebtId = debtPlan.payoffDateByDebtId;
-      const debtProjection = useMemo(() => computeDebtProjection(debts, debtPlan, today), [debts, debtPlan, todayKey]);
+      const debtProjectionStd = useMemo(() => computeDebtProjection(debts, debtPlan, today, 'independent'), [debts, debtPlan, todayKey]);
+      const debtProjectionSnow = useMemo(() => computeDebtProjection(debts, debtPlan, today, 'snowball'), [debts, debtPlan, todayKey]);
+      const debtProjection = snowballMode ? debtProjectionSnow : debtProjectionStd;
 
       // ===== Year rollover =====
       // When the real calendar year has advanced past the stored year, archive each
@@ -2292,45 +2306,60 @@ const { theme, isDark } = useTheme();
       }, [dashboardSeries, forecast, activeView, isDark]);
 
       // Debt-payoff projection chart — total debt shrinking toward $0 (motivating!).
+      // In snowball mode it overlays the standard line (dashed) so the acceleration shows.
       useEffect(() => {
         if (activeView !== 'debt') return;
         const raf = requestAnimationFrame(() => {
           const el = debtChartRef.current;
-          if (!el || debtProjection.points.length === 0) return;
+          if (!el || debtProjectionStd.points.length === 0) return;
           try {
             if (debtChartInstance.current) { debtChartInstance.current.destroy(); debtChartInstance.current = null; }
-            const pts = debtProjection.points;
+            const stdPts = debtProjectionStd.points;
+            const snowPts = debtProjectionSnow.points;
+            // Use the longer timeline (standard) for labels; pad the shorter series with 0.
+            const base = stdPts.length >= snowPts.length ? stdPts : snowPts;
+            const labels = base.map(p => p.date);
+            const padTo = (pts) => labels.map((_, i) => i < pts.length ? pts[i].total : 0);
             const success = isDark ? '#34d399' : '#059669';
+            const muted = isDark ? '#6f8693' : '#94a3b8';
             const grid = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(12,27,38,0.08)';
             const tick = isDark ? '#6f8693' : '#5c7382';
+            const active = snowballMode ? debtProjectionSnow : debtProjectionStd;
+            const datasets = [];
+            datasets.push({
+              label: snowballMode ? 'Snowball' : 'Payoff',
+              data: padTo(active.points),
+              borderColor: success, borderWidth: 2.5, tension: 0.2,
+              pointRadius: 0, pointHoverRadius: 4,
+              fill: { target: 'origin', above: isDark ? 'rgba(52,211,153,0.14)' : 'rgba(5,150,105,0.10)' },
+            });
+            if (snowballMode) {
+              datasets.push({
+                label: 'Standard',
+                data: padTo(debtProjectionStd.points),
+                borderColor: muted, borderWidth: 1.5, borderDash: [5, 4], tension: 0.2,
+                pointRadius: 0, pointHoverRadius: 4, fill: false,
+              });
+            }
             debtChartInstance.current = new Chart(el.getContext('2d'), {
               type: 'line',
-              data: {
-                labels: pts.map(p => p.date),
-                datasets: [{
-                  data: pts.map(p => p.total),
-                  borderColor: success, borderWidth: 2.5, tension: 0.2,
-                  pointRadius: pts.map((p, i) => i === pts.length - 1 ? 5 : 0),
-                  pointBackgroundColor: success, pointBorderColor: isDark ? '#06121c' : '#ffffff', pointBorderWidth: 2,
-                  fill: { target: 'origin', above: isDark ? 'rgba(52,211,153,0.14)' : 'rgba(5,150,105,0.10)' },
-                }],
-              },
+              data: { labels, datasets },
               options: {
                 responsive: true, maintainAspectRatio: false, interaction: { intersect: false, mode: 'index' },
                 plugins: {
-                  legend: { display: false },
+                  legend: { display: snowballMode, labels: { color: tick, usePointStyle: true, boxWidth: 8 } },
                   tooltip: {
                     backgroundColor: isDark ? 'rgba(10,18,28,0.95)' : 'rgba(255,255,255,0.96)',
                     titleColor: isDark ? '#eef5f8' : '#0c1b26', bodyColor: isDark ? '#a3b6c1' : '#3c5260',
                     borderColor: isDark ? 'rgba(52,211,153,0.35)' : 'rgba(5,150,105,0.45)', borderWidth: 1, padding: 12,
                     callbacks: {
-                      title: (items) => { const d = pts[items[0].dataIndex].date; return months[d.getMonth()] + ' ' + d.getFullYear(); },
-                      label: (item) => 'Remaining debt: ' + formatCurrency(item.raw),
+                      title: (items) => { const d = labels[items[0].dataIndex]; return months[d.getMonth()] + ' ' + d.getFullYear(); },
+                      label: (item) => (item.dataset.label ? item.dataset.label + ': ' : '') + formatCurrency(item.raw),
                     },
                   },
                 },
                 scales: {
-                  x: { grid: { display: false }, ticks: { color: tick, maxRotation: 0, autoSkip: true, maxTicksLimit: 8, callback: (v, idx) => { const d = pts[idx] && pts[idx].date; return d ? months[d.getMonth()].slice(0, 3) + " '" + String(d.getFullYear()).slice(2) : ''; } } },
+                  x: { grid: { display: false }, ticks: { color: tick, maxRotation: 0, autoSkip: true, maxTicksLimit: 8, callback: (v, idx) => { const d = labels[idx]; return d ? months[d.getMonth()].slice(0, 3) + " '" + String(d.getFullYear()).slice(2) : ''; } } },
                   y: { grid: { color: grid }, beginAtZero: true, ticks: { color: tick, callback: (v) => '$' + Math.round(v).toLocaleString() } },
                 },
               },
@@ -2338,7 +2367,7 @@ const { theme, isDark } = useTheme();
           } catch (err) { console.error('Debt chart render failed:', err); }
         });
         return () => { cancelAnimationFrame(raf); if (debtChartInstance.current) { debtChartInstance.current.destroy(); debtChartInstance.current = null; } };
-      }, [debtProjection, activeView, isDark]);
+      }, [debtProjectionStd, debtProjectionSnow, snowballMode, activeView, isDark]);
 
       // D3 Sankey rendering effect
       useEffect(() => {
@@ -3204,6 +3233,11 @@ const { theme, isDark } = useTheme();
         debts.forEach(d => { const p = debtPlan.byDebt[d.id]; if (p && p.payoffDateKey) { if (!latestPayoff || p.payoffDateKey > latestPayoff) latestPayoff = p.payoffDateKey; } if (p && (p.neverPays || p.noSource)) anyUnresolved = true; });
         const editBtn = { padding: '0.375rem', background: 'var(--accent-bg)', border: '1px solid var(--accent-border)', borderRadius: '6px', color: 'var(--accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' };
         const warnBox = { display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.875rem', padding: '0.625rem 0.875rem', background: 'var(--warning-bg)', border: '1px solid var(--warning)', borderRadius: '10px', fontSize: '0.8125rem', color: 'var(--warning)', lineHeight: 1.45 };
+        const payablePlanCount = debts.filter(d => { const pp = debtPlan.byDebt[d.id]; return pp && pp.payment && !pp.neverPays && !pp.noSource; }).length;
+        const snowballAvailable = payablePlanCount >= 2;
+        const monthsSaved = debtProjectionStd.months - debtProjectionSnow.months;
+        const interestSaved = debtProjectionStd.totalInterest - debtProjectionSnow.totalInterest;
+        const segBtn = (active) => ({ padding: '0.3125rem 0.75rem', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', border: '1px solid ' + (active ? 'var(--accent-border-strong)' : 'var(--border-light)'), background: active ? 'var(--accent-bg)' : 'transparent', color: active ? 'var(--accent)' : 'var(--text-muted)', transition: 'all 0.2s ease' });
 
         return (
           <div>
@@ -3237,8 +3271,26 @@ const { theme, isDark } = useTheme();
                     </div>
 
                     <div className="app-panel" style={{ ...styles.panel, marginBottom: '1.5rem' }}>
-                      <div style={styles.panelTitle}><Icons.TrendUp /> Watch your debt disappear</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.25rem 0 0.5rem' }}>Projected total balance across debts with a payment plan, shrinking to $0.</div>
+                      <div className="app-panel-header" style={styles.panelHeader}>
+                        <div style={styles.panelTitle}><Icons.TrendUp /> Watch your debt disappear</div>
+                        {snowballAvailable && (
+                          <div style={{ display: 'inline-flex', borderRadius: '8px', overflow: 'hidden', flexShrink: 0 }} role="group" aria-label="Payoff strategy">
+                            <button style={{ ...segBtn(!snowballMode), borderTopRightRadius: 0, borderBottomRightRadius: 0 }} onClick={() => setSnowballMode(false)}>Standard</button>
+                            <button style={{ ...segBtn(snowballMode), borderLeft: 'none', borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }} onClick={() => setSnowballMode(true)}>Snowball</button>
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.5rem' }}>
+                        {snowballMode
+                          ? 'Snowball: when a debt is cleared, its payment rolls into the next-smallest debt — so the total falls faster (dashed line = paying each separately).'
+                          : 'Projected total balance across debts with a payment plan, shrinking to $0.'}
+                      </div>
+                      {snowballAvailable && snowballMode && monthsSaved > 0 && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', padding: '0.625rem 0.875rem', background: 'var(--success-bg)', border: '1px solid var(--success)', borderRadius: '10px', fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+                          <span style={{ color: 'var(--success)', display: 'flex', flexShrink: 0 }}><Icons.TrendUp /></span>
+                          <span>Snowballing clears your debt <strong style={{ color: 'var(--success)' }}>{monthsSaved} month{monthsSaved !== 1 ? 's' : ''} sooner</strong> and saves <strong style={{ color: 'var(--success)' }}>{formatCurrency(interestSaved)}</strong> in interest — at no extra cost to your budget.</span>
+                        </div>
+                      )}
                       <div style={{ height: 280 }}><canvas ref={debtChartRef}></canvas></div>
                     </div>
                   </>
