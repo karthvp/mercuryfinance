@@ -1737,6 +1737,23 @@
         };
       }, [financialData, dashboardYear, activeYear, initialBalances, payrolls, recurringExpenses, oneOffExpenses, balanceOverrides]);
 
+      // How far through the viewed year we are (drives the "paid vs remaining" context).
+      const yearProgress = useMemo(() => {
+        const now = new Date();
+        if (dashboardYear < now.getFullYear()) return 100;
+        if (dashboardYear > now.getFullYear()) return 0;
+        const start = new Date(dashboardYear, 0, 1).getTime();
+        const end = new Date(dashboardYear + 1, 0, 1).getTime();
+        return Math.round(((now.getTime() - start) / (end - start)) * 100);
+      }, [dashboardYear]);
+
+      // Balance overrides applied within the viewed year re-base the running forecast,
+      // so the projected year-end can legitimately diverge from "Starting + Net Annual".
+      const overrideCountForYear = useMemo(
+        () => Object.keys(balanceOverrides).filter(k => k.startsWith(String(dashboardYear) + '-')).length,
+        [balanceOverrides, dashboardYear]
+      );
+
       const ytdExpensesByName = useMemo(() => {
         const cutoffDate = getYearCutoffDate(dashboardYear);
         const yearStart = `${dashboardYear}-01-01`;
@@ -2389,17 +2406,31 @@ const { theme, isDark } = useTheme();
           <div style={styles.sectionTitle}><Icons.TrendUp /> Overview</div>
           <div className="app-dashboard-grid" style={styles.dashboardGrid}>
             <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--success)')} /><div style={styles.statLabel}>Starting Balance (Jan 1)</div><div className="app-stat-value" style={styles.statValue('var(--success)')}>{formatCurrency(stats.initialBalance)}</div></div>
-            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--accent)')} /><div style={styles.statLabel}>Projected Year-End</div><div className="app-stat-value" style={styles.statValue(stats.endOfYearBalance >= 0 ? 'var(--success)' : 'var(--danger)')}>{formatCurrency(stats.endOfYearBalance)}</div><div style={styles.statSubtext}>Dec 31, {dashboardYear}</div></div>
+            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--accent)')} /><div style={styles.statLabel}>Projected Year-End</div><div className="app-stat-value" style={styles.statValue(stats.endOfYearBalance >= 0 ? 'var(--success)' : 'var(--danger)')}>{formatCurrency(stats.endOfYearBalance)}</div><div style={styles.statSubtext}>Dec 31, {dashboardYear}{overrideCountForYear > 0 ? ' · includes overrides' : ''}</div></div>
             <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--danger)')} /><div style={styles.statLabel}>Lowest Balance Point</div><div className="app-stat-value" style={styles.statValue('var(--danger)')}>{formatCurrency(stats.lowestBalance)}</div><div style={styles.statSubtext}>{stats.lowestBalanceDate && formatFullDate(stats.lowestBalanceDate)}</div></div>
             <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--accent-2)')} /><div style={styles.statLabel}>Net Annual Cashflow</div><div className="app-stat-value" style={styles.statValue(stats.netAnnual >= 0 ? 'var(--success)' : 'var(--danger)')}>{formatCurrency(stats.netAnnual)}</div><div style={styles.statSubtext}>Income − Expenses</div></div>
           </div>
 
-          <div style={styles.sectionTitle}><Icons.Expense /> Expense Tracking</div>
+          {overrideCountForYear > 0 && (
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.625rem', padding: '0.75rem 1rem', background: 'var(--accent-bg)', border: '1px solid var(--accent-border)', borderRadius: '12px', fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '1.5rem' }}>
+              <span style={{ color: 'var(--accent)', display: 'flex', flexShrink: 0, marginTop: '1px' }}><Icons.Warning /></span>
+              <span>
+                Your {dashboardYear} forecast includes <strong style={{ color: 'var(--text-primary)' }}>{overrideCountForYear} manual balance override{overrideCountForYear > 1 ? 's' : ''}</strong> set on the Calendar. These re-base the running balance, so <strong style={{ color: 'var(--text-primary)' }}>Projected Year-End</strong> can differ from <em>Starting Balance + Net Annual Cashflow</em>. Clear the “Override” badges on the Calendar to revert.
+              </span>
+            </div>
+          )}
+
+          <div style={styles.sectionTitle}>
+            <Icons.Expense /> Expense Tracking
+            {dashboardYear === realCurrentYear && (
+              <span style={{ color: 'var(--text-dim)', fontWeight: 500, letterSpacing: '0.04em', textTransform: 'none', marginLeft: '0.25rem' }}>· {yearProgress}% of {dashboardYear} elapsed</span>
+            )}
+          </div>
           <div className="app-dashboard-grid" style={styles.dashboardGrid}>
-            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--danger)')} /><div style={styles.statLabel}>Forecasted Recurring Expenses</div><div className="app-stat-value" style={styles.statValue('var(--danger)')}>{formatCurrency(stats.forecastedRecurringExpenses)}</div><div style={styles.statSubtext}>Until Dec 31</div></div>
-            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--warning)')} /><div style={styles.statLabel}>Forecasted Total Expenses</div><div className="app-stat-value" style={styles.statValue('var(--warning)')}>{formatCurrency(stats.forecastedTotalExpenses)}</div><div style={styles.statSubtext}>Recurring + One-off until Dec 31</div></div>
-            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--accent)')} /><div style={styles.statLabel}>Paid Recurring Expenses YTD</div><div className="app-stat-value" style={styles.statValue('var(--accent)')}>{formatCurrency(stats.historicalRecurringExpensesPaid)}</div><div style={styles.statSubtext}>Year to date</div></div>
-            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--accent-2)')} /><div style={styles.statLabel}>Paid Total Expenses YTD</div><div className="app-stat-value" style={styles.statValue('var(--accent-2)')}>{formatCurrency(stats.historicalTotalExpensesPaid)}</div><div style={styles.statSubtext}>Recurring + One-off YTD</div></div>
+            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--accent)')} /><div style={styles.statLabel}>Recurring · Paid so far</div><div className="app-stat-value" style={styles.statValue('var(--accent)')}>{formatCurrency(stats.historicalRecurringExpensesPaid)}</div><div style={styles.statSubtext}>Jan 1 → today</div></div>
+            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--danger)')} /><div style={styles.statLabel}>Recurring · Remaining</div><div className="app-stat-value" style={styles.statValue('var(--danger)')}>{formatCurrency(stats.forecastedRecurringExpenses)}</div><div style={styles.statSubtext}>Today → Dec 31</div></div>
+            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--accent-2)')} /><div style={styles.statLabel}>Total Expenses · Paid so far</div><div className="app-stat-value" style={styles.statValue('var(--accent-2)')}>{formatCurrency(stats.historicalTotalExpensesPaid)}</div><div style={styles.statSubtext}>Recurring + one-off, year to date</div></div>
+            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--warning)')} /><div style={styles.statLabel}>Total Expenses · Remaining</div><div className="app-stat-value" style={styles.statValue('var(--warning)')}>{formatCurrency(stats.forecastedTotalExpenses)}</div><div style={styles.statSubtext}>Recurring + one-off, rest of year</div></div>
           </div>
 
           {ytdExpensesByName.length > 0 && (
