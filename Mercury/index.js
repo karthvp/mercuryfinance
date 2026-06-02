@@ -258,7 +258,7 @@ const validators = {
     if (!expense || typeof expense !== 'object') return false;
     if (typeof expense.name !== 'string' || expense.name.trim() === '') return false;
     if (typeof expense.amount !== 'number' || expense.amount < 0) return false;
-    const validFrequencies = ['weekly', 'monthly', 'yearly'];
+    const validFrequencies = ['weekly', 'semimonthly', 'monthly', 'yearly'];
     if (!validFrequencies.includes(expense.frequency)) return false;
     // Optional link to a debt (Debt Payoff Planner). Absent = unlinked.
     if (expense.debtId != null && typeof expense.debtId !== 'string' && typeof expense.debtId !== 'number') return false;
