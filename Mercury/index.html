@@ -2686,11 +2686,11 @@ const { theme, isDark } = useTheme();
                       <div className="app-table-cell app-hide-xs" style={styles.tableCell}>{day.dayOfWeek}</div>
                       <div className="app-table-cell" style={{ ...styles.tableCell, flexWrap: 'wrap' }}>
                         <div style={styles.expensesList}>
-                          {day.payrollDetails.map((p, i) => (<span key={i} style={styles.payrollBadge}>+${p.amount} {p.name}</span>))}
+                          {day.payrollDetails.map((p, i) => (<span key={i} style={styles.payrollBadge}>+{formatCurrency(p.amount)} {p.name}</span>))}
                           {day.expenseDetails.map((e, i) => (
-                            e.isRecurring 
-                              ? <span key={i} style={styles.recurringExpenseBadge}>-${e.amount} {e.name}</span>
-                              : <span key={i} draggable="true" onDragStart={(ev) => handleDragStart(ev, e.id)} onDragEnd={handleDragEnd} style={{ ...styles.oneOffExpenseBadge, cursor: 'grab' }} title="Drag to move to another date">-${e.amount} {e.name}</span>
+                            e.isRecurring
+                              ? <span key={i} style={styles.recurringExpenseBadge}>-{formatCurrency(e.amount)} {e.name}</span>
+                              : <span key={i} draggable="true" onDragStart={(ev) => handleDragStart(ev, e.id)} onDragEnd={handleDragEnd} style={{ ...styles.oneOffExpenseBadge, cursor: 'grab' }} title="Drag to move to another date">-{formatCurrency(e.amount)} {e.name}</span>
                           ))}
                         </div>
                       </div>
