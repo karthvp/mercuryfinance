@@ -868,6 +868,82 @@
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
+    // ===== Occurrence engine =====
+    // Recurring rules expand into concrete dated occurrences, applying per-occurrence
+    // exceptions keyed by the rule's natural ("origin") date:
+    //   rule.exceptions = { [originDateKey]: { amount?: number, moveTo?: dateKey, skip?: true } }
+    // This lets a single paycheck/bill be re-priced, moved (e.g. off a weekend), or skipped
+    // without disturbing the rest of the schedule.
+    const resolveOccurrence = (defaultAmount, originKey, exceptions) => {
+      const e = exceptions && exceptions[originKey];
+      if (e && e.skip) return null;
+      const amount = e && typeof e.amount === 'number' ? e.amount : defaultAmount;
+      const dateKey = e && e.moveTo ? e.moveTo : originKey;
+      return { amount, dateKey, moved: !!(e && e.moveTo), adjusted: !!(e && typeof e.amount === 'number'), skippable: true };
+    };
+
+    const generateOccurrences = (year, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes) => {
+      const dates = generateDatesForYear(year);
+      const incomeByDate = {};
+      const expenseByDate = {};
+      const add = (map, key, item) => { (map[key] = map[key] || []).push(item); };
+
+      payrolls.forEach(p => {
+        const ex = p.exceptions || {};
+        dates.forEach(date => {
+          if (!isPayday(date, p, year)) return;
+          const origin = toDateKey(date);
+          const occ = resolveOccurrence(p.amount, origin, ex);
+          if (!occ) return;
+          add(incomeByDate, occ.dateKey, { name: p.name, amount: occ.amount, id: p.id, kind: 'recurring', origin, moved: occ.moved, adjusted: occ.adjusted });
+        });
+      });
+      recurringExpenses.forEach(x => {
+        const ex = x.exceptions || {};
+        dates.forEach(date => {
+          if (!isExpenseDue(date, x)) return;
+          const origin = toDateKey(date);
+          const occ = resolveOccurrence(x.amount, origin, ex);
+          if (!occ) return;
+          add(expenseByDate, occ.dateKey, { name: x.name, amount: occ.amount, id: x.id, kind: 'recurring', origin, moved: occ.moved, adjusted: occ.adjusted });
+        });
+      });
+      const prefix = String(year);
+      (oneOffExpenses || []).forEach(e => { if (e.date && e.date.startsWith(prefix)) add(expenseByDate, e.date, { name: e.name, amount: e.amount, id: e.id, kind: 'oneoff', origin: e.date }); });
+      (oneOffIncomes || []).forEach(e => { if (e.date && e.date.startsWith(prefix)) add(incomeByDate, e.date, { name: e.name, amount: e.amount, id: e.id, kind: 'oneoff', origin: e.date }); });
+      return { incomeByDate, expenseByDate };
+    };
+
+    // Project the daily running balance for a year from pre-expanded occurrences.
+    // Balance check-ins (balanceOverrides) re-base the running balance on their date.
+    const buildYearSeries = (year, occ, initialBalance, balanceOverrides, today, todayKey) => {
+      const dates = generateDatesForYear(year);
+      let running = initialBalance;
+      return dates.map(date => {
+        const dateKey = toDateKey(date);
+        const hasCheckIn = balanceOverrides[dateKey] !== undefined;
+        let startingBalance = hasCheckIn ? balanceOverrides[dateKey] : running;
+        const incomes = occ.incomeByDate[dateKey] || [];
+        const expensesArr = occ.expenseByDate[dateKey] || [];
+        const payrollAmount = incomes.reduce((s, i) => s + i.amount, 0);
+        startingBalance += payrollAmount;
+        let recurringExpenseAmount = 0, oneOffExpenseAmount = 0;
+        expensesArr.forEach(e => { if (e.kind === 'recurring') recurringExpenseAmount += e.amount; else oneOffExpenseAmount += e.amount; });
+        const expenses = recurringExpenseAmount + oneOffExpenseAmount;
+        const endingBalance = startingBalance - expenses;
+        running = endingBalance;
+        const expenseDetails = expensesArr.map(e => ({ ...e, isRecurring: e.kind === 'recurring' }));
+        return {
+          date, dateKey, dayOfWeek: getDayOfWeek(date), dayOfWeekIdx: getDayOfWeekIndex(date), dayOfMonth: date.getDate(), month: date.getMonth(), year,
+          startingBalance, endingBalance, expenses,
+          recurringExpenses: recurringExpenseAmount, oneOffExpenses: oneOffExpenseAmount,
+          payrollAmount, payrollDetails: incomes,
+          expenseDetails, recurringExpenseDetails: expenseDetails.filter(e => e.isRecurring), oneOffExpenseDetails: expenseDetails.filter(e => !e.isRecurring),
+          isOverridden: hasCheckIn, isPast: date < today, isToday: dateKey === todayKey,
+        };
+      });
+    };
+
     const Icons = {
       Dashboard: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>,
       Calendar: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
@@ -898,6 +974,47 @@
       User: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
       LogOut: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
     };
+
+    // Per-occurrence editor — adjust the amount, move the date, or skip a single
+    // paycheck/charge without changing the underlying recurring rule.
+    function OccurrenceEditor({ editor, onClose, onApply, onReset, styles }) {
+      const { kind, ruleId, name, originKey, effectiveAmount, defaultAmount, effectiveDate, hasException } = editor;
+      const isIncome = kind === 'income';
+      const [amount, setAmount] = useState(String(effectiveAmount));
+      const [date, setDate] = useState(effectiveDate || originKey);
+
+      const save = () => {
+        const amt = parseFloat(amount);
+        onApply(kind, ruleId, originKey, {
+          amount: (!isNaN(amt) && amt !== defaultAmount) ? Math.abs(amt) : null,
+          moveTo: (date && date !== originKey) ? date : null,
+          skip: false,
+        });
+        onClose();
+      };
+      const skip = () => { onApply(kind, ruleId, originKey, { skip: true, amount: null, moveTo: null }); onClose(); };
+      const reset = () => { onReset(kind, ruleId, originKey); onClose(); };
+
+      return (
+        <div style={styles.formOverlay} onClick={onClose}>
+          <div className="app-form-card" style={styles.formCard} onClick={e => e.stopPropagation()}>
+            <h3 style={styles.formTitle}>Adjust this {isIncome ? 'paycheck' : 'charge'}</h3>
+            <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+              <strong style={{ color: 'var(--text-primary)' }}>{name}</strong> — normally due {formatFullDate(parseDateKey(originKey))}. Changes here affect only this one occurrence.
+            </div>
+            <div style={styles.formGroup}><label style={styles.formLabel}>Amount for this occurrence</label><input type="number" value={amount} onChange={e => setAmount(e.target.value)} style={styles.formInput} /><div style={styles.formHint}>Rule default is {formatCurrency(defaultAmount)}</div></div>
+            <div style={styles.formGroup}><label style={styles.formLabel}>Date for this occurrence</label><input type="date" value={date} onChange={e => setDate(e.target.value)} style={styles.formInput} /><div style={styles.formHint}>Move it if it lands on a weekend or holiday</div></div>
+            <button style={{ ...styles.cancelBtn, width: '100%', color: 'var(--danger)', borderColor: 'var(--danger)', marginBottom: '0.625rem' }} onClick={skip}>Skip this occurrence entirely</button>
+            <div className="app-form-actions" style={styles.formActions}>
+              {hasException
+                ? <button style={styles.cancelBtn} onClick={reset}>Reset to default</button>
+                : <button style={styles.cancelBtn} onClick={onClose}>Cancel</button>}
+              <button style={styles.submitBtn} onClick={save}>Save</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
 
     function MoneyRain({ containerRef }) {
       const canvasRef = useRef(null);
@@ -1342,9 +1459,13 @@
       payroll: { name: '', amount: '', frequency: 'semimonthly', startDay: 1, dayOfWeek: 5 },
       recurring: { name: '', amount: '', frequency: 'monthly', dayOfMonth: 1, dayOfWeek: 5, month: 0, day: 1 },
       oneOff: { name: '', amount: '', date: '' },
-      activeForm: null, // 'payroll' | 'recurring' | 'oneOff' | null
-      calendarDate: null // for adding expense from calendar
+      oneOffIncome: { name: '', amount: '', date: '' },
+      activeForm: null, // 'payroll' | 'recurring' | 'oneOff' | 'oneOffIncome' | null
+      calendarDate: null, // for adding from calendar
+      editingId: null // id of the entry being edited (null = creating new)
     };
+
+    const formKeyFor = { payroll: 'payroll', recurring: 'recurring', oneOff: 'oneOff', oneOffIncome: 'oneOffIncome' };
 
     const formReducer = (state, action) => {
       switch (action.type) {
@@ -1354,16 +1475,22 @@
           return { ...state, recurring: { ...state.recurring, ...action.payload } };
         case 'UPDATE_ONEOFF':
           return { ...state, oneOff: { ...state.oneOff, ...action.payload } };
+        case 'UPDATE_ONEOFF_INCOME':
+          return { ...state, oneOffIncome: { ...state.oneOffIncome, ...action.payload } };
         case 'SHOW_FORM':
-          return { ...state, activeForm: action.formType, calendarDate: action.calendarDate || null };
+          return { ...state, activeForm: action.formType, calendarDate: action.calendarDate || null, editingId: null };
+        case 'EDIT_ENTRY':
+          return { ...state, [formKeyFor[action.formType]]: action.values, activeForm: action.formType, calendarDate: null, editingId: action.id };
         case 'HIDE_FORM':
-          return { ...state, activeForm: null, calendarDate: null };
+          return { ...state, activeForm: null, calendarDate: null, editingId: null };
         case 'RESET_PAYROLL':
-          return { ...state, payroll: initialFormState.payroll, activeForm: null };
+          return { ...state, payroll: initialFormState.payroll, activeForm: null, editingId: null };
         case 'RESET_RECURRING':
-          return { ...state, recurring: initialFormState.recurring, activeForm: null };
+          return { ...state, recurring: initialFormState.recurring, activeForm: null, editingId: null };
         case 'RESET_ONEOFF':
-          return { ...state, oneOff: initialFormState.oneOff, activeForm: null, calendarDate: null };
+          return { ...state, oneOff: initialFormState.oneOff, activeForm: null, calendarDate: null, editingId: null };
+        case 'RESET_ONEOFF_INCOME':
+          return { ...state, oneOffIncome: initialFormState.oneOffIncome, activeForm: null, calendarDate: null, editingId: null };
         default:
           return state;
       }
@@ -1383,6 +1510,7 @@
       const [payrolls, setPayrolls] = useState([]);
       const [recurringExpenses, setRecurringExpenses] = useState([]);
       const [oneOffExpenses, setOneOffExpenses] = useState([]);
+      const [oneOffIncomes, setOneOffIncomes] = useState([]);
       const [balanceOverrides, setBalanceOverrides] = useState({});
       const getInitialActiveView = () => {
         const hash = window.location.hash;
@@ -1425,9 +1553,12 @@
       const newPayroll = formState.payroll;
       const newRecurringExpense = formState.recurring;
       const newOneOffExpense = formState.oneOff;
+      const newOneOffIncome = formState.oneOffIncome;
       const showPayrollForm = formState.activeForm === 'payroll';
       const showRecurringExpenseForm = formState.activeForm === 'recurring';
       const showOneOffExpenseForm = formState.activeForm === 'oneOff';
+      const showOneOffIncomeForm = formState.activeForm === 'oneOffIncome';
+      const isEditing = formState.editingId != null;
       const addOneOffFromCalendar = formState.calendarDate;
 
       // Helper functions for form updates (maintaining similar API)
@@ -1443,6 +1574,11 @@
         const newVal = typeof updater === 'function' ? updater(formState.oneOff) : updater;
         formDispatch({ type: 'UPDATE_ONEOFF', payload: newVal });
       };
+      const setNewOneOffIncome = (updater) => {
+        const newVal = typeof updater === 'function' ? updater(formState.oneOffIncome) : updater;
+        formDispatch({ type: 'UPDATE_ONEOFF_INCOME', payload: newVal });
+      };
+      const setShowOneOffIncomeForm = (show) => formDispatch({ type: show ? 'SHOW_FORM' : 'HIDE_FORM', formType: 'oneOffIncome' });
       const setShowPayrollForm = (show) => formDispatch({ type: show ? 'SHOW_FORM' : 'HIDE_FORM', formType: 'payroll' });
       const setShowRecurringExpenseForm = (show) => formDispatch({ type: show ? 'SHOW_FORM' : 'HIDE_FORM', formType: 'recurring' });
       const setShowOneOffExpenseForm = (show) => formDispatch({ type: show ? 'SHOW_FORM' : 'HIDE_FORM', formType: 'oneOff' });
@@ -1509,6 +1645,7 @@
             if (data.payrolls) setPayrolls(data.payrolls);
             if (data.recurringExpenses) setRecurringExpenses(data.recurringExpenses);
             if (data.oneOffExpenses) setOneOffExpenses(data.oneOffExpenses);
+            if (data.oneOffIncomes) setOneOffIncomes(data.oneOffIncomes);
             if (data.balanceOverrides) setBalanceOverrides(data.balanceOverrides);
             if (data.currentYear) {
               setActiveYear(data.currentYear);
@@ -1537,6 +1674,7 @@
             payrolls,
             recurringExpenses,
             oneOffExpenses,
+            oneOffIncomes,
             balanceOverrides,
             currentYear: activeYear,
             archivedYears
@@ -1555,103 +1693,36 @@
               savedTimeoutRef.current = setTimeout(() => setSaveState('idle'), 3000);
             });
         }, 500);
-      }, [initialBalances, payrolls, recurringExpenses, oneOffExpenses, balanceOverrides, activeYear, archivedYears]);
+      }, [initialBalances, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes, balanceOverrides, activeYear, archivedYears]);
 
       useEffect(() => {
         if (!isLoading) saveToServer();
-      }, [initialBalances, payrolls, recurringExpenses, oneOffExpenses, balanceOverrides, activeYear, archivedYears]);
+      }, [initialBalances, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes, balanceOverrides, activeYear, archivedYears]);
 
       const datesForYear = useMemo(() => generateDatesForYear(activeYear), [activeYear]);
       const availableYears = useMemo(() => Array.from(new Set([activeYear, ...archivedYears])).sort((a, b) => b - a), [activeYear, archivedYears]);
 
-      const financialData = useMemo(() => {
-        const data = [];
-        const initialBalance = initialBalances[activeYear] || 5000;
-        let runningBalance = initialBalance;
-
-        datesForYear.forEach((date) => {
-          const { dateKey, dayOfMonth, dayOfWeekIdx, month, year } = getDateInfo(date);
-
-          let startingBalance = balanceOverrides[dateKey] !== undefined ? balanceOverrides[dateKey] : runningBalance;
-
-          // Calculate payroll using utility function
-          let payrollAmount = 0;
-          const payrollDetails = [];
-          payrolls.forEach(payroll => {
-            if (isPayday(date, payroll, activeYear)) {
-              payrollAmount += payroll.amount;
-              payrollDetails.push(payroll);
-            }
-          });
-
-          startingBalance += payrollAmount;
-
-          // Calculate recurring expenses using utility function
-          let recurringExpenseAmount = 0;
-          const recurringExpenseDetails = [];
-          recurringExpenses.forEach(expense => {
-            if (isExpenseDue(date, expense)) {
-              recurringExpenseAmount += expense.amount;
-              recurringExpenseDetails.push({ ...expense, isRecurring: true });
-            }
-          });
-
-          // Calculate one-off expenses
-          let oneOffExpenseAmount = 0;
-          const oneOffExpenseDetails = [];
-          oneOffExpenses.forEach(expense => {
-            if (expense.date === dateKey) {
-              oneOffExpenseAmount += expense.amount;
-              oneOffExpenseDetails.push({ ...expense, isRecurring: false });
-            }
-          });
-
-          const totalExpenses = recurringExpenseAmount + oneOffExpenseAmount;
-          const allExpenseDetails = [...recurringExpenseDetails, ...oneOffExpenseDetails];
-          const endingBalance = startingBalance - totalExpenses;
-
-          data.push({
-            date, dateKey, dayOfWeek: getDayOfWeek(date), dayOfWeekIdx, dayOfMonth, month, year,
-            startingBalance, endingBalance, expenses: totalExpenses,
-            recurringExpenses: recurringExpenseAmount, oneOffExpenses: oneOffExpenseAmount,
-            expenseDetails: allExpenseDetails, recurringExpenseDetails, oneOffExpenseDetails,
-            payrollAmount, payrollDetails,
-            isOverridden: balanceOverrides[dateKey] !== undefined,
-            isPast: date < today, isToday: date.toDateString() === today.toDateString(),
-          });
-
-          runningBalance = endingBalance;
-        });
-
-        return data;
-      }, [datesForYear, activeYear, initialBalances, payrolls, recurringExpenses, oneOffExpenses, balanceOverrides]);
-
       const todayKey = toDateKey(today);
+
+      // Expand all rules (+ one-offs) into dated occurrences for the active year.
+      const activeOccurrences = useMemo(
+        () => generateOccurrences(activeYear, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes),
+        [activeYear, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes]
+      );
+
+      const financialData = useMemo(
+        () => buildYearSeries(activeYear, activeOccurrences, initialBalances[activeYear] || 5000, balanceOverrides, today, todayKey),
+        [activeYear, activeOccurrences, initialBalances, balanceOverrides, todayKey]
+      );
 
       // Per-day balance series for the viewed year. Reuses financialData for the
       // active year; recomputes for archived/other years. This is the single source
       // the dashboard chart and all aggregate stats read from.
       const dashboardSeries = useMemo(() => {
         if (dashboardYear === activeYear) return financialData;
-        const dates = generateDatesForYear(dashboardYear);
-        let runningBalance = initialBalances[dashboardYear] || 5000;
-        return dates.map((date) => {
-          const { dateKey } = getDateInfo(date);
-          const hasCheckIn = balanceOverrides[dateKey] !== undefined;
-          let startingBalance = hasCheckIn ? balanceOverrides[dateKey] : runningBalance;
-          let payrollAmount = 0;
-          payrolls.forEach(p => { if (isPayday(date, p, dashboardYear)) payrollAmount += p.amount; });
-          startingBalance += payrollAmount;
-          let recurringExp = 0;
-          recurringExpenses.forEach(e => { if (isExpenseDue(date, e)) recurringExp += e.amount; });
-          let oneOffExp = 0;
-          oneOffExpenses.forEach(e => { if (e.date === dateKey) oneOffExp += e.amount; });
-          const expenses = recurringExp + oneOffExp;
-          const endingBalance = startingBalance - expenses;
-          runningBalance = endingBalance;
-          return { date, dateKey, startingBalance, endingBalance, expenses, recurringExpenses: recurringExp, oneOffExpenses: oneOffExp, payrollAmount, isPast: date < today, isToday: dateKey === todayKey, isOverridden: hasCheckIn };
-        });
-      }, [financialData, dashboardYear, activeYear, initialBalances, payrolls, recurringExpenses, oneOffExpenses, balanceOverrides, todayKey]);
+        const occ = generateOccurrences(dashboardYear, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes);
+        return buildYearSeries(dashboardYear, occ, initialBalances[dashboardYear] || 5000, balanceOverrides, today, todayKey);
+      }, [financialData, dashboardYear, activeYear, initialBalances, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes, balanceOverrides, todayKey]);
 
       const stats = useMemo(() => {
         const yearData = dashboardSeries;
@@ -1759,38 +1830,23 @@
         };
       }, [dashboardSeries, dashboardYear, realCurrentYear, initialBalances, balanceOverrides, todayKey, stats.netAnnual]);
 
+      // Occurrences for the viewed year (reuses the active-year expansion when possible).
+      const dashboardOccurrences = useMemo(
+        () => dashboardYear === activeYear ? activeOccurrences : generateOccurrences(dashboardYear, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes),
+        [dashboardYear, activeYear, activeOccurrences, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes]
+      );
+
       const ytdExpensesByName = useMemo(() => {
         const cutoffDate = getYearCutoffDate(dashboardYear);
-        const yearStart = `${dashboardYear}-01-01`;
         const expenseTotals = {};
-
-        // Use cached dates from generateDatesForYear (now memoized)
-        const dates = generateDatesForYear(dashboardYear);
-
-        recurringExpenses.forEach(expense => {
-          let total = 0;
-          dates.forEach(date => {
-            const dateKey = toDateKey(date);
-            if (dateKey > cutoffDate) return;
-            if (isExpenseDue(date, expense)) {
-              total += expense.amount;
-            }
-          });
-          if (total > 0) {
-            expenseTotals[expense.name] = (expenseTotals[expense.name] || 0) + total;
-          }
+        Object.entries(dashboardOccurrences.expenseByDate).forEach(([dateKey, items]) => {
+          if (dateKey > cutoffDate) return;
+          items.forEach(it => { expenseTotals[it.name] = (expenseTotals[it.name] || 0) + it.amount; });
         });
-
-        oneOffExpenses.forEach(expense => {
-          if (expense.date >= yearStart && expense.date <= cutoffDate) {
-            expenseTotals[expense.name] = (expenseTotals[expense.name] || 0) + expense.amount;
-          }
-        });
-        
         return Object.entries(expenseTotals)
           .map(([name, amount]) => ({ name, amount }))
           .sort((a, b) => b.amount - a.amount);
-      }, [dashboardYear, recurringExpenses, oneOffExpenses]);
+      }, [dashboardYear, dashboardOccurrences]);
 
 const { theme, isDark } = useTheme();
 
@@ -1812,53 +1868,24 @@ const { theme, isDark } = useTheme();
 
       const sankeyData = useMemo(() => {
         const cutoffDate = getYearCutoffDate(dashboardYear);
-        const yearStart = `${dashboardYear}-01-01`;
 
-        // Use cached dates from memoized generateDatesForYear
-        const dates = generateDatesForYear(dashboardYear);
-
-        // Calculate income by source (payrolls) using utility function
+        // Income & expenses by name, summed from expanded occurrences up to the cutoff.
+        // This reflects per-occurrence adjustments, moves, skips, and one-off income.
         const incomeTotals = {};
-        payrolls.forEach(payroll => {
-          let total = 0;
-          dates.forEach(date => {
-            const dateKey = toDateKey(date);
-            if (dateKey > cutoffDate) return;
-            if (isPayday(date, payroll, dashboardYear)) {
-              total += payroll.amount;
-            }
-          });
-          if (total > 0) {
-            incomeTotals[payroll.name] = (incomeTotals[payroll.name] || 0) + total;
-          }
+        Object.entries(dashboardOccurrences.incomeByDate).forEach(([dateKey, items]) => {
+          if (dateKey > cutoffDate) return;
+          items.forEach(it => { incomeTotals[it.name] = (incomeTotals[it.name] || 0) + it.amount; });
         });
 
-        // Calculate expenses by category using utility function
         const expenseTotals = {};
         const expenseDetails = {};
-
-        recurringExpenses.forEach(expense => {
-          let total = 0;
-          dates.forEach(date => {
-            const dateKey = toDateKey(date);
-            if (dateKey > cutoffDate) return;
-            if (isExpenseDue(date, expense)) {
-              total += expense.amount;
-            }
+        Object.entries(dashboardOccurrences.expenseByDate).forEach(([dateKey, items]) => {
+          if (dateKey > cutoffDate) return;
+          items.forEach(it => {
+            expenseTotals[it.name] = (expenseTotals[it.name] || 0) + it.amount;
+            if (!expenseDetails[it.name]) expenseDetails[it.name] = [];
+            expenseDetails[it.name].push({ name: it.name, amount: it.amount, type: it.kind === 'oneoff' ? 'one-off' : 'recurring', date: dateKey });
           });
-          if (total > 0) {
-            expenseTotals[expense.name] = (expenseTotals[expense.name] || 0) + total;
-            if (!expenseDetails[expense.name]) expenseDetails[expense.name] = [];
-            expenseDetails[expense.name].push({ name: expense.name, amount: total, type: 'recurring', frequency: expense.frequency });
-          }
-        });
-
-        oneOffExpenses.forEach(expense => {
-          if (expense.date >= yearStart && expense.date <= cutoffDate) {
-            expenseTotals[expense.name] = (expenseTotals[expense.name] || 0) + expense.amount;
-            if (!expenseDetails[expense.name]) expenseDetails[expense.name] = [];
-            expenseDetails[expense.name].push({ name: expense.name, amount: expense.amount, type: 'one-off', date: expense.date });
-          }
         });
 
         const totalIncome = Object.values(incomeTotals).reduce((sum, v) => sum + v, 0);
@@ -1926,7 +1953,7 @@ const { theme, isDark } = useTheme();
           expenseDetails,
           incomeSources: Object.entries(incomeTotals).map(([name, amount]) => ({ name, amount }))
         };
-      }, [dashboardYear, payrolls, recurringExpenses, oneOffExpenses]);
+      }, [dashboardYear, dashboardOccurrences, payrolls]);
 
       useEffect(() => {
         if (!ytdChartRef.current || activeView !== 'dashboard') return;
@@ -2370,15 +2397,64 @@ const { theme, isDark } = useTheme();
         if (!confirm(`Clear all balance check-ins for ${year}? Your forecast will fall back to a pure projection from your inputs.`)) return;
         setBalanceOverrides(prev => Object.fromEntries(Object.entries(prev).filter(([k]) => !k.startsWith(String(year) + '-'))));
       };
-      const addPayroll = () => { if (newPayroll.name && newPayroll.amount) { setPayrolls(prev => [...prev, { id: Date.now(), name: newPayroll.name, amount: parseFloat(newPayroll.amount), frequency: newPayroll.frequency, startDay: parseInt(newPayroll.startDay), dayOfWeek: parseInt(newPayroll.dayOfWeek), startYear: activeYear }]); formDispatch({ type: 'RESET_PAYROLL' }); } };
+      // Upsert helper: edit in place when editingId is set, otherwise append a new entry.
+      const upsert = (setter, fields) => setter(prev => formState.editingId != null
+        ? prev.map(item => item.id === formState.editingId ? { ...item, ...fields } : item)
+        : [...prev, { id: Date.now(), ...fields }]);
+
+      const addPayroll = () => { if (newPayroll.name && newPayroll.amount !== '') { upsert(setPayrolls, { name: newPayroll.name.trim(), amount: Math.abs(parseFloat(newPayroll.amount)) || 0, frequency: newPayroll.frequency, startDay: parseInt(newPayroll.startDay), dayOfWeek: parseInt(newPayroll.dayOfWeek), startYear: activeYear }); formDispatch({ type: 'RESET_PAYROLL' }); } };
       const deletePayroll = (id) => { setPayrolls(prev => prev.filter(p => p.id !== id)); };
-      const addRecurringExpense = () => { if (newRecurringExpense.name && newRecurringExpense.amount) { setRecurringExpenses(prev => [...prev, { id: Date.now(), name: newRecurringExpense.name, amount: parseFloat(newRecurringExpense.amount), frequency: newRecurringExpense.frequency, dayOfMonth: parseInt(newRecurringExpense.dayOfMonth), dayOfWeek: parseInt(newRecurringExpense.dayOfWeek), month: parseInt(newRecurringExpense.month), day: parseInt(newRecurringExpense.day) }]); formDispatch({ type: 'RESET_RECURRING' }); } };
+      const editPayroll = (p) => formDispatch({ type: 'EDIT_ENTRY', formType: 'payroll', id: p.id, values: { name: p.name, amount: String(p.amount), frequency: p.frequency, startDay: p.startDay ?? 1, dayOfWeek: p.dayOfWeek ?? 5 } });
+
+      const addRecurringExpense = () => { if (newRecurringExpense.name && newRecurringExpense.amount !== '') { upsert(setRecurringExpenses, { name: newRecurringExpense.name.trim(), amount: Math.abs(parseFloat(newRecurringExpense.amount)) || 0, frequency: newRecurringExpense.frequency, dayOfMonth: parseInt(newRecurringExpense.dayOfMonth), dayOfWeek: parseInt(newRecurringExpense.dayOfWeek), month: parseInt(newRecurringExpense.month), day: parseInt(newRecurringExpense.day) }); formDispatch({ type: 'RESET_RECURRING' }); } };
       const deleteRecurringExpense = (id) => { setRecurringExpenses(prev => prev.filter(e => e.id !== id)); };
-      const addOneOffExpense = () => { if (newOneOffExpense.name && newOneOffExpense.amount && newOneOffExpense.date) { setOneOffExpenses(prev => [...prev, { id: Date.now(), name: newOneOffExpense.name, amount: parseFloat(newOneOffExpense.amount), date: newOneOffExpense.date }]); formDispatch({ type: 'RESET_ONEOFF' }); } };
+      const editRecurringExpense = (e) => formDispatch({ type: 'EDIT_ENTRY', formType: 'recurring', id: e.id, values: { name: e.name, amount: String(e.amount), frequency: e.frequency, dayOfMonth: e.dayOfMonth ?? 1, dayOfWeek: e.dayOfWeek ?? 5, month: e.month ?? 0, day: e.day ?? 1 } });
+
+      const addOneOffExpense = () => { if (newOneOffExpense.name && newOneOffExpense.amount !== '' && newOneOffExpense.date) { upsert(setOneOffExpenses, { name: newOneOffExpense.name.trim(), amount: Math.abs(parseFloat(newOneOffExpense.amount)) || 0, date: newOneOffExpense.date }); formDispatch({ type: 'RESET_ONEOFF' }); } };
       const deleteOneOffExpense = (id) => { setOneOffExpenses(prev => prev.filter(e => e.id !== id)); };
-      const openOneOffFormForDate = (dateKey) => { formDispatch({ type: 'UPDATE_ONEOFF', payload: { name: '', amount: '', date: dateKey } }); formDispatch({ type: 'SHOW_FORM', formType: 'oneOff', calendarDate: dateKey }); };
+      const editOneOffExpense = (e) => formDispatch({ type: 'EDIT_ENTRY', formType: 'oneOff', id: e.id, values: { name: e.name, amount: String(e.amount), date: e.date } });
+
+      const addOneOffIncome = () => { if (newOneOffIncome.name && newOneOffIncome.amount !== '' && newOneOffIncome.date) { upsert(setOneOffIncomes, { name: newOneOffIncome.name.trim(), amount: Math.abs(parseFloat(newOneOffIncome.amount)) || 0, date: newOneOffIncome.date }); formDispatch({ type: 'RESET_ONEOFF_INCOME' }); } };
+      const deleteOneOffIncome = (id) => { setOneOffIncomes(prev => prev.filter(e => e.id !== id)); };
+      const editOneOffIncome = (e) => formDispatch({ type: 'EDIT_ENTRY', formType: 'oneOffIncome', id: e.id, values: { name: e.name, amount: String(e.amount), date: e.date } });
+
+      const openOneOffFormForDate = (dateKey) => { formDispatch({ type: 'EDIT_ENTRY', formType: 'oneOff', id: null, values: { name: '', amount: '', date: dateKey } }); formDispatch({ type: 'SHOW_FORM', formType: 'oneOff', calendarDate: dateKey }); };
+
+      // ===== Per-occurrence exceptions (adjust amount / move date / skip a single one) =====
+      const [occEditor, setOccEditor] = useState(null); // { kind:'income'|'expense', detail, dayKey }
+      const ruleSetterFor = (kind) => kind === 'income' ? setPayrolls : setRecurringExpenses;
+      const applyOccurrenceException = (kind, ruleId, originKey, patch) => {
+        ruleSetterFor(kind)(prev => prev.map(r => {
+          if (r.id !== ruleId) return r;
+          const exceptions = { ...(r.exceptions || {}) };
+          const next = { ...(exceptions[originKey] || {}), ...patch };
+          // Drop empty exceptions so a reset truly reverts to the rule default.
+          if (next.skip == null && next.moveTo == null && next.amount == null) delete exceptions[originKey];
+          else exceptions[originKey] = next;
+          return { ...r, exceptions };
+        }));
+      };
+      const resetOccurrence = (kind, ruleId, originKey) => {
+        ruleSetterFor(kind)(prev => prev.map(r => {
+          if (r.id !== ruleId) return r;
+          const exceptions = { ...(r.exceptions || {}) };
+          delete exceptions[originKey];
+          return { ...r, exceptions };
+        }));
+      };
+      // Open the per-occurrence editor for a recurring badge clicked on the Calendar.
+      const openOccurrenceEditor = (kind, detail, shownDateKey) => {
+        const rule = (kind === 'income' ? payrolls : recurringExpenses).find(r => r.id === detail.id);
+        if (!rule) return;
+        setOccEditor({
+          kind, ruleId: detail.id, name: detail.name, originKey: detail.origin,
+          defaultAmount: rule.amount, effectiveAmount: detail.amount, effectiveDate: shownDateKey,
+          hasException: !!(rule.exceptions && rule.exceptions[detail.origin]),
+        });
+      };
+
       const updateInitialBalance = (year, value) => { setInitialBalances(prev => ({ ...prev, [year]: parseFloat(value) || 0 })); };
-      const clearAllData = () => { if (confirm('Clear all data? This cannot be undone!')) { setInitialBalances({ [activeYear]: 5000 }); setPayrolls([]); setRecurringExpenses([]); setOneOffExpenses([]); setBalanceOverrides({}); setArchivedYears([]); } };
+      const clearAllData = () => { if (confirm('Clear all data? This cannot be undone!')) { setInitialBalances({ [activeYear]: 5000 }); setPayrolls([]); setRecurringExpenses([]); setOneOffExpenses([]); setOneOffIncomes([]); setBalanceOverrides({}); setArchivedYears([]); } };
 
       const frequencyLabels = { 'weekly': 'Weekly', 'biweekly': 'Biweekly', 'monthly': 'Monthly', 'semimonthly': 'Semi-monthly (15th & EOM)', 'last-weekday-15th': 'Last weekday before 15th', 'last-weekday-eom': 'Last weekday of month', 'yearly': 'Yearly' };
       const getExpenseFrequencyLabel = (expense) => { if (expense.frequency === 'weekly') return `Weekly on ${dayNames[expense.dayOfWeek]}s`; if (expense.frequency === 'monthly') return `Monthly on day ${expense.dayOfMonth}`; if (expense.frequency === 'yearly') return `Yearly on ${months[expense.month]} ${expense.day}`; return expense.frequency; };
@@ -2491,6 +2567,8 @@ const { theme, isDark } = useTheme();
         const ytdNet = stats.historicalPayrollReceived - stats.historicalTotalExpensesPaid;
         const legendDot = (color, filled) => ({ width: '10px', height: '10px', borderRadius: '50%', background: filled ? color : 'transparent', border: `2px solid ${color}`, display: 'inline-block' });
         const legendItem = { display: 'inline-flex', alignItems: 'center', gap: '0.4rem' };
+        const editBtn = { padding: '0.375rem', background: 'var(--accent-bg)', border: '1px solid var(--accent-border)', borderRadius: '6px', color: 'var(--accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' };
+        const yearOneOffIncomes = oneOffIncomes.filter(e => e.date.startsWith(String(dashboardYear))).sort((a, b) => a.date.localeCompare(b.date));
 
         return (
         <div>
@@ -2584,7 +2662,20 @@ const { theme, isDark } = useTheme();
               {payrolls.length === 0 ? <div style={styles.emptyState}>No income sources added yet</div> : payrolls.map(payroll => (
                 <div key={payroll.id} className="app-item-row" style={styles.itemRow}>
                   <div><div style={styles.itemName}>{payroll.name}</div><div style={styles.itemMeta}>{frequencyLabels[payroll.frequency]}</div></div>
-                  <div className="app-item-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}><span style={styles.itemAmount(true)}>+{formatCurrency(payroll.amount)}</span><button className="icon-btn" aria-label={`Delete income source ${payroll.name}`} style={styles.deleteBtn} onClick={() => deletePayroll(payroll.id)}><Icons.Trash /></button></div>
+                  <div className="app-item-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><span style={styles.itemAmount(true)}>+{formatCurrency(payroll.amount)}</span><button className="icon-btn" aria-label={`Edit income source ${payroll.name}`} style={editBtn} onClick={() => editPayroll(payroll)}><Icons.Edit /></button><button className="icon-btn" aria-label={`Delete income source ${payroll.name}`} style={styles.deleteBtn} onClick={() => deletePayroll(payroll.id)}><Icons.Trash /></button></div>
+                </div>
+              ))}
+            </div>
+
+            <div className="app-panel" style={styles.panel}>
+              <div className="app-panel-header" style={styles.panelHeader}>
+                <div style={styles.panelTitle}><Icons.Plus /> One-Off Income</div>
+                <button style={styles.addButton} onClick={() => setShowOneOffIncomeForm(true)}><Icons.Plus /> Add</button>
+              </div>
+              {yearOneOffIncomes.length === 0 ? <div style={styles.emptyState}>No one-off income for {dashboardYear} — add bonuses, refunds, gifts</div> : yearOneOffIncomes.map(income => (
+                <div key={income.id} className="app-item-row" style={styles.itemRow}>
+                  <div><div style={styles.itemName}>{income.name}</div><div style={styles.itemMeta}>{formatFullDate(parseDateKey(income.date))}</div></div>
+                  <div className="app-item-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><span style={styles.itemAmount(true)}>+{formatCurrency(income.amount)}</span><button className="icon-btn" aria-label={`Edit one-off income ${income.name}`} style={editBtn} onClick={() => editOneOffIncome(income)}><Icons.Edit /></button><button className="icon-btn" aria-label={`Delete one-off income ${income.name}`} style={styles.deleteBtn} onClick={() => deleteOneOffIncome(income.id)}><Icons.Trash /></button></div>
                 </div>
               ))}
             </div>
@@ -2597,7 +2688,7 @@ const { theme, isDark } = useTheme();
               {recurringExpenses.length === 0 ? <div style={styles.emptyState}>No recurring expenses added yet</div> : recurringExpenses.map(expense => (
                 <div key={expense.id} className="app-item-row" style={styles.itemRow}>
                   <div><div style={styles.itemName}>{expense.name}</div><div style={styles.itemMeta}>{getExpenseFrequencyLabel(expense)}</div></div>
-                  <div className="app-item-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}><span style={styles.itemAmount()}>-{formatCurrency(expense.amount)}</span><button className="icon-btn" aria-label={`Delete recurring expense ${expense.name}`} style={styles.deleteBtn} onClick={() => deleteRecurringExpense(expense.id)}><Icons.Trash /></button></div>
+                  <div className="app-item-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><span style={styles.itemAmount()}>-{formatCurrency(expense.amount)}</span><button className="icon-btn" aria-label={`Edit recurring expense ${expense.name}`} style={editBtn} onClick={() => editRecurringExpense(expense)}><Icons.Edit /></button><button className="icon-btn" aria-label={`Delete recurring expense ${expense.name}`} style={styles.deleteBtn} onClick={() => deleteRecurringExpense(expense.id)}><Icons.Trash /></button></div>
                 </div>
               ))}
             </div>
@@ -2610,7 +2701,7 @@ const { theme, isDark } = useTheme();
               {oneOffExpenses.filter(e => e.date.startsWith(String(dashboardYear))).length === 0 ? <div style={styles.emptyState}>No one-off expenses for {dashboardYear}</div> : oneOffExpenses.filter(e => e.date.startsWith(String(dashboardYear))).sort((a, b) => a.date.localeCompare(b.date)).map(expense => (
                 <div key={expense.id} className="app-item-row" style={styles.itemRow}>
                   <div><div style={styles.itemName}>{expense.name}</div><div style={styles.itemMeta}>{formatFullDate(parseDateKey(expense.date))}</div></div>
-                  <div className="app-item-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}><span style={styles.itemAmount()}>-{formatCurrency(expense.amount)}</span><button className="icon-btn" aria-label={`Delete one-off expense ${expense.name}`} style={styles.deleteBtn} onClick={() => deleteOneOffExpense(expense.id)}><Icons.Trash /></button></div>
+                  <div className="app-item-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><span style={styles.itemAmount()}>-{formatCurrency(expense.amount)}</span><button className="icon-btn" aria-label={`Edit one-off expense ${expense.name}`} style={editBtn} onClick={() => editOneOffExpense(expense)}><Icons.Edit /></button><button className="icon-btn" aria-label={`Delete one-off expense ${expense.name}`} style={styles.deleteBtn} onClick={() => deleteOneOffExpense(expense.id)}><Icons.Trash /></button></div>
                 </div>
               ))}
             </div>
@@ -2866,11 +2957,15 @@ const { theme, isDark } = useTheme();
                       <div className="app-table-cell app-hide-xs" style={styles.tableCell}>{day.dayOfWeek}</div>
                       <div className="app-table-cell" style={{ ...styles.tableCell, flexWrap: 'wrap' }}>
                         <div style={styles.expensesList}>
-                          {day.payrollDetails.map((p, i) => (<span key={i} style={styles.payrollBadge}>+{formatCurrency(p.amount)} {p.name}</span>))}
+                          {day.payrollDetails.map((p, i) => (
+                            p.kind === 'recurring'
+                              ? <span key={i} style={{ ...styles.payrollBadge, cursor: 'pointer' }} onClick={() => openOccurrenceEditor('income', p, day.dateKey)} title="Adjust, move, or skip this paycheck">+{formatCurrency(p.amount)} {p.name}{(p.moved || p.adjusted) ? ' ✎' : ''}</span>
+                              : <span key={i} style={{ ...styles.payrollBadge, cursor: 'pointer' }} onClick={() => editOneOffIncome(p)} title="Edit this one-off income">+{formatCurrency(p.amount)} {p.name}</span>
+                          ))}
                           {day.expenseDetails.map((e, i) => (
                             e.isRecurring
-                              ? <span key={i} style={styles.recurringExpenseBadge}>-{formatCurrency(e.amount)} {e.name}</span>
-                              : <span key={i} draggable="true" onDragStart={(ev) => handleDragStart(ev, e.id)} onDragEnd={handleDragEnd} style={{ ...styles.oneOffExpenseBadge, cursor: 'grab' }} title="Drag to move to another date">-{formatCurrency(e.amount)} {e.name}</span>
+                              ? <span key={i} style={{ ...styles.recurringExpenseBadge, cursor: 'pointer' }} onClick={() => openOccurrenceEditor('expense', e, day.dateKey)} title="Adjust, move, or skip this charge">-{formatCurrency(e.amount)} {e.name}{(e.moved || e.adjusted) ? ' ✎' : ''}</span>
+                              : <span key={i} draggable="true" onDragStart={(ev) => handleDragStart(ev, e.id)} onDragEnd={handleDragEnd} onClick={() => editOneOffExpense(e)} style={{ ...styles.oneOffExpenseBadge, cursor: 'grab' }} title="Drag to move · click to edit">-{formatCurrency(e.amount)} {e.name}</span>
                           ))}
                         </div>
                       </div>
@@ -2935,12 +3030,12 @@ const { theme, isDark } = useTheme();
           {showPayrollForm && (
             <div style={styles.formOverlay} onClick={() => setShowPayrollForm(false)}>
               <div className="app-form-card" style={styles.formCard} onClick={e => e.stopPropagation()}>
-                <h3 style={styles.formTitle}>Add Income Source</h3>
+                <h3 style={styles.formTitle}>{isEditing ? 'Edit Income Source' : 'Add Income Source'}</h3>
                 <div style={styles.formGroup}><label style={styles.formLabel}>Name</label><input type="text" placeholder="e.g., Salary, Freelance" value={newPayroll.name} onChange={e => setNewPayroll(p => ({ ...p, name: e.target.value }))} style={styles.formInput} /></div>
                 <div style={styles.formGroup}><label style={styles.formLabel}>Amount (per payment)</label><input type="number" placeholder="0.00" value={newPayroll.amount} onChange={e => setNewPayroll(p => ({ ...p, amount: e.target.value }))} style={styles.formInput} /></div>
                 <div style={styles.formGroup}><label style={styles.formLabel}>Frequency</label><select value={newPayroll.frequency} onChange={e => setNewPayroll(p => ({ ...p, frequency: e.target.value }))} style={styles.formSelect}><option value="weekly">Weekly</option><option value="biweekly">Biweekly</option><option value="monthly">Monthly (specific day)</option><option value="semimonthly">Semi-monthly (15th & EOM weekdays)</option><option value="last-weekday-15th">Last weekday before 15th only</option><option value="last-weekday-eom">Last weekday of month only</option></select></div>
                 {['weekly', 'biweekly', 'monthly'].includes(newPayroll.frequency) && (<div style={styles.formGroup}><label style={styles.formLabel}>{newPayroll.frequency === 'monthly' ? 'Day of Month (1-31)' : 'Start Day (1-31)'}</label><input type="number" min="1" max="31" value={newPayroll.startDay} onChange={e => setNewPayroll(p => ({ ...p, startDay: e.target.value }))} style={styles.formInput} /><div style={styles.formHint}>{newPayroll.frequency === 'biweekly' && 'First paycheck date in January, then every 14 days'}{newPayroll.frequency === 'weekly' && 'First paycheck date in January, then every 7 days'}</div></div>)}
-                <div className="app-form-actions" style={styles.formActions}><button style={styles.cancelBtn} onClick={() => setShowPayrollForm(false)}>Cancel</button><button style={styles.submitBtn} onClick={addPayroll}>Add Income</button></div>
+                <div className="app-form-actions" style={styles.formActions}><button style={styles.cancelBtn} onClick={() => setShowPayrollForm(false)}>Cancel</button><button style={styles.submitBtn} onClick={addPayroll}>{isEditing ? 'Save Changes' : 'Add Income'}</button></div>
               </div>
             </div>
           )}
@@ -2948,14 +3043,14 @@ const { theme, isDark } = useTheme();
           {showRecurringExpenseForm && (
             <div style={styles.formOverlay} onClick={() => setShowRecurringExpenseForm(false)}>
               <div className="app-form-card" style={styles.formCard} onClick={e => e.stopPropagation()}>
-                <h3 style={styles.formTitle}>Add Recurring Expense</h3>
+                <h3 style={styles.formTitle}>{isEditing ? 'Edit Recurring Expense' : 'Add Recurring Expense'}</h3>
                 <div style={styles.formGroup}><label style={styles.formLabel}>Name</label><input type="text" placeholder="e.g., Rent, Netflix, Groceries" value={newRecurringExpense.name} onChange={e => setNewRecurringExpense(p => ({ ...p, name: e.target.value }))} style={styles.formInput} /></div>
                 <div style={styles.formGroup}><label style={styles.formLabel}>Amount</label><input type="number" placeholder="0.00" value={newRecurringExpense.amount} onChange={e => setNewRecurringExpense(p => ({ ...p, amount: e.target.value }))} style={styles.formInput} /></div>
                 <div style={styles.formGroup}><label style={styles.formLabel}>Frequency</label><select value={newRecurringExpense.frequency} onChange={e => setNewRecurringExpense(p => ({ ...p, frequency: e.target.value }))} style={styles.formSelect}><option value="weekly">Weekly</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select></div>
                 {newRecurringExpense.frequency === 'weekly' && (<div style={styles.formGroup}><label style={styles.formLabel}>Day of Week</label><select value={newRecurringExpense.dayOfWeek} onChange={e => setNewRecurringExpense(p => ({ ...p, dayOfWeek: parseInt(e.target.value) }))} style={styles.formSelect}>{dayNames.map((day, idx) => <option key={day} value={idx}>{day}</option>)}</select></div>)}
                 {newRecurringExpense.frequency === 'monthly' && (<div style={styles.formGroup}><label style={styles.formLabel}>Day of Month (1-31)</label><input type="number" min="1" max="31" value={newRecurringExpense.dayOfMonth} onChange={e => setNewRecurringExpense(p => ({ ...p, dayOfMonth: e.target.value }))} style={styles.formInput} /></div>)}
                 {newRecurringExpense.frequency === 'yearly' && (<><div style={styles.formGroup}><label style={styles.formLabel}>Month</label><select value={newRecurringExpense.month} onChange={e => setNewRecurringExpense(p => ({ ...p, month: parseInt(e.target.value) }))} style={styles.formSelect}>{months.map((month, idx) => <option key={month} value={idx}>{month}</option>)}</select></div><div style={styles.formGroup}><label style={styles.formLabel}>Day</label><input type="number" min="1" max="31" value={newRecurringExpense.day} onChange={e => setNewRecurringExpense(p => ({ ...p, day: e.target.value }))} style={styles.formInput} /></div></>)}
-                <div className="app-form-actions" style={styles.formActions}><button style={styles.cancelBtn} onClick={() => setShowRecurringExpenseForm(false)}>Cancel</button><button style={styles.submitBtn} onClick={addRecurringExpense}>Add Expense</button></div>
+                <div className="app-form-actions" style={styles.formActions}><button style={styles.cancelBtn} onClick={() => setShowRecurringExpenseForm(false)}>Cancel</button><button style={styles.submitBtn} onClick={addRecurringExpense}>{isEditing ? 'Save Changes' : 'Add Expense'}</button></div>
               </div>
             </div>
           )}
@@ -2963,14 +3058,28 @@ const { theme, isDark } = useTheme();
           {showOneOffExpenseForm && (
             <div style={styles.formOverlay} onClick={() => { setShowOneOffExpenseForm(false); setAddOneOffFromCalendar(null); }}>
               <div className="app-form-card" style={styles.formCard} onClick={e => e.stopPropagation()}>
-                <h3 style={styles.formTitle}>Add One-Off Expense</h3>
+                <h3 style={styles.formTitle}>{isEditing ? 'Edit One-Off Expense' : 'Add One-Off Expense'}</h3>
                 <div style={styles.formGroup}><label style={styles.formLabel}>Name</label><input type="text" placeholder="e.g., Car repair, Gift, Trip" value={newOneOffExpense.name} onChange={e => setNewOneOffExpense(p => ({ ...p, name: e.target.value }))} style={styles.formInput} /></div>
                 <div style={styles.formGroup}><label style={styles.formLabel}>Amount</label><input type="number" placeholder="0.00" value={newOneOffExpense.amount} onChange={e => setNewOneOffExpense(p => ({ ...p, amount: e.target.value }))} style={styles.formInput} /></div>
                 <div style={styles.formGroup}><label style={styles.formLabel}>Date</label><input type="date" value={newOneOffExpense.date} onChange={e => setNewOneOffExpense(p => ({ ...p, date: e.target.value }))} style={styles.formInput} />{addOneOffFromCalendar && <div style={styles.formHint}>Selected: {formatFullDate(new Date(addOneOffFromCalendar + 'T00:00:00'))}</div>}</div>
-                <div className="app-form-actions" style={styles.formActions}><button style={styles.cancelBtn} onClick={() => { setShowOneOffExpenseForm(false); setAddOneOffFromCalendar(null); }}>Cancel</button><button style={styles.submitBtn} onClick={addOneOffExpense}>Add Expense</button></div>
+                <div className="app-form-actions" style={styles.formActions}><button style={styles.cancelBtn} onClick={() => { setShowOneOffExpenseForm(false); setAddOneOffFromCalendar(null); }}>Cancel</button><button style={styles.submitBtn} onClick={addOneOffExpense}>{isEditing ? 'Save Changes' : 'Add Expense'}</button></div>
               </div>
             </div>
           )}
+
+          {showOneOffIncomeForm && (
+            <div style={styles.formOverlay} onClick={() => setShowOneOffIncomeForm(false)}>
+              <div className="app-form-card" style={styles.formCard} onClick={e => e.stopPropagation()}>
+                <h3 style={styles.formTitle}>{isEditing ? 'Edit One-Off Income' : 'Add One-Off Income'}</h3>
+                <div style={styles.formGroup}><label style={styles.formLabel}>Name</label><input type="text" placeholder="e.g., Bonus, Tax refund, Gift" value={newOneOffIncome.name} onChange={e => setNewOneOffIncome(p => ({ ...p, name: e.target.value }))} style={styles.formInput} /></div>
+                <div style={styles.formGroup}><label style={styles.formLabel}>Amount</label><input type="number" placeholder="0.00" value={newOneOffIncome.amount} onChange={e => setNewOneOffIncome(p => ({ ...p, amount: e.target.value }))} style={styles.formInput} /></div>
+                <div style={styles.formGroup}><label style={styles.formLabel}>Date</label><input type="date" value={newOneOffIncome.date} onChange={e => setNewOneOffIncome(p => ({ ...p, date: e.target.value }))} style={styles.formInput} /></div>
+                <div className="app-form-actions" style={styles.formActions}><button style={styles.cancelBtn} onClick={() => setShowOneOffIncomeForm(false)}>Cancel</button><button style={styles.submitBtn} onClick={addOneOffIncome}>{isEditing ? 'Save Changes' : 'Add Income'}</button></div>
+              </div>
+            </div>
+          )}
+
+          {occEditor && <OccurrenceEditor editor={occEditor} onClose={() => setOccEditor(null)} onApply={applyOccurrenceException} onReset={resetOccurrence} styles={styles} />}
         </div>
       );
     }
