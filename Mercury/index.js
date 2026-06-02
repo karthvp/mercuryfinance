@@ -49,6 +49,7 @@ async function initDatabase() {
         payrolls JSONB DEFAULT '[]',
         recurring_expenses JSONB DEFAULT '[]',
         one_off_expenses JSONB DEFAULT '[]',
+        one_off_incomes JSONB DEFAULT '[]',
         balance_overrides JSONB DEFAULT '{}',
         current_year INTEGER DEFAULT EXTRACT(YEAR FROM CURRENT_DATE),
         archived_years JSONB DEFAULT '[]',
@@ -58,6 +59,8 @@ async function initDatabase() {
     `);
 
     await dbClient.query(`ALTER TABLE mercury_data DROP CONSTRAINT IF EXISTS single_row`);
+    // Backfill column for databases created before one-off income existed
+    await dbClient.query(`ALTER TABLE mercury_data ADD COLUMN IF NOT EXISTS one_off_incomes JSONB DEFAULT '[]'`);
   } finally {
     dbClient.release();
   }
@@ -264,6 +267,8 @@ const validators = {
     if (typeof expense.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(expense.date)) return false;
     return true;
   },
+  // One-off income shares the same shape as a one-off expense
+  isValidOneOffIncome: (income) => validators.isValidOneOffExpense(income),
   isValidFinancialData: (data) => {
     if (!data || typeof data !== 'object') return { valid: false, error: 'Invalid data format' };
 
@@ -294,6 +299,15 @@ const validators = {
       }
     }
 
+    // Validate one-off incomes array
+    if (data.oneOffIncomes && Array.isArray(data.oneOffIncomes)) {
+      for (const income of data.oneOffIncomes) {
+        if (!validators.isValidOneOffIncome(income)) {
+          return { valid: false, error: 'Invalid one-off income entry' };
+        }
+      }
+    }
+
     // Validate currentYear if provided
     if (data.currentYear !== undefined) {
       if (typeof data.currentYear !== 'number' || data.currentYear < 2000 || data.currentYear > 2100) {
@@ -317,12 +331,13 @@ app.get('/api/data', isAuthenticated, async (req, res) => {
         payrolls: [],
         recurringExpenses: [],
         oneOffExpenses: [],
+        oneOffIncomes: [],
         balanceOverrides: {},
         currentYear: new Date().getFullYear(),
         archivedYears: []
       });
     }
-    
+
     const row = result.rows[0];
     res.json({
       version: row.version,
@@ -330,6 +345,7 @@ app.get('/api/data', isAuthenticated, async (req, res) => {
       payrolls: row.payrolls,
       recurringExpenses: row.recurring_expenses,
       oneOffExpenses: row.one_off_expenses,
+      oneOffIncomes: row.one_off_incomes || [],
       balanceOverrides: row.balance_overrides,
       currentYear: row.current_year,
       archivedYears: row.archived_years
@@ -352,14 +368,15 @@ app.post('/api/data', isAuthenticated, async (req, res) => {
     }
 
     await pool.query(`
-      INSERT INTO mercury_data (user_id, version, initial_balances, payrolls, recurring_expenses, one_off_expenses, balance_overrides, current_year, archived_years, updated_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
+      INSERT INTO mercury_data (user_id, version, initial_balances, payrolls, recurring_expenses, one_off_expenses, one_off_incomes, balance_overrides, current_year, archived_years, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)
       ON CONFLICT (user_id) DO UPDATE SET
         version = EXCLUDED.version,
         initial_balances = EXCLUDED.initial_balances,
         payrolls = EXCLUDED.payrolls,
         recurring_expenses = EXCLUDED.recurring_expenses,
         one_off_expenses = EXCLUDED.one_off_expenses,
+        one_off_incomes = EXCLUDED.one_off_incomes,
         balance_overrides = EXCLUDED.balance_overrides,
         current_year = EXCLUDED.current_year,
         archived_years = EXCLUDED.archived_years,
@@ -371,6 +388,7 @@ app.post('/api/data', isAuthenticated, async (req, res) => {
       JSON.stringify(data.payrolls || []),
       JSON.stringify(data.recurringExpenses || []),
       JSON.stringify(data.oneOffExpenses || []),
+      JSON.stringify(data.oneOffIncomes || []),
       JSON.stringify(data.balanceOverrides || {}),
       data.currentYear || new Date().getFullYear(),
       JSON.stringify(data.archivedYears || [])
@@ -396,6 +414,7 @@ app.patch('/api/data/:field', isAuthenticated, async (req, res) => {
       'payrolls': 'UPDATE mercury_data SET payrolls = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2',
       'recurringExpenses': 'UPDATE mercury_data SET recurring_expenses = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2',
       'oneOffExpenses': 'UPDATE mercury_data SET one_off_expenses = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2',
+      'oneOffIncomes': 'UPDATE mercury_data SET one_off_incomes = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2',
       'balanceOverrides': 'UPDATE mercury_data SET balance_overrides = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2',
       'currentYear': 'UPDATE mercury_data SET current_year = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2',
       'archivedYears': 'UPDATE mercury_data SET archived_years = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2'
