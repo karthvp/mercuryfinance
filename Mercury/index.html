@@ -897,25 +897,7 @@
       ChevronDown: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>,
       User: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
       LogOut: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
-      Sun: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>,
-      Moon: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>,
     };
-
-    // Glassy light/dark toggle, synced through useTheme
-    function ThemeToggle() {
-      const { isDark, toggleTheme } = useTheme();
-      return (
-        <button
-          type="button"
-          className="theme-toggle"
-          onClick={toggleTheme}
-          aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-          title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-        >
-          {isDark ? <Icons.Sun /> : <Icons.Moon />}
-        </button>
-      );
-    }
 
     function MoneyRain({ containerRef }) {
       const canvasRef = useRef(null);
@@ -1094,7 +1076,6 @@
                 <span className="mobile-logo-text" style={heroStyles.logoText}>Mercury</span>
               </div>
               <div className="mobile-nav-actions" style={heroStyles.navActions}>
-                <ThemeToggle />
                 {user ? (
                   <>
                     <div className="mobile-user-info" style={heroStyles.userInfo}>
@@ -1503,6 +1484,8 @@
       const hasScrolledToToday = useRef(false);
       const ytdChartRef = useRef(null);
       const ytdChartInstance = useRef(null);
+      const balanceChartRef = useRef(null);
+      const balanceChartInstance = useRef(null);
 
       useEffect(() => {
         if (monthRefs.current[scrollToMonth]) {
@@ -1643,54 +1626,35 @@
         return data;
       }, [datesForYear, activeYear, initialBalances, payrolls, recurringExpenses, oneOffExpenses, balanceOverrides]);
 
+      const todayKey = toDateKey(today);
+
+      // Per-day balance series for the viewed year. Reuses financialData for the
+      // active year; recomputes for archived/other years. This is the single source
+      // the dashboard chart and all aggregate stats read from.
+      const dashboardSeries = useMemo(() => {
+        if (dashboardYear === activeYear) return financialData;
+        const dates = generateDatesForYear(dashboardYear);
+        let runningBalance = initialBalances[dashboardYear] || 5000;
+        return dates.map((date) => {
+          const { dateKey } = getDateInfo(date);
+          const hasCheckIn = balanceOverrides[dateKey] !== undefined;
+          let startingBalance = hasCheckIn ? balanceOverrides[dateKey] : runningBalance;
+          let payrollAmount = 0;
+          payrolls.forEach(p => { if (isPayday(date, p, dashboardYear)) payrollAmount += p.amount; });
+          startingBalance += payrollAmount;
+          let recurringExp = 0;
+          recurringExpenses.forEach(e => { if (isExpenseDue(date, e)) recurringExp += e.amount; });
+          let oneOffExp = 0;
+          oneOffExpenses.forEach(e => { if (e.date === dateKey) oneOffExp += e.amount; });
+          const expenses = recurringExp + oneOffExp;
+          const endingBalance = startingBalance - expenses;
+          runningBalance = endingBalance;
+          return { date, dateKey, startingBalance, endingBalance, expenses, recurringExpenses: recurringExp, oneOffExpenses: oneOffExp, payrollAmount, isPast: date < today, isToday: dateKey === todayKey, isOverridden: hasCheckIn };
+        });
+      }, [financialData, dashboardYear, activeYear, initialBalances, payrolls, recurringExpenses, oneOffExpenses, balanceOverrides, todayKey]);
+
       const stats = useMemo(() => {
-        const yearData = dashboardYear === activeYear ? financialData : (() => {
-          const dates = generateDatesForYear(dashboardYear);
-          const initialBalance = initialBalances[dashboardYear] || 5000;
-          let runningBalance = initialBalance;
-          const data = [];
-
-          dates.forEach((date) => {
-            const { dateKey } = getDateInfo(date);
-
-            let startingBalance = balanceOverrides[dateKey] !== undefined ? balanceOverrides[dateKey] : runningBalance;
-
-            // Calculate payroll using utility function
-            let payrollAmount = 0;
-            payrolls.forEach(payroll => {
-              if (isPayday(date, payroll, dashboardYear)) {
-                payrollAmount += payroll.amount;
-              }
-            });
-
-            startingBalance += payrollAmount;
-
-            // Calculate recurring expenses using utility function
-            let recurringExp = 0;
-            recurringExpenses.forEach(expense => {
-              if (isExpenseDue(date, expense)) {
-                recurringExp += expense.amount;
-              }
-            });
-
-            // Calculate one-off expenses
-            let oneOffExp = 0;
-            oneOffExpenses.forEach(expense => {
-              if (expense.date === dateKey) oneOffExp += expense.amount;
-            });
-
-            const totalExpenses = recurringExp + oneOffExp;
-            const endingBalance = startingBalance - totalExpenses;
-
-            data.push({ date, dateKey, startingBalance, endingBalance, expenses: totalExpenses, recurringExpenses: recurringExp, oneOffExpenses: oneOffExp, payrollAmount, isPast: date < today });
-            runningBalance = endingBalance;
-          });
-
-          return data;
-        })();
-
-        const pastDays = yearData.filter(d => d.isPast);
-        const futureDays = yearData.filter(d => !d.isPast);
+        const yearData = dashboardSeries;
 
         // Optimize: compute lowest balance in single pass instead of twice
         let lowestBalance = Infinity;
@@ -1735,9 +1699,9 @@
           totalPayrollForYear: aggregates.full.payroll,
           netAnnual: aggregates.full.payroll - aggregates.full.total,
         };
-      }, [financialData, dashboardYear, activeYear, initialBalances, payrolls, recurringExpenses, oneOffExpenses, balanceOverrides]);
+      }, [dashboardSeries, dashboardYear, initialBalances]);
 
-      // How far through the viewed year we are (drives the "paid vs remaining" context).
+      // How far through the viewed year we are (frames "so far" vs "ahead").
       const yearProgress = useMemo(() => {
         const now = new Date();
         if (dashboardYear < now.getFullYear()) return 100;
@@ -1747,12 +1711,53 @@
         return Math.round(((now.getTime() - start) / (end - start)) * 100);
       }, [dashboardYear]);
 
-      // Balance overrides applied within the viewed year re-base the running forecast,
-      // so the projected year-end can legitimately diverge from "Starting + Net Annual".
-      const overrideCountForYear = useMemo(
-        () => Object.keys(balanceOverrides).filter(k => k.startsWith(String(dashboardYear) + '-')).length,
-        [balanceOverrides, dashboardYear]
-      );
+      // The "will I run out of money?" model: current balance, the lowest point still
+      // AHEAD of today, the first day (if any) the balance goes negative, this-month
+      // cash flow, and the balance check-ins (formerly "overrides") for this year.
+      const forecast = useMemo(() => {
+        const series = dashboardSeries;
+        const isCurrentYear = dashboardYear === realCurrentYear;
+        const isFutureYear = dashboardYear > realCurrentYear;
+        const todayIdx = isCurrentYear ? series.findIndex(d => d.isToday) : -1;
+
+        let currentBalance;
+        if (isCurrentYear && todayIdx >= 0) currentBalance = series[todayIdx].endingBalance;
+        else if (isFutureYear) currentBalance = initialBalances[dashboardYear] || 5000;
+        else currentBalance = series[series.length - 1]?.endingBalance ?? 0;
+
+        // Window of days still ahead (for the current year); whole year otherwise.
+        const aheadStart = isCurrentYear && todayIdx >= 0 ? todayIdx : 0;
+        let lowestAheadBal = Infinity, lowestAheadDate = null, firstNegDate = null;
+        for (let i = aheadStart; i < series.length; i++) {
+          const d = series[i];
+          if (d.endingBalance < lowestAheadBal) { lowestAheadBal = d.endingBalance; lowestAheadDate = d.date; }
+          if (firstNegDate === null && d.endingBalance < 0) firstNegDate = d.date;
+        }
+        if (lowestAheadBal === Infinity) { lowestAheadBal = currentBalance; lowestAheadDate = null; }
+
+        // This-month cash flow (current year only).
+        let monthIncome = 0, monthExpenses = 0;
+        if (isCurrentYear) {
+          const m = today.getMonth();
+          series.forEach(d => { if (d.date.getMonth() === m) { monthIncome += d.payrollAmount; monthExpenses += d.expenses; } });
+        }
+
+        const checkIns = Object.keys(balanceOverrides)
+          .filter(k => k.startsWith(String(dashboardYear) + '-'))
+          .map(k => ({ date: k, balance: balanceOverrides[k] }))
+          .sort((a, b) => a.date.localeCompare(b.date));
+        const latestCheckIn = isCurrentYear
+          ? [...checkIns].reverse().find(c => c.date <= todayKey) || null
+          : (checkIns[checkIns.length - 1] || null);
+
+        return {
+          isCurrentYear, isFutureYear, currentBalance,
+          lowestAheadBal, lowestAheadDate, firstNegDate,
+          monthIncome, monthExpenses, monthNet: monthIncome - monthExpenses,
+          checkIns, latestCheckIn,
+          avgMonthlyNet: stats.netAnnual / 12,
+        };
+      }, [dashboardSeries, dashboardYear, realCurrentYear, initialBalances, balanceOverrides, todayKey, stats.netAnnual]);
 
       const ytdExpensesByName = useMemo(() => {
         const cutoffDate = getYearCutoffDate(dashboardYear);
@@ -1988,6 +1993,94 @@ const { theme, isDark } = useTheme();
           }
         };
       }, [ytdExpensesByName, activeView, isDark]);
+
+      // Balance-over-time line chart — the centerpiece of the dashboard.
+      // Shows the daily ending-balance trajectory: past solid / future dashed,
+      // negative regions shaded red, with today and balance check-ins marked.
+      useEffect(() => {
+        if (!balanceChartRef.current || activeView !== 'dashboard') return;
+        if (balanceChartInstance.current) balanceChartInstance.current.destroy();
+
+        const series = dashboardSeries;
+        const ctx = balanceChartRef.current.getContext('2d');
+        const todayIdx = forecast.isCurrentYear ? series.findIndex(d => d.isToday) : -1;
+
+        const accent = isDark ? '#22d3ee' : '#0e9bb8';
+        const danger = isDark ? '#fb7185' : '#e11d48';
+        const success = isDark ? '#34d399' : '#059669';
+        const grid = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(12,27,38,0.08)';
+        const tick = isDark ? '#6f8693' : '#5c7382';
+
+        balanceChartInstance.current = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: series.map(d => d.date),
+            datasets: [{
+              data: series.map(d => d.endingBalance),
+              borderColor: accent,
+              borderWidth: 2,
+              tension: 0.15,
+              pointRadius: series.map(d => d.isToday ? 5 : (d.isOverridden ? 4 : 0)),
+              pointHoverRadius: series.map(d => d.isToday ? 7 : (d.isOverridden ? 6 : 4)),
+              pointBackgroundColor: series.map(d => d.isToday ? accent : (d.isOverridden ? success : accent)),
+              pointBorderColor: isDark ? '#06121c' : '#ffffff',
+              pointBorderWidth: 2,
+              fill: {
+                target: 'origin',
+                above: isDark ? 'rgba(34,211,238,0.10)' : 'rgba(14,155,184,0.10)',
+                below: isDark ? 'rgba(251,113,133,0.20)' : 'rgba(225,29,72,0.16)',
+              },
+              segment: {
+                borderColor: (c) => (c.p0.parsed.y < 0 || c.p1.parsed.y < 0) ? danger : accent,
+                borderDash: (c) => (todayIdx >= 0 && c.p0DataIndex >= todayIdx) ? [5, 4] : undefined,
+              },
+            }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { intersect: false, mode: 'index' },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: isDark ? 'rgba(10,18,28,0.95)' : 'rgba(255,255,255,0.96)',
+                titleColor: isDark ? '#eef5f8' : '#0c1b26',
+                bodyColor: isDark ? '#a3b6c1' : '#3c5260',
+                borderColor: isDark ? 'rgba(34,211,238,0.35)' : 'rgba(14,155,184,0.45)',
+                borderWidth: 1,
+                padding: 12,
+                callbacks: {
+                  title: (items) => formatFullDate(series[items[0].dataIndex].date),
+                  label: (item) => 'Balance: ' + formatCurrency(item.raw),
+                  afterBody: (items) => {
+                    const d = series[items[0].dataIndex];
+                    const lines = [];
+                    if (d.payrollAmount > 0) lines.push('Income  +' + formatCurrency(d.payrollAmount));
+                    if (d.expenses > 0) lines.push('Expenses  −' + formatCurrency(d.expenses));
+                    if (d.isOverridden) lines.push('● Balance check-in');
+                    return lines;
+                  },
+                },
+              },
+            },
+            scales: {
+              x: {
+                grid: { display: false },
+                ticks: {
+                  color: tick, maxRotation: 0, autoSkip: false,
+                  callback: (val, idx) => { const d = series[idx] && series[idx].date; return d && d.getDate() === 1 ? months[d.getMonth()].slice(0, 3) : ''; },
+                },
+              },
+              y: {
+                grid: { color: grid },
+                ticks: { color: tick, callback: (v) => '$' + Math.round(v).toLocaleString() },
+              },
+            },
+          },
+        });
+
+        return () => { if (balanceChartInstance.current) balanceChartInstance.current.destroy(); };
+      }, [dashboardSeries, forecast, activeView, isDark]);
 
       // D3 Sankey rendering effect
       useEffect(() => {
@@ -2271,8 +2364,12 @@ const { theme, isDark } = useTheme();
 
       }, [sankeyData, activeView, dashboardYear, isDark, sankeyTick]);
 
-      const handleOverrideBalance = (dateKey, newBalance) => { setBalanceOverrides(prev => ({ ...prev, [dateKey]: parseFloat(newBalance) })); setEditingCell(null); };
+      const handleOverrideBalance = (dateKey, newBalance) => { const v = parseFloat(newBalance); if (!isNaN(v)) setBalanceOverrides(prev => ({ ...prev, [dateKey]: v })); setEditingCell(null); };
       const clearOverride = (dateKey) => { setBalanceOverrides(prev => { const n = { ...prev }; delete n[dateKey]; return n; }); };
+      const clearCheckInsForYear = (year) => {
+        if (!confirm(`Clear all balance check-ins for ${year}? Your forecast will fall back to a pure projection from your inputs.`)) return;
+        setBalanceOverrides(prev => Object.fromEntries(Object.entries(prev).filter(([k]) => !k.startsWith(String(year) + '-'))));
+      };
       const addPayroll = () => { if (newPayroll.name && newPayroll.amount) { setPayrolls(prev => [...prev, { id: Date.now(), name: newPayroll.name, amount: parseFloat(newPayroll.amount), frequency: newPayroll.frequency, startDay: parseInt(newPayroll.startDay), dayOfWeek: parseInt(newPayroll.dayOfWeek), startYear: activeYear }]); formDispatch({ type: 'RESET_PAYROLL' }); } };
       const deletePayroll = (id) => { setPayrolls(prev => prev.filter(p => p.id !== id)); };
       const addRecurringExpense = () => { if (newRecurringExpense.name && newRecurringExpense.amount) { setRecurringExpenses(prev => [...prev, { id: Date.now(), name: newRecurringExpense.name, amount: parseFloat(newRecurringExpense.amount), frequency: newRecurringExpense.frequency, dayOfMonth: parseInt(newRecurringExpense.dayOfMonth), dayOfWeek: parseInt(newRecurringExpense.dayOfWeek), month: parseInt(newRecurringExpense.month), day: parseInt(newRecurringExpense.day) }]); formDispatch({ type: 'RESET_RECURRING' }); } };
@@ -2387,7 +2484,15 @@ const { theme, isDark } = useTheme();
         );
       }
 
-      const renderDashboard = () => (
+      const renderDashboard = () => {
+        const negative = forecast.firstNegDate !== null;
+        const checkInCount = forecast.checkIns.length;
+        const balanceLabel = forecast.isCurrentYear ? 'Balance today' : forecast.isFutureYear ? `Projected start of ${dashboardYear}` : `${dashboardYear} year-end`;
+        const ytdNet = stats.historicalPayrollReceived - stats.historicalTotalExpensesPaid;
+        const legendDot = (color, filled) => ({ width: '10px', height: '10px', borderRadius: '50%', background: filled ? color : 'transparent', border: `2px solid ${color}`, display: 'inline-block' });
+        const legendItem = { display: 'inline-flex', alignItems: 'center', gap: '0.4rem' };
+
+        return (
         <div>
           <div className="app-year-selector" style={{ ...styles.yearSelector, justifyContent: 'space-between', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -2395,61 +2500,81 @@ const { theme, isDark } = useTheme();
               <select value={dashboardYear} onChange={(e) => setDashboardYear(parseInt(e.target.value))} style={styles.yearSelect}>
                 {availableYears.map(year => <option key={year} value={year}>{year}</option>)}
               </select>
-              {dashboardYear !== activeYear && <span style={{ fontSize: '0.6875rem', color: '#fbbf24' }}>(Archived)</span>}
+              {dashboardYear !== activeYear && <span style={{ fontSize: '0.6875rem', color: 'var(--warning)' }}>(Archived)</span>}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <span style={styles.initialBalanceLabel}>Initial Balance (Jan 1, {dashboardYear}):</span>
+            <div className="app-initial-balance-section" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <span style={styles.initialBalanceLabel}>Starting Balance (Jan 1, {dashboardYear}):</span>
               <input type="number" value={initialBalances[dashboardYear] || 5000} onChange={(e) => updateInitialBalance(dashboardYear, e.target.value)} style={styles.initialBalanceInput} />
             </div>
           </div>
 
-          <div style={styles.sectionTitle}><Icons.TrendUp /> Overview</div>
-          <div className="app-dashboard-grid" style={styles.dashboardGrid}>
-            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--success)')} /><div style={styles.statLabel}>Starting Balance (Jan 1)</div><div className="app-stat-value" style={styles.statValue('var(--success)')}>{formatCurrency(stats.initialBalance)}</div></div>
-            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--accent)')} /><div style={styles.statLabel}>Projected Year-End</div><div className="app-stat-value" style={styles.statValue(stats.endOfYearBalance >= 0 ? 'var(--success)' : 'var(--danger)')}>{formatCurrency(stats.endOfYearBalance)}</div><div style={styles.statSubtext}>Dec 31, {dashboardYear}{overrideCountForYear > 0 ? ' · includes overrides' : ''}</div></div>
-            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--danger)')} /><div style={styles.statLabel}>Lowest Balance Point</div><div className="app-stat-value" style={styles.statValue('var(--danger)')}>{formatCurrency(stats.lowestBalance)}</div><div style={styles.statSubtext}>{stats.lowestBalanceDate && formatFullDate(stats.lowestBalanceDate)}</div></div>
-            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--accent-2)')} /><div style={styles.statLabel}>Net Annual Cashflow</div><div className="app-stat-value" style={styles.statValue(stats.netAnnual >= 0 ? 'var(--success)' : 'var(--danger)')}>{formatCurrency(stats.netAnnual)}</div><div style={styles.statSubtext}>Income − Expenses</div></div>
+          {/* ===== Status hero — answers "will I run out of money?" ===== */}
+          <div className="app-panel" style={{ ...styles.panel, marginBottom: '1.5rem', display: 'flex', flexWrap: 'wrap', gap: '1.5rem', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: '1 1 340px', minWidth: 0 }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', alignSelf: 'flex-start', padding: '0.375rem 0.875rem', borderRadius: '999px', fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.03em', textTransform: 'uppercase', background: negative ? 'var(--danger-bg)' : 'var(--success-bg)', border: `1px solid ${negative ? 'var(--danger)' : 'var(--success)'}`, color: negative ? 'var(--danger)' : 'var(--success)' }}>
+                <span style={{ display: 'flex' }}>{negative ? <Icons.Warning /> : <Icons.Check />}</span>
+                {negative ? 'Heads up' : 'On track'}
+              </div>
+              <div style={{ fontSize: '1.0625rem', lineHeight: 1.55, color: 'var(--text-secondary)' }}>
+                {negative ? (
+                  <>Your balance is projected to fall below <strong style={{ color: 'var(--danger)' }}>$0</strong> on <strong style={{ color: 'var(--text-primary)' }}>{formatFullDate(forecast.firstNegDate)}</strong>, bottoming out at <strong style={{ color: 'var(--danger)' }}>{formatCurrency(forecast.lowestAheadBal)}</strong>. Trim expenses or add income before then.</>
+                ) : (
+                  <>You stay above zero {forecast.isCurrentYear ? 'all the way to Dec 31' : 'all year'}. Your tightest point {forecast.isCurrentYear ? 'ahead' : ''} is <strong style={{ color: 'var(--text-primary)' }}>{formatCurrency(forecast.lowestAheadBal)}</strong>{forecast.lowestAheadDate ? <> on <strong style={{ color: 'var(--text-primary)' }}>{formatFullDate(forecast.lowestAheadDate)}</strong></> : ''}.</>
+                )}
+              </div>
+            </div>
+            <div style={{ textAlign: 'right', flex: '0 0 auto' }}>
+              <div style={styles.statLabel}>{balanceLabel}</div>
+              <div style={{ fontFamily: '"Playfair Display", serif', fontSize: 'clamp(2rem, 5vw, 2.75rem)', fontWeight: 600, color: forecast.currentBalance >= 0 ? 'var(--text-primary)' : 'var(--danger)', letterSpacing: '-0.02em', lineHeight: 1.1 }}>{formatCurrency(forecast.currentBalance)}</div>
+              {forecast.latestCheckIn && <div style={styles.statSubtext}>Anchored to your {formatFullDate(parseDateKey(forecast.latestCheckIn.date))} check-in</div>}
+            </div>
           </div>
 
-          {overrideCountForYear > 0 && (
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.625rem', padding: '0.75rem 1rem', background: 'var(--accent-bg)', border: '1px solid var(--accent-border)', borderRadius: '12px', fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '1.5rem' }}>
-              <span style={{ color: 'var(--accent)', display: 'flex', flexShrink: 0, marginTop: '1px' }}><Icons.Warning /></span>
-              <span>
-                Your {dashboardYear} forecast includes <strong style={{ color: 'var(--text-primary)' }}>{overrideCountForYear} manual balance override{overrideCountForYear > 1 ? 's' : ''}</strong> set on the Calendar. These re-base the running balance, so <strong style={{ color: 'var(--text-primary)' }}>Projected Year-End</strong> can differ from <em>Starting Balance + Net Annual Cashflow</em>. Clear the “Override” badges on the Calendar to revert.
-              </span>
+          {/* ===== Key forecast numbers ===== */}
+          <div className="app-dashboard-grid" style={styles.dashboardGrid}>
+            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent(forecast.lowestAheadBal < 0 ? 'var(--danger)' : 'var(--success)')} /><div style={styles.statLabel}>Lowest Point {forecast.isCurrentYear ? 'Ahead' : ''}</div><div className="app-stat-value" style={styles.statValue(forecast.lowestAheadBal < 0 ? 'var(--danger)' : 'var(--success)')}>{formatCurrency(forecast.lowestAheadBal)}</div><div style={styles.statSubtext}>{forecast.lowestAheadDate ? formatFullDate(forecast.lowestAheadDate) : '—'}</div></div>
+            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--accent)')} /><div style={styles.statLabel}>Projected Year-End</div><div className="app-stat-value" style={styles.statValue(stats.endOfYearBalance >= 0 ? 'var(--success)' : 'var(--danger)')}>{formatCurrency(stats.endOfYearBalance)}</div><div style={styles.statSubtext}>Dec 31, {dashboardYear}{checkInCount > 0 ? ` · reflects ${checkInCount} check-in${checkInCount > 1 ? 's' : ''}` : ''}</div></div>
+            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--accent-2)')} /><div style={styles.statLabel}>Net Annual Cashflow</div><div className="app-stat-value" style={styles.statValue(stats.netAnnual >= 0 ? 'var(--success)' : 'var(--danger)')}>{formatCurrency(stats.netAnnual)}</div><div style={styles.statSubtext}>Income − expenses, full year</div></div>
+            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--warning)')} /><div style={styles.statLabel}>Avg Monthly Net</div><div className="app-stat-value" style={styles.statValue(forecast.avgMonthlyNet >= 0 ? 'var(--success)' : 'var(--danger)')}>{formatCurrency(forecast.avgMonthlyNet)}</div><div style={styles.statSubtext}>Net annual ÷ 12</div></div>
+          </div>
+
+          {/* ===== Balance-over-time chart ===== */}
+          <div className="app-panel" style={{ ...styles.panel, marginTop: '1.5rem', marginBottom: '1.5rem' }}>
+            <div className="app-panel-header" style={styles.panelHeader}>
+              <div style={styles.panelTitle}><Icons.TrendUp /> Balance through {dashboardYear}</div>
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
+                <span style={legendItem}><i style={legendDot('var(--accent)', true)} /> Today</span>
+                <span style={legendItem}><i style={legendDot('var(--success)', true)} /> Check-in</span>
+                <span style={legendItem}><i style={{ width: '14px', height: 0, borderTop: '2px dashed var(--accent)', display: 'inline-block' }} /> Projected</span>
+                <span style={legendItem}><i style={legendDot('var(--danger)', false)} /> Below $0</span>
+              </div>
             </div>
+            <div style={{ height: 320 }}><canvas ref={balanceChartRef}></canvas></div>
+          </div>
+
+          {/* ===== This month cash flow (current year only) ===== */}
+          {forecast.isCurrentYear && (
+            <>
+              <div style={styles.sectionTitle}><Icons.Money /> This Month · {months[today.getMonth()]} {dashboardYear}</div>
+              <div className="app-dashboard-grid" style={styles.dashboardGrid}>
+                <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--success)')} /><div style={styles.statLabel}>Income</div><div className="app-stat-value" style={styles.statValue('var(--success)')}>+{formatCurrency(forecast.monthIncome)}</div></div>
+                <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--danger)')} /><div style={styles.statLabel}>Expenses</div><div className="app-stat-value" style={styles.statValue('var(--danger)')}>−{formatCurrency(forecast.monthExpenses)}</div></div>
+                <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent(forecast.monthNet >= 0 ? 'var(--success)' : 'var(--danger)')} /><div style={styles.statLabel}>Net This Month</div><div className="app-stat-value" style={styles.statValue(forecast.monthNet >= 0 ? 'var(--success)' : 'var(--danger)')}>{formatCurrency(forecast.monthNet)}</div></div>
+                <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--accent)')} /><div style={styles.statLabel}>Net · Year to Date</div><div className="app-stat-value" style={styles.statValue(ytdNet >= 0 ? 'var(--success)' : 'var(--danger)')}>{formatCurrency(ytdNet)}</div><div style={styles.statSubtext}>{yearProgress}% of {dashboardYear} elapsed</div></div>
+              </div>
+            </>
           )}
 
-          <div style={styles.sectionTitle}>
-            <Icons.Expense /> Expense Tracking
-            {dashboardYear === realCurrentYear && (
-              <span style={{ color: 'var(--text-dim)', fontWeight: 500, letterSpacing: '0.04em', textTransform: 'none', marginLeft: '0.25rem' }}>· {yearProgress}% of {dashboardYear} elapsed</span>
-            )}
-          </div>
-          <div className="app-dashboard-grid" style={styles.dashboardGrid}>
-            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--accent)')} /><div style={styles.statLabel}>Recurring · Paid so far</div><div className="app-stat-value" style={styles.statValue('var(--accent)')}>{formatCurrency(stats.historicalRecurringExpensesPaid)}</div><div style={styles.statSubtext}>Jan 1 → today</div></div>
-            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--danger)')} /><div style={styles.statLabel}>Recurring · Remaining</div><div className="app-stat-value" style={styles.statValue('var(--danger)')}>{formatCurrency(stats.forecastedRecurringExpenses)}</div><div style={styles.statSubtext}>Today → Dec 31</div></div>
-            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--accent-2)')} /><div style={styles.statLabel}>Total Expenses · Paid so far</div><div className="app-stat-value" style={styles.statValue('var(--accent-2)')}>{formatCurrency(stats.historicalTotalExpensesPaid)}</div><div style={styles.statSubtext}>Recurring + one-off, year to date</div></div>
-            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--warning)')} /><div style={styles.statLabel}>Total Expenses · Remaining</div><div className="app-stat-value" style={styles.statValue('var(--warning)')}>{formatCurrency(stats.forecastedTotalExpenses)}</div><div style={styles.statSubtext}>Recurring + one-off, rest of year</div></div>
-          </div>
-
           {ytdExpensesByName.length > 0 && (
-            <div className="app-panel" style={{ ...styles.panel, marginBottom: '2rem' }}>
-              <div style={styles.panelTitle}><Icons.Expense /> YTD Expenses by Category</div>
+            <div className="app-panel" style={{ ...styles.panel, marginTop: '1.5rem', marginBottom: '1.5rem' }}>
+              <div style={styles.panelTitle}><Icons.Expense /> Spending by Category{forecast.isCurrentYear ? ' · year to date' : ''}</div>
               <div style={{ height: Math.max(200, ytdExpensesByName.length * 35 + 40), padding: '1rem 0' }}>
                 <canvas ref={ytdChartRef}></canvas>
               </div>
             </div>
           )}
 
-          <div style={styles.sectionTitle}><Icons.Calendar /> Full Year Summary ({dashboardYear})</div>
-          <div className="app-dashboard-grid" style={styles.dashboardGrid}>
-            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--accent)')} /><div style={styles.statLabel}>Total Income</div><div className="app-stat-value" style={styles.statValue('var(--success)')}>{formatCurrency(stats.totalPayrollForYear)}</div></div>
-            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--accent-2)')} /><div style={styles.statLabel}>Total Recurring Expenses</div><div className="app-stat-value" style={styles.statValue('var(--danger)')}>{formatCurrency(stats.totalRecurringExpensesForYear)}</div></div>
-            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--warning)')} /><div style={styles.statLabel}>Total One-Off Expenses</div><div className="app-stat-value" style={styles.statValue('var(--warning)')}>{formatCurrency(stats.totalOneOffExpensesForYear)}</div></div>
-            <div className="app-stat-card" style={styles.statCard()}><div style={styles.statCardAccent('var(--danger)')} /><div style={styles.statLabel}>Total All Expenses</div><div className="app-stat-value" style={styles.statValue('var(--danger)')}>{formatCurrency(stats.totalExpensesForYear)}</div></div>
-          </div>
-
+          <div style={styles.sectionTitle}><Icons.Database /> Income &amp; Expenses</div>
           <div className="app-three-column" style={styles.threeColumn}>
             <div className="app-panel" style={styles.panel}>
               <div className="app-panel-header" style={styles.panelHeader}>
@@ -2490,8 +2615,32 @@ const { theme, isDark } = useTheme();
               ))}
             </div>
           </div>
+
+          <div className="app-panel" style={{ ...styles.panel, marginTop: '1.5rem' }}>
+            <div className="app-panel-header" style={styles.panelHeader}>
+              <div style={styles.panelTitle}><Icons.Shield /> Balance Check-ins</div>
+              {forecast.checkIns.length > 0 && (
+                <button style={styles.cancelBtn} onClick={() => clearCheckInsForYear(dashboardYear)}>Clear all</button>
+              )}
+            </div>
+            <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.55, marginBottom: forecast.checkIns.length > 0 ? '0.875rem' : 0 }}>
+              A check-in pins your <strong style={{ color: 'var(--text-secondary)' }}>actual</strong> account balance on a date; the forecast continues from there. Record one anytime by editing a day&rsquo;s starting balance on the <strong style={{ color: 'var(--text-secondary)' }}>Calendar</strong>.
+            </div>
+            {forecast.checkIns.length === 0 ? (
+              <div style={styles.emptyState}>No check-ins yet — your {dashboardYear} forecast is a pure projection from your income &amp; expenses.</div>
+            ) : forecast.checkIns.map(c => (
+              <div key={c.date} className="app-item-row" style={styles.itemRow}>
+                <div><div style={styles.itemName}>{formatFullDate(parseDateKey(c.date))}</div><div style={styles.itemMeta}>Actual balance recorded</div></div>
+                <div className="app-item-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <span style={{ fontSize: '0.9375rem', fontWeight: 600, color: c.balance >= 0 ? 'var(--success)' : 'var(--danger)' }}>{formatCurrency(c.balance)}</span>
+                  <button className="icon-btn" aria-label={`Remove check-in on ${c.date}`} style={styles.deleteBtn} onClick={() => clearOverride(c.date)}><Icons.Trash /></button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-      );
+        );
+      };
 
       const renderCashFlow = () => {
         const hasData = sankeyData.nodes.length > 0;
@@ -2730,15 +2879,15 @@ const { theme, isDark } = useTheme();
                           <div style={{ display: 'flex', alignItems: 'center' }}>
                             <input type="number" value={editValue} onChange={(e) => setEditValue(e.target.value)} style={styles.inlineInput} autoFocus onKeyDown={(e) => { if (e.key === 'Enter') handleOverrideBalance(day.dateKey, editValue); if (e.key === 'Escape') setEditingCell(null); }} />
                             <div style={styles.inlineActions}>
-                              <button className="icon-btn" aria-label="Save balance override" style={{ ...styles.inlineBtn('52, 211, 153'), color: 'var(--success)' }} onClick={() => handleOverrideBalance(day.dateKey, editValue)}><Icons.Check /></button>
+                              <button className="icon-btn" aria-label="Save balance check-in" style={{ ...styles.inlineBtn('52, 211, 153'), color: 'var(--success)' }} onClick={() => handleOverrideBalance(day.dateKey, editValue)}><Icons.Check /></button>
                               <button className="icon-btn" aria-label="Cancel edit" style={{ ...styles.inlineBtn('251, 113, 133'), color: 'var(--danger)' }} onClick={() => setEditingCell(null)}><Icons.X /></button>
                             </div>
                           </div>
                         ) : (
                           <span style={day.startingBalance >= 0 ? styles.balancePositive : styles.balanceNegative}>
                             {formatCurrency(day.startingBalance)}
-                            {day.isOverridden && (<span style={styles.overrideBadge} onClick={() => clearOverride(day.dateKey)} title="Click to clear override">Override</span>)}
-                            <button className="icon-btn" aria-label="Edit starting balance" title="Override starting balance" style={styles.editButton} onClick={() => { setEditingCell(day.dateKey); setEditValue(day.startingBalance.toString()); }}><Icons.Edit /></button>
+                            {day.isOverridden && (<span style={styles.overrideBadge} onClick={() => clearOverride(day.dateKey)} title="Click to remove this check-in">Check-in</span>)}
+                            <button className="icon-btn" aria-label="Record actual balance (check-in)" title="Record actual balance here" style={styles.editButton} onClick={() => { setEditingCell(day.dateKey); setEditValue(day.startingBalance.toString()); }}><Icons.Edit /></button>
                           </span>
                         )}
                       </div>
@@ -2761,7 +2910,6 @@ const { theme, isDark } = useTheme();
               <div className="app-header-top">
                 <div style={styles.logo} onClick={onBackToHome}><div style={styles.logoIcon}><Icons.TrendUp /></div><span className="app-logo-text" style={styles.logoText}>Mercury</span><span className="app-year-badge" style={styles.yearBadge}>{activeYear}</span></div>
                 <div className="app-header-actions" style={styles.headerActions}>
-                  <ThemeToggle />
                   <div className="app-hide-mobile" style={styles.cloudIndicator}><Icons.Cloud /> Cloud Sync</div>
                   <div style={styles.saveIndicator(saveState)} role="status" aria-live="polite">
                     {saveState === 'saving' ? <><Icons.Cloud /> Saving…</> : saveState === 'error' ? <><Icons.Warning /> Save failed</> : <><Icons.Check /> Saved</>}
