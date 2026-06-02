@@ -856,11 +856,14 @@
     // Single source of truth for recurring expense frequency calculation
     // Replaces duplicated logic in financialData, stats, ytdExpensesByName, and sankeyData useMemos
     const isExpenseDue = (date, expense) => {
-      const { dayOfMonth, dayOfWeekIdx, month } = getDateInfo(date);
+      const { dayOfMonth, dayOfWeekIdx, month, year } = getDateInfo(date);
 
       switch (expense.frequency) {
         case 'monthly':
           return matchesDayOfMonth(date, expense.dayOfMonth);
+        case 'semimonthly':
+          // Twice a month: the 15th and the last calendar day of the month.
+          return dayOfMonth === 15 || dayOfMonth === getLastDayOfMonth(year, month);
         case 'weekly':
           return expense.dayOfWeek === dayOfWeekIdx;
         case 'yearly':
@@ -878,6 +881,7 @@
     const monthlyEquivalent = (expense) => {
       switch (expense.frequency) {
         case 'weekly': return expense.amount * 52 / 12;
+        case 'semimonthly': return expense.amount * 2;
         case 'yearly': return expense.amount / 12;
         case 'monthly':
         default: return expense.amount;
@@ -2705,7 +2709,7 @@ const { theme, isDark } = useTheme();
       const clearAllData = () => { if (confirm('Clear all data? This cannot be undone!')) { setInitialBalances({ [activeYear]: 5000 }); setPayrolls([]); setRecurringExpenses([]); setOneOffExpenses([]); setOneOffIncomes([]); setBalanceOverrides({}); setArchivedYears([]); } };
 
       const frequencyLabels = { 'weekly': 'Weekly', 'biweekly': 'Biweekly', 'monthly': 'Monthly', 'semimonthly': 'Semi-monthly (15th & EOM)', 'last-weekday-15th': 'Last weekday before 15th', 'last-weekday-eom': 'Last weekday of month', 'yearly': 'Yearly' };
-      const getExpenseFrequencyLabel = (expense) => { if (expense.frequency === 'weekly') return `Weekly on ${dayNames[expense.dayOfWeek]}s`; if (expense.frequency === 'monthly') return `Monthly on day ${expense.dayOfMonth}`; if (expense.frequency === 'yearly') return `Yearly on ${months[expense.month]} ${expense.day}`; return expense.frequency; };
+      const getExpenseFrequencyLabel = (expense) => { if (expense.frequency === 'weekly') return `Weekly on ${dayNames[expense.dayOfWeek]}s`; if (expense.frequency === 'monthly') return `Monthly on day ${expense.dayOfMonth}`; if (expense.frequency === 'semimonthly') return 'Twice a month (15th & last day)'; if (expense.frequency === 'yearly') return `Yearly on ${months[expense.month]} ${expense.day}`; return expense.frequency; };
       
       const styles = {
         container: { minHeight: '100vh', background: 'var(--bg-gradient)', fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif', color: 'var(--text-primary)' },
@@ -3413,7 +3417,7 @@ const { theme, isDark } = useTheme();
                 <h3 style={styles.formTitle}>{isEditing ? 'Edit Recurring Expense' : 'Add Recurring Expense'}</h3>
                 <div style={styles.formGroup}><label style={styles.formLabel}>Name</label><input type="text" placeholder="e.g., Rent, Netflix, Groceries" value={newRecurringExpense.name} onChange={e => setNewRecurringExpense(p => ({ ...p, name: e.target.value }))} style={styles.formInput} /></div>
                 <div style={styles.formGroup}><label style={styles.formLabel}>Amount</label><input type="number" placeholder="0.00" value={newRecurringExpense.amount} onChange={e => setNewRecurringExpense(p => ({ ...p, amount: e.target.value }))} style={styles.formInput} /></div>
-                <div style={styles.formGroup}><label style={styles.formLabel}>Frequency</label><select value={newRecurringExpense.frequency} onChange={e => setNewRecurringExpense(p => ({ ...p, frequency: e.target.value }))} style={styles.formSelect}><option value="weekly">Weekly</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select></div>
+                <div style={styles.formGroup}><label style={styles.formLabel}>Frequency</label><select value={newRecurringExpense.frequency} onChange={e => setNewRecurringExpense(p => ({ ...p, frequency: e.target.value }))} style={styles.formSelect}><option value="weekly">Weekly</option><option value="semimonthly">Twice a month (15th &amp; EOM)</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select></div>
                 {newRecurringExpense.frequency === 'weekly' && (<div style={styles.formGroup}><label style={styles.formLabel}>Day of Week</label><select value={newRecurringExpense.dayOfWeek} onChange={e => setNewRecurringExpense(p => ({ ...p, dayOfWeek: parseInt(e.target.value) }))} style={styles.formSelect}>{dayNames.map((day, idx) => <option key={day} value={idx}>{day}</option>)}</select></div>)}
                 {newRecurringExpense.frequency === 'monthly' && (<div style={styles.formGroup}><label style={styles.formLabel}>Day of Month (1-31)</label><input type="number" min="1" max="31" value={newRecurringExpense.dayOfMonth} onChange={e => setNewRecurringExpense(p => ({ ...p, dayOfMonth: e.target.value }))} style={styles.formInput} /></div>)}
                 {newRecurringExpense.frequency === 'yearly' && (<><div style={styles.formGroup}><label style={styles.formLabel}>Month</label><select value={newRecurringExpense.month} onChange={e => setNewRecurringExpense(p => ({ ...p, month: parseInt(e.target.value) }))} style={styles.formSelect}>{months.map((month, idx) => <option key={month} value={idx}>{month}</option>)}</select></div><div style={styles.formGroup}><label style={styles.formLabel}>Day</label><input type="number" min="1" max="31" value={newRecurringExpense.day} onChange={e => setNewRecurringExpense(p => ({ ...p, day: e.target.value }))} style={styles.formInput} /></div></>)}
