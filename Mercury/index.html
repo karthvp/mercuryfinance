@@ -1583,18 +1583,12 @@
       const setShowRecurringExpenseForm = (show) => formDispatch({ type: show ? 'SHOW_FORM' : 'HIDE_FORM', formType: 'recurring' });
       const setShowOneOffExpenseForm = (show) => formDispatch({ type: show ? 'SHOW_FORM' : 'HIDE_FORM', formType: 'oneOff' });
       const setAddOneOffFromCalendar = (date) => formDispatch({ type: date ? 'SHOW_FORM' : 'HIDE_FORM', formType: 'oneOff', calendarDate: date });
-      const [draggedExpenseId, setDraggedExpenseId] = useState(null);
+      const [draggedItem, setDraggedItem] = useState(null); // { type:'oneoffExpense'|'oneoffIncome'|'recurringExpense'|'recurringIncome', id, origin? }
 
-      const moveOneOffExpense = (expenseId, newDate) => {
-        setOneOffExpenses(prev => prev.map(expense => 
-          expense.id === expenseId ? { ...expense, date: newDate } : expense
-        ));
-      };
-
-      const handleDragStart = (e, expenseId) => {
-        setDraggedExpenseId(expenseId);
+      const handleDragStart = (e, item) => {
+        setDraggedItem(item);
         e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', expenseId.toString());
+        try { e.dataTransfer.setData('text/plain', String(item.id)); } catch (_) {}
       };
 
       const handleDragOver = (e) => {
@@ -1602,17 +1596,21 @@
         e.dataTransfer.dropEffect = 'move';
       };
 
+      // Dropping on a day moves that occurrence there. One-offs change their own date;
+      // recurring occurrences get a per-occurrence moveTo exception (cleared if dropped
+      // back on their natural date).
       const handleDrop = (e, targetDateKey) => {
         e.preventDefault();
-        if (draggedExpenseId) {
-          moveOneOffExpense(draggedExpenseId, targetDateKey);
-          setDraggedExpenseId(null);
-        }
+        const item = draggedItem;
+        setDraggedItem(null);
+        if (!item) return;
+        if (item.type === 'oneoffExpense') setOneOffExpenses(prev => prev.map(x => x.id === item.id ? { ...x, date: targetDateKey } : x));
+        else if (item.type === 'oneoffIncome') setOneOffIncomes(prev => prev.map(x => x.id === item.id ? { ...x, date: targetDateKey } : x));
+        else if (item.type === 'recurringIncome') applyOccurrenceException('income', item.id, item.origin, { moveTo: targetDateKey === item.origin ? null : targetDateKey, skip: false });
+        else if (item.type === 'recurringExpense') applyOccurrenceException('expense', item.id, item.origin, { moveTo: targetDateKey === item.origin ? null : targetDateKey, skip: false });
       };
 
-      const handleDragEnd = () => {
-        setDraggedExpenseId(null);
-      };
+      const handleDragEnd = () => setDraggedItem(null);
 
       const saveTimeoutRef = useRef(null);
       const monthRefs = useRef({});
@@ -1956,13 +1954,14 @@ const { theme, isDark } = useTheme();
       }, [dashboardYear, dashboardOccurrences, payrolls]);
 
       useEffect(() => {
-        if (!ytdChartRef.current || activeView !== 'dashboard') return;
-        
-        if (ytdChartInstance.current) {
-          ytdChartInstance.current.destroy();
-        }
-        
-        const ctx = ytdChartRef.current.getContext('2d');
+        if (activeView !== 'dashboard' || ytdExpensesByName.length === 0) return;
+        const raf = requestAnimationFrame(() => {
+        const el = ytdChartRef.current;
+        if (!el) return;
+        try {
+        if (ytdChartInstance.current) { ytdChartInstance.current.destroy(); ytdChartInstance.current = null; }
+
+        const ctx = el.getContext('2d');
         // Purple-free categorical palette tuned for the Quicksilver theme
         const colors = ['#22d3ee', '#34d399', '#fb7185', '#fbbf24', '#38bdf8', '#2dd4bf', '#f97316', '#f472b6', '#a3e635', '#60a5fa'];
         
@@ -2013,23 +2012,27 @@ const { theme, isDark } = useTheme();
             }
           }
         });
-        
-        return () => {
-          if (ytdChartInstance.current) {
-            ytdChartInstance.current.destroy();
-          }
-        };
+        } catch (err) { console.error('Category chart render failed:', err); }
+        });
+
+        return () => { cancelAnimationFrame(raf); if (ytdChartInstance.current) { ytdChartInstance.current.destroy(); ytdChartInstance.current = null; } };
       }, [ytdExpensesByName, activeView, isDark]);
 
       // Balance-over-time line chart — the centerpiece of the dashboard.
       // Shows the daily ending-balance trajectory: past solid / future dashed,
       // negative regions shaded red, with today and balance check-ins marked.
       useEffect(() => {
-        if (!balanceChartRef.current || activeView !== 'dashboard') return;
-        if (balanceChartInstance.current) balanceChartInstance.current.destroy();
+        if (activeView !== 'dashboard') return;
+        // Defer to the next frame so the glass panel has finished laying out — otherwise
+        // Chart.js can capture a 0-size container and render a blank chart.
+        const raf = requestAnimationFrame(() => {
+        const el = balanceChartRef.current;
+        if (!el) return;
+        try {
+        if (balanceChartInstance.current) { balanceChartInstance.current.destroy(); balanceChartInstance.current = null; }
 
         const series = dashboardSeries;
-        const ctx = balanceChartRef.current.getContext('2d');
+        const ctx = el.getContext('2d');
         const todayIdx = forecast.isCurrentYear ? series.findIndex(d => d.isToday) : -1;
 
         const accent = isDark ? '#22d3ee' : '#0e9bb8';
@@ -2105,8 +2108,10 @@ const { theme, isDark } = useTheme();
             },
           },
         });
+        } catch (err) { console.error('Balance chart render failed:', err); }
+        });
 
-        return () => { if (balanceChartInstance.current) balanceChartInstance.current.destroy(); };
+        return () => { cancelAnimationFrame(raf); if (balanceChartInstance.current) { balanceChartInstance.current.destroy(); balanceChartInstance.current = null; } };
       }, [dashboardSeries, forecast, activeView, isDark]);
 
       // D3 Sankey rendering effect
@@ -2959,13 +2964,13 @@ const { theme, isDark } = useTheme();
                         <div style={styles.expensesList}>
                           {day.payrollDetails.map((p, i) => (
                             p.kind === 'recurring'
-                              ? <span key={i} style={{ ...styles.payrollBadge, cursor: 'pointer' }} onClick={() => openOccurrenceEditor('income', p, day.dateKey)} title="Adjust, move, or skip this paycheck">+{formatCurrency(p.amount)} {p.name}{(p.moved || p.adjusted) ? ' ✎' : ''}</span>
-                              : <span key={i} style={{ ...styles.payrollBadge, cursor: 'pointer' }} onClick={() => editOneOffIncome(p)} title="Edit this one-off income">+{formatCurrency(p.amount)} {p.name}</span>
+                              ? <span key={i} draggable="true" onDragStart={(ev) => handleDragStart(ev, { type: 'recurringIncome', id: p.id, origin: p.origin })} onDragEnd={handleDragEnd} onClick={() => openOccurrenceEditor('income', p, day.dateKey)} style={{ ...styles.payrollBadge, cursor: 'grab' }} title="Drag to move · click to adjust or skip">+{formatCurrency(p.amount)} {p.name}{(p.moved || p.adjusted) ? ' ✎' : ''}</span>
+                              : <span key={i} draggable="true" onDragStart={(ev) => handleDragStart(ev, { type: 'oneoffIncome', id: p.id })} onDragEnd={handleDragEnd} onClick={() => editOneOffIncome(p)} style={{ ...styles.payrollBadge, cursor: 'grab' }} title="Drag to move · click to edit">+{formatCurrency(p.amount)} {p.name}</span>
                           ))}
                           {day.expenseDetails.map((e, i) => (
                             e.isRecurring
-                              ? <span key={i} style={{ ...styles.recurringExpenseBadge, cursor: 'pointer' }} onClick={() => openOccurrenceEditor('expense', e, day.dateKey)} title="Adjust, move, or skip this charge">-{formatCurrency(e.amount)} {e.name}{(e.moved || e.adjusted) ? ' ✎' : ''}</span>
-                              : <span key={i} draggable="true" onDragStart={(ev) => handleDragStart(ev, e.id)} onDragEnd={handleDragEnd} onClick={() => editOneOffExpense(e)} style={{ ...styles.oneOffExpenseBadge, cursor: 'grab' }} title="Drag to move · click to edit">-{formatCurrency(e.amount)} {e.name}</span>
+                              ? <span key={i} draggable="true" onDragStart={(ev) => handleDragStart(ev, { type: 'recurringExpense', id: e.id, origin: e.origin })} onDragEnd={handleDragEnd} onClick={() => openOccurrenceEditor('expense', e, day.dateKey)} style={{ ...styles.recurringExpenseBadge, cursor: 'grab' }} title="Drag to move · click to adjust or skip">-{formatCurrency(e.amount)} {e.name}{(e.moved || e.adjusted) ? ' ✎' : ''}</span>
+                              : <span key={i} draggable="true" onDragStart={(ev) => handleDragStart(ev, { type: 'oneoffExpense', id: e.id })} onDragEnd={handleDragEnd} onClick={() => editOneOffExpense(e)} style={{ ...styles.oneOffExpenseBadge, cursor: 'grab' }} title="Drag to move · click to edit">-{formatCurrency(e.amount)} {e.name}</span>
                           ))}
                         </div>
                       </div>
