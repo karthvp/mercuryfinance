@@ -436,11 +436,6 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Async handler wrapper to catch errors in async route handlers
-const asyncHandler = (fn) => (req, res, next) => {
-  Promise.resolve(fn(req, res, next)).catch(next);
-};
-
 async function startServer() {
   try {
     await initDatabase();
