@@ -109,6 +109,9 @@ The application tracks:
 
 ## Recent Changes
 
+- **June 2026**: Added **Year Rollover** automation — on load, if the real year has advanced past the stored year, Mercury archives each completed year and carries its Dec 31 ending balance into the next year's starting balance (only when not already set), idempotently and through every intervening year. A dismissible notice summarizes the rollover, and a manual "Roll over to <year>" action is available in the dashboard year-selector row.
+- **June 2026**: Added **Debt Payoff Planner** integrated with recurring expenses. A recurring expense can be linked to a debt (`debtId`); the expense stays the source of truth for the payment, the debt supplies balance + APR, and the planner derives payoff date and interest (amortization). A linked expense automatically terminates in the forecast once its debt is paid off, via a single point in `generateOccurrences` (so Calendar/Dashboard/Cash Flow stay consistent). New `debts` JSONB column + migration; `DATA_VERSION` bumped to 2. Includes a "Debt" nav tab, a debt-payoff projection chart, and a motivational debt-free banner.
+- **June 2026**: Reworked income/expense mechanics — one-off income, in-place editing of all entries, and per-occurrence adjust/move/skip exceptions; plus a balance-forecast dashboard, balance check-ins, and a Quicksilver liquid-glass redesign.
 - **January 2026**: Added light/dark theme system with automatic system preference detection using CSS custom properties and useTheme hook
 - **January 2026**: Added comprehensive mobile responsiveness to FinancialTracker app with CSS media queries for header, dashboard grids, panels, calendar table, and form overlays
 - **January 2026**: Added interactive Matrix-style "Money Rain" animation to the homepage hero background (canvas-based, gold dollar signs with mouse glow effect)
