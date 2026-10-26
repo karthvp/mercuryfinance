@@ -3,16 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mercury - Personal Finance Tracker</title>
-  <meta name="description" content="Mercury is a personal finance tracker that helps you manage income, forecast recurring and one-off expenses, visualize cash flow, and plan your budget with an elegant calendar and dashboard.">
-  <meta property="og:title" content="Mercury - Personal Finance Tracker">
-  <meta property="og:description" content="Track income, forecast expenses, and visualize your financial future with Mercury's elegant, intuitive interface.">
+  <title>Mercury — See what comes next</title>
+  <meta name="description" content="Map upcoming paydays, bills, and daily balances with Mercury, a personal finance forecasting workspace.">
+  <meta property="og:title" content="Mercury — See what comes next">
+  <meta property="og:description" content="A clear, day-by-day view of your paydays, bills, and projected balance.">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Mercury - Personal Finance Tracker">
-  <meta name="twitter:description" content="Track income, forecast expenses, and visualize your financial future with Mercury's elegant, intuitive interface.">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2322d3ee'/%3E%3Cg fill='none' stroke='%23042027' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M11 6 Q16 11 21 6'/%3E%3Ccircle cx='16' cy='15' r='5'/%3E%3Cline x1='16' y1='20' x2='16' y2='27'/%3E%3Cline x1='12.5' y1='23.6' x2='19.5' y2='23.6'/%3E%3C/g%3E%3C/svg%3E">
-  <meta name="theme-color" content="#22d3ee">
+  <meta name="twitter:title" content="Mercury — See what comes next">
+  <meta name="twitter:description" content="A clear, day-by-day view of your paydays, bills, and projected balance.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23df4f68'/%3E%3Cg fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M11 6 Q16 11 21 6'/%3E%3Ccircle cx='16' cy='15' r='5'/%3E%3Cline x1='16' y1='20' x2='16' y2='27'/%3E%3Cline x1='12.5' y1='23.6' x2='19.5' y2='23.6'/%3E%3C/g%3E%3C/svg%3E">
+  <meta name="theme-color" content="#ffffff">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" integrity="sha384-tMH8h3BGESGckSAVGZ82T9n90ztNXxvdwvdM6UoR56cYcf+0iGXBliJ29D+wZ/x8" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" integrity="sha384-bm7MnzvK++ykSwVJ2tynSE5TRdN+xL418osEVF2DE/L/gfWHj91J2Sphe582B1Bh" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js" integrity="sha384-1qlE7MZPM2pHD/pBZCU/yB8UCP52RYL8bge/qNdfNBCWToySp8/M+JL2waXU4hjJ" crossorigin="anonymous"></script>
@@ -24,110 +24,159 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      /* ===== Quicksilver — Liquid Glass (dark) ===== */
-      --bg-primary: #060a12;
-      --bg-secondary: #0a111c;
-      --bg-tertiary: #0b1826;
-      --bg-gradient: linear-gradient(165deg, #060a12 0%, #0a111c 45%, #0a1622 100%);
-      --bg-surface: rgba(255, 255, 255, 0.035);
-      --bg-surface-hover: rgba(255, 255, 255, 0.06);
-      --bg-overlay: rgba(8, 14, 22, 0.68);
-      --text-primary: #eef5f8;
-      --text-secondary: #a3b6c1;
-      --text-muted: #6f8693;
-      --text-dim: #4b6271;
-      --border-subtle: rgba(255, 255, 255, 0.06);
-      --border-light: rgba(255, 255, 255, 0.1);
-      --border-medium: rgba(255, 255, 255, 0.16);
-      --accent: #22d3ee;
-      --accent-2: #38bdf8;
-      --accent-light: #a5f3fc;
-      --accent-dark: #0e9bb8;
-      --accent-gradient: linear-gradient(135deg, #2dd4bf 0%, #22d3ee 50%, #38bdf8 100%);
-      --accent-bg: rgba(34, 211, 238, 0.09);
-      --accent-bg-hover: rgba(34, 211, 238, 0.15);
-      --accent-border: rgba(34, 211, 238, 0.22);
-      --accent-border-strong: rgba(34, 211, 238, 0.42);
-      --accent-text-on: #03121a;
-      --success: #34d399;
-      --success-bg: rgba(52, 211, 153, 0.12);
-      --danger: #fb7185;
-      --danger-bg: rgba(251, 113, 133, 0.12);
-      --warning: #fbbf24;
-      --warning-bg: rgba(251, 191, 36, 0.12);
-      --scrollbar-track: rgba(255,255,255,0.02);
-      --scrollbar-thumb: rgba(34,211,238,0.28);
-      --shadow-color: rgba(0, 0, 0, 0.5);
-      --chart-grid: rgba(255, 255, 255, 0.05);
-      --rain-bg: rgba(6, 10, 18, 0.09);
-      --rain-color: rgba(34, 211, 238, 0.16);
-      /* Liquid glass surfaces */
-      --glass-bg: rgba(255, 255, 255, 0.045);
-      --glass-bg-strong: rgba(16, 28, 40, 0.55);
-      --glass-border: rgba(255, 255, 255, 0.12);
-      --glass-highlight: rgba(255, 255, 255, 0.22);
-      --glass-blur: 18px;
-      --elev-1: 0 2px 10px rgba(0,0,0,0.28);
-      --elev-2: 0 12px 36px rgba(0,0,0,0.40);
-      --elev-3: 0 28px 70px rgba(0,0,0,0.50);
-      --glow-accent: 0 0 28px rgba(34, 211, 238, 0.28);
-      --aurora-1: rgba(34, 211, 238, 0.18);
-      --aurora-2: rgba(45, 212, 191, 0.16);
-      --aurora-3: rgba(56, 189, 248, 0.14);
+      /* Mercury / light: paper, ink, and a bright coral-to-orchid signal */
+      --bg-primary: #fff;
+      --bg-secondary: #fff;
+      --bg-tertiary: #fbf8f8;
+      --bg-gradient: linear-gradient(180deg, #fff 0%, #fffafa 100%);
+      --bg-surface: #fff;
+      --bg-surface-hover: #fff7f7;
+      --bg-overlay: rgba(255,255,255,.92);
+      --text-primary: #0b0a10;
+      --text-secondary: #57545d;
+      --text-muted: #77737c;
+      --text-dim: #99959e;
+      --border-subtle: rgba(11,10,16,.08);
+      --border-light: rgba(11,10,16,.12);
+      --border-medium: rgba(11,10,16,.2);
+      --accent: #df4f68;
+      --accent-2: #d64b8b;
+      --accent-light: #a653d2;
+      --accent-dark: #bf3f63;
+      --accent-gradient: linear-gradient(110deg, #f17865 0%, #e24687 52%, #9958d7 100%);
+      --accent-bg: rgba(223,79,104,.09);
+      --accent-bg-hover: rgba(223,79,104,.14);
+      --accent-border: rgba(223,79,104,.22);
+      --accent-border-strong: rgba(223,79,104,.4);
+      --accent-text-on: #fff;
+      --success: #34856d;
+      --success-bg: rgba(52,133,109,.1);
+      --danger: #c9485c;
+      --danger-bg: rgba(201,72,92,.1);
+      --warning: #a66b23;
+      --warning-bg: rgba(166,107,35,.1);
+      --scrollbar-track: rgba(11,10,16,.03);
+      --scrollbar-thumb: rgba(223,79,104,.28);
+      --shadow-color: rgba(42,20,32,.1);
+      --chart-grid: rgba(11,10,16,.08);
+      --rain-bg: rgba(255,255,255,.08);
+      --rain-color: rgba(223,79,104,.16);
+      --glass-bg: #fff;
+      --glass-bg-strong: rgba(255,255,255,.96);
+      --glass-border: rgba(11,10,16,.1);
+      --glass-highlight: rgba(255,255,255,.9);
+      --glass-blur: 12px;
+      --elev-1: 0 2px 12px rgba(42,20,32,.045);
+      --elev-2: 0 14px 36px rgba(42,20,32,.09);
+      --elev-3: 0 26px 72px rgba(42,20,32,.14);
+      --glow-accent: none;
+      --aurora-1: rgba(255,190,175,.16);
+      --aurora-2: rgba(228,120,173,.12);
+      --aurora-3: rgba(176,130,223,.12);
       --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
       --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
     }
 
+    [data-theme="dark"] {
+      --bg-primary: #111016;
+      --bg-secondary: #19171e;
+      --bg-tertiary: #211e26;
+      --bg-gradient: linear-gradient(165deg, #111016 0%, #19171e 55%, #1d1921 100%);
+      --bg-surface: rgba(255,255,255,.045);
+      --bg-surface-hover: rgba(255,255,255,.075);
+      --bg-overlay: rgba(20,18,24,.9);
+      --text-primary: #f4f0f3;
+      --text-secondary: #c0b9c1;
+      --text-muted: #958d97;
+      --text-dim: #716a74;
+      --border-subtle: rgba(255,255,255,.08);
+      --border-light: rgba(255,255,255,.12);
+      --border-medium: rgba(255,255,255,.2);
+      --accent: #f07882;
+      --accent-2: #e45e9d;
+      --accent-light: #bc82e2;
+      --accent-dark: #d3566c;
+      --accent-gradient: linear-gradient(110deg, #f38a72 0%, #e34f91 52%, #a86bdf 100%);
+      --accent-bg: rgba(240,120,130,.12);
+      --accent-bg-hover: rgba(240,120,130,.18);
+      --accent-border: rgba(240,120,130,.25);
+      --accent-border-strong: rgba(240,120,130,.44);
+      --accent-text-on: #201018;
+      --success: #6dc3a1;
+      --success-bg: rgba(109,195,161,.12);
+      --danger: #f07882;
+      --danger-bg: rgba(240,120,130,.12);
+      --warning: #e8b36d;
+      --warning-bg: rgba(232,179,109,.12);
+      --scrollbar-track: rgba(255,255,255,.025);
+      --scrollbar-thumb: rgba(240,120,130,.3);
+      --shadow-color: rgba(0,0,0,.32);
+      --chart-grid: rgba(255,255,255,.08);
+      --rain-bg: rgba(17,16,22,.1);
+      --rain-color: rgba(240,120,130,.16);
+      --glass-bg: rgba(255,255,255,.045);
+      --glass-bg-strong: rgba(31,27,35,.94);
+      --glass-border: rgba(255,255,255,.12);
+      --glass-highlight: rgba(255,255,255,.14);
+      --glass-blur: 14px;
+      --elev-1: 0 2px 12px rgba(0,0,0,.2);
+      --elev-2: 0 14px 36px rgba(0,0,0,.28);
+      --elev-3: 0 26px 72px rgba(0,0,0,.36);
+      --glow-accent: none;
+      --aurora-1: rgba(176,83,112,.14);
+      --aurora-2: rgba(128,72,124,.12);
+      --aurora-3: rgba(112,82,160,.12);
+    }
+
     [data-theme="light"] {
-      /* ===== Quicksilver — Liquid Glass (light) ===== */
-      --bg-primary: #eef2f7;
-      --bg-secondary: #ffffff;
-      --bg-tertiary: #e6edf5;
-      --bg-gradient: linear-gradient(165deg, #eef2f7 0%, #f7fafc 45%, #e6eef6 100%);
-      --bg-surface: rgba(255, 255, 255, 0.6);
-      --bg-surface-hover: rgba(255, 255, 255, 0.85);
-      --bg-overlay: rgba(255, 255, 255, 0.72);
-      --text-primary: #0c1b26;
-      --text-secondary: #3c5260;
-      --text-muted: #5c7382;
-      --text-dim: #8499a6;
-      --border-subtle: rgba(12, 27, 38, 0.07);
-      --border-light: rgba(12, 27, 38, 0.11);
-      --border-medium: rgba(12, 27, 38, 0.16);
-      --accent: #0e9bb8;
-      --accent-2: #0284c7;
-      --accent-light: #22d3ee;
-      --accent-dark: #0b7e96;
-      --accent-gradient: linear-gradient(135deg, #0d9488 0%, #0e9bb8 50%, #0284c7 100%);
-      --accent-bg: rgba(14, 155, 184, 0.1);
-      --accent-bg-hover: rgba(14, 155, 184, 0.16);
-      --accent-border: rgba(14, 155, 184, 0.26);
-      --accent-border-strong: rgba(14, 155, 184, 0.42);
-      --accent-text-on: #ffffff;
-      --success: #059669;
-      --success-bg: rgba(5, 150, 105, 0.1);
-      --danger: #e11d48;
-      --danger-bg: rgba(225, 29, 72, 0.1);
-      --warning: #d97706;
-      --warning-bg: rgba(217, 119, 6, 0.1);
-      --scrollbar-track: rgba(0,0,0,0.03);
-      --scrollbar-thumb: rgba(14,155,184,0.32);
-      --shadow-color: rgba(20, 40, 60, 0.14);
-      --chart-grid: rgba(12, 27, 38, 0.08);
-      --rain-bg: rgba(238, 242, 247, 0.1);
-      --rain-color: rgba(14, 155, 184, 0.22);
-      --glass-bg: rgba(255, 255, 255, 0.55);
-      --glass-bg-strong: rgba(255, 255, 255, 0.72);
-      --glass-border: rgba(255, 255, 255, 0.7);
-      --glass-highlight: rgba(255, 255, 255, 0.9);
-      --glass-blur: 16px;
-      --elev-1: 0 2px 10px rgba(20,40,60,0.08);
-      --elev-2: 0 12px 36px rgba(20,40,60,0.12);
-      --elev-3: 0 28px 70px rgba(20,40,60,0.16);
-      --glow-accent: 0 0 28px rgba(14, 155, 184, 0.22);
-      --aurora-1: rgba(14, 155, 184, 0.16);
-      --aurora-2: rgba(13, 148, 136, 0.14);
-      --aurora-3: rgba(2, 132, 199, 0.12);
+      --bg-primary: #fff;
+      --bg-secondary: #fff;
+      --bg-tertiary: #fbf8f8;
+      --bg-gradient: linear-gradient(180deg, #fff 0%, #fffafa 100%);
+      --bg-surface: #fff;
+      --bg-surface-hover: #fff7f7;
+      --bg-overlay: rgba(255,255,255,.92);
+      --text-primary: #0b0a10;
+      --text-secondary: #57545d;
+      --text-muted: #77737c;
+      --text-dim: #99959e;
+      --border-subtle: rgba(11,10,16,.08);
+      --border-light: rgba(11,10,16,.12);
+      --border-medium: rgba(11,10,16,.2);
+      --accent: #df4f68;
+      --accent-2: #d64b8b;
+      --accent-light: #a653d2;
+      --accent-dark: #bf3f63;
+      --accent-gradient: linear-gradient(110deg, #f17865 0%, #e24687 52%, #9958d7 100%);
+      --accent-bg: rgba(223,79,104,.09);
+      --accent-bg-hover: rgba(223,79,104,.14);
+      --accent-border: rgba(223,79,104,.22);
+      --accent-border-strong: rgba(223,79,104,.4);
+      --accent-text-on: #fff;
+      --success: #34856d;
+      --success-bg: rgba(52,133,109,.1);
+      --danger: #c9485c;
+      --danger-bg: rgba(201,72,92,.1);
+      --warning: #a66b23;
+      --warning-bg: rgba(166,107,35,.1);
+      --scrollbar-track: rgba(11,10,16,.03);
+      --scrollbar-thumb: rgba(223,79,104,.28);
+      --shadow-color: rgba(42,20,32,.1);
+      --chart-grid: rgba(11,10,16,.08);
+      --rain-bg: rgba(255,255,255,.08);
+      --rain-color: rgba(223,79,104,.16);
+      --glass-bg: #fff;
+      --glass-bg-strong: rgba(255,255,255,.96);
+      --glass-border: rgba(11,10,16,.1);
+      --glass-highlight: rgba(255,255,255,.9);
+      --glass-blur: 12px;
+      --elev-1: 0 2px 12px rgba(42,20,32,.045);
+      --elev-2: 0 14px 36px rgba(42,20,32,.09);
+      --elev-3: 0 26px 72px rgba(42,20,32,.14);
+      --glow-accent: none;
+      --aurora-1: rgba(255,190,175,.16);
+      --aurora-2: rgba(228,120,173,.12);
+      --aurora-3: rgba(176,130,223,.12);
       --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
       --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
     }
@@ -162,7 +211,7 @@
     @keyframes shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
     @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; } }
     @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-    @keyframes glow { 0%, 100% { box-shadow: 0 0 22px rgba(34,211,238,0.30); } 50% { box-shadow: 0 0 44px rgba(34,211,238,0.55); } }
+    @keyframes glow { 0%, 100% { box-shadow: 0 0 18px rgba(214,75,139,0.10); } 50% { box-shadow: 0 0 28px rgba(214,75,139,0.18); } }
     @keyframes auroraDrift {
       0% { transform: translate3d(0,0,0) scale(1); }
       50% { transform: translate3d(2%, -2%, 0) scale(1.08); }
@@ -657,6 +706,222 @@
       .cashflow-stat-card { padding: 1rem; }
       .cashflow-stat-value { font-size: 1.25rem; }
     }
+
+    /* Mercury visual system — editorial financial planning, not a generic bank portal */
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg-primary); }
+    body::before { background: var(--bg-primary); }
+    body::after { opacity: .3; filter: blur(34px); }
+    .loading-spinner { border-color: var(--border-light); border-top-color: var(--accent); box-shadow: none; }
+    .loading-screen { color: var(--text-muted); }
+    .loading-spinner {
+      width: 112px; height: 8px; margin-bottom: 1rem; border: 0 !important;
+      border-radius: 999px !important; background: linear-gradient(90deg, var(--bg-tertiary) 20%, var(--accent-bg) 50%, var(--bg-tertiary) 80%) !important;
+      background-size: 220% 100% !important; box-shadow: none !important; animation: pulse 1.8s ease-in-out infinite !important;
+    }
+    .app-header {
+      background: var(--bg-overlay) !important;
+      border-bottom: 1px solid var(--border-subtle) !important;
+      box-shadow: 0 1px 0 rgba(11,10,16,.02) !important;
+      backdrop-filter: blur(18px) !important;
+      -webkit-backdrop-filter: blur(18px) !important;
+    }
+    .app-header-content { max-width: 1440px !important; min-height: 76px; gap: 2rem !important; }
+    .app-logo-text { font-family: 'Playfair Display', Georgia, serif !important; font-weight: 500 !important; letter-spacing: -.045em; }
+    .app-header-brand { cursor: pointer; }
+    .app-header-brand > div:first-child, .mobile-nav .logo-icon {
+      background: var(--accent-gradient) !important; box-shadow: none !important; border-radius: 12px !important;
+    }
+    .app-year-badge { border-radius: 999px !important; background: var(--bg-tertiary) !important; }
+    .app-nav { gap: .3rem !important; }
+    .app-nav-btn {
+      border-radius: 999px !important; font-size: .82rem !important; font-weight: 500 !important;
+      letter-spacing: -.01em; padding: .65rem .95rem !important;
+    }
+    .app-main { max-width: 1440px !important; margin: 0 auto !important; padding: 2.5rem clamp(1rem, 4vw, 3.5rem) 4rem !important; }
+    .app-panel, .app-stat-card, .cashflow-stat-card, .sankey-container, .cashflow-detail-panel {
+      background: var(--bg-secondary) !important; border: 1px solid var(--border-subtle) !important;
+      border-radius: 18px !important; box-shadow: var(--elev-1) !important;
+      backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+    }
+    .app-panel { padding: 1.5rem !important; }
+    .app-panel::before, .app-stat-card::before, .cashflow-stat-card::before { display: none !important; }
+    .app-panel:hover { border-color: var(--border-light) !important; }
+    .app-stat-card, .cashflow-stat-card { padding: 1.4rem !important; }
+    .app-stat-value, .cashflow-stat-value { font-family: 'Playfair Display', Georgia, serif !important; letter-spacing: -.035em; }
+    .app-panel-title, .cashflow-title { font-family: 'Playfair Display', Georgia, serif !important; font-weight: 500 !important; letter-spacing: -.035em; }
+    .app-main > div > .app-year-selector:first-child { border-radius: 14px !important; padding: .85rem 1.1rem !important; }
+    .app-panel-header { gap: 1rem; }
+    .app-panel-header > button, .app-year-selector > button {
+      border-radius: 999px !important; box-shadow: none !important;
+      background: #0b0a10 !important; color: #fff !important;
+    }
+    [data-theme="dark"] .app-panel-header > button, [data-theme="dark"] .app-year-selector > button { background: #f4f0f3 !important; color: #18151c !important; }
+    .app-form-actions button:last-child { background: #0b0a10 !important; color: #fff !important; border-radius: 999px !important; }
+    [data-theme="dark"] .app-form-actions button:last-child { background: #f4f0f3 !important; color: #18151c !important; }
+    .app-form-actions button:first-child { border-radius: 999px !important; }
+    .app-item-row { border-color: var(--border-subtle) !important; border-radius: 12px !important; }
+    .app-item-row:hover { transform: none !important; background: var(--bg-tertiary) !important; border-color: var(--border-light) !important; }
+    .app-nav-btn:hover { background: var(--bg-tertiary) !important; }
+    .app-add-btn, button[style*="addButton"], .mobile-nav-cta, .mobile-primary-btn,
+    button[style*="submitBtn"] {
+      border-radius: 999px !important; box-shadow: none !important;
+    }
+    button[style*="submitBtn"], .mobile-nav-cta, .mobile-primary-btn {
+      background: #0b0a10 !important; color: #fff !important;
+    }
+    .app-form-card {
+      border: 1px solid var(--border-light) !important; border-radius: 22px !important;
+      background: var(--bg-secondary) !important; box-shadow: var(--elev-3) !important;
+    }
+    input, select, textarea {
+      background: var(--bg-secondary) !important; color: var(--text-primary) !important;
+      border: 1px solid var(--border-medium) !important; border-radius: 10px !important;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--accent) !important; box-shadow: 0 0 0 3px var(--accent-bg) !important; }
+    .cashflow-title { font-size: clamp(1.8rem, 3vw, 2.4rem) !important; }
+    .cashflow-stat-label { letter-spacing: .11em !important; font-size: .68rem !important; }
+    .sankey-container { min-height: 440px; }
+    .app-table-header { border-bottom: 1px solid var(--border-light) !important; }
+    .theme-toggle { background: var(--bg-secondary) !important; border-color: var(--border-light) !important; box-shadow: none !important; }
+
+    /* Public story: clear editorial typography, spacious sections, one expressive forecast canvas */
+    .mobile-nav {
+      padding: .9rem max(1.25rem, calc((100vw - 1200px)/2)) !important;
+      background: rgba(255,255,255,.88) !important; border-bottom: 1px solid rgba(11,10,16,.08) !important;
+    }
+    [data-theme="dark"] .mobile-nav { background: rgba(24,22,29,.9) !important; }
+    .mobile-nav-content { max-width: 1200px !important; }
+    .mobile-logo-text { color: var(--text-primary) !important; background: none !important; -webkit-text-fill-color: currentColor !important; }
+    .mobile-nav-cta { border-radius: 999px !important; padding: .7rem 1.2rem !important; }
+    .mobile-hero {
+      min-height: 720px !important; padding: 8.5rem 1.5rem 4rem !important;
+      background:
+        radial-gradient(ellipse at 50% 12%, rgba(244,145,148,.13), transparent 35%),
+        linear-gradient(180deg, var(--bg-primary) 68%, #fff8f8 100%) !important;
+      overflow: visible !important;
+    }
+    [data-theme="dark"] .mobile-hero { background: radial-gradient(ellipse at 50% 10%, rgba(206,89,137,.13), transparent 40%), var(--bg-primary) !important; }
+    .mobile-hero canvas, .mobile-scroll-indicator, .mobile-hero > div[style*="radial-gradient"] { display: none !important; }
+    .mobile-hero-content { max-width: 920px !important; }
+    .mobile-hero-tagline {
+      padding: .45rem .85rem !important; margin-bottom: 1.6rem !important;
+      border: 1px solid var(--border-subtle) !important; background: var(--bg-secondary) !important;
+      color: var(--text-muted) !important; font-size: .76rem !important; letter-spacing: .015em !important;
+    }
+    .mobile-hero-tagline svg { color: var(--accent) !important; }
+    .mobile-hero h1 {
+      max-width: 900px; margin: 0 auto 1.35rem !important;
+      font-size: clamp(3.2rem, 8vw, 6.8rem) !important; line-height: .99 !important;
+      letter-spacing: -.045em !important; font-weight: 400 !important;
+      font-family: 'Playfair Display', Georgia, serif !important;
+    }
+    .mobile-hero h1 span {
+      background: var(--accent-gradient) !important; background-clip: text !important;
+      -webkit-background-clip: text !important; -webkit-text-fill-color: transparent !important;
+      animation: none !important;
+    }
+    .mobile-hero-subtitle { max-width: 620px !important; font-size: 1.05rem !important; line-height: 1.75 !important; margin-bottom: 1.8rem !important; }
+    .mobile-hero-actions { gap: .7rem !important; }
+    .mobile-primary-btn, .mobile-secondary-btn {
+      padding: .85rem 1.35rem !important; border-radius: 999px !important; font-size: .9rem !important;
+      box-shadow: none !important;
+    }
+    .mobile-primary-btn { background: #0b0a10 !important; color: #fff !important; }
+    [data-theme="dark"] .mobile-primary-btn { background: #f4f0f3 !important; color: #18151c !important; }
+    .mobile-secondary-btn { border-color: var(--border-medium) !important; color: var(--text-primary) !important; }
+    .mobile-section { max-width: 1200px !important; padding: 6rem 2rem !important; }
+    .mobile-section h2, .mobile-cta-section h2 {
+      font-family: 'Playfair Display', Georgia, serif !important; font-weight: 400 !important;
+      letter-spacing: -.045em !important; line-height: 1.05 !important;
+    }
+    .story-section {
+      max-width: 1200px; margin: 0 auto; padding: 6rem 2rem 7rem;
+      display: grid; grid-template-columns: minmax(250px,.85fr) minmax(0,1.15fr); gap: clamp(3rem,8vw,8rem);
+      align-items: start; border-top: 1px solid var(--border-subtle);
+    }
+    .story-kicker { display: block; margin-bottom: 1.25rem; color: var(--accent); font-size: .68rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+    .story-intro h2, .story-note-card h2 {
+      font-family: 'Playfair Display', Georgia, serif; font-size: clamp(2.5rem,5vw,4.3rem);
+      font-weight: 400; letter-spacing: -.055em; line-height: 1.02; color: var(--text-primary);
+    }
+    .story-intro p, .story-note-card p { margin-top: 1.25rem; color: var(--text-muted); line-height: 1.8; font-size: .98rem; max-width: 390px; }
+    .story-steps { border-top: 1px solid var(--border-subtle); }
+    .story-steps article { display: grid; grid-template-columns: 38px 1fr 24px; gap: 1rem; align-items: start; padding: 1.35rem 0; border-bottom: 1px solid var(--border-subtle); }
+    .story-steps article > span { color: var(--accent); font-size: .7rem; font-variant-numeric: tabular-nums; padding-top: .25rem; }
+    .story-steps h3 { color: var(--text-primary); font-size: 1rem; font-weight: 550; margin: 0 0 .35rem; letter-spacing: -.02em; }
+    .story-steps p { color: var(--text-muted); font-size: .84rem; line-height: 1.65; max-width: 440px; }
+    .story-steps svg { width: 19px; height: 19px; color: var(--accent); opacity: .8; }
+    .story-note-section { padding: 2rem clamp(1rem,5vw,4rem) 7rem; }
+    .story-note-card {
+      position: relative; overflow: hidden; max-width: 1100px; min-height: 330px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between; gap: 3rem;
+      border: 1px solid var(--border-subtle); border-radius: 22px; background: var(--bg-tertiary);
+      padding: clamp(2rem,6vw,5rem);
+    }
+    .story-note-card > div:first-child { max-width: 550px; position: relative; z-index: 1; }
+    .story-note-card h2 { font-size: clamp(2.4rem,5vw,4rem); }
+    .story-orbit { position: relative; flex: 0 0 210px; width: 210px; height: 210px; display: grid; place-items: center; }
+    .story-orbit i { position: absolute; width: 100%; height: 100%; border: 1px solid rgba(223,79,104,.24); border-radius: 50%; transform: rotate(-25deg) scaleX(.64); }
+    .story-orbit i:nth-child(2) { transform: rotate(35deg) scaleX(.64); border-color: rgba(214,75,139,.24); }
+    .story-orbit i:nth-child(3) { width: 75%; height: 75%; border-color: rgba(166,83,210,.24); }
+    .story-orbit > span { display: grid; place-items: center; width: 66px; height: 66px; border-radius: 20px; color: #fff; background: var(--accent-gradient); box-shadow: 0 14px 40px rgba(214,75,139,.2); }
+    .story-orbit svg { width: 30px; height: 30px; }
+    .mobile-feature-card {
+      border-radius: 16px !important; border: 1px solid var(--border-subtle) !important;
+      background: var(--bg-secondary) !important; box-shadow: none !important; padding: 1.65rem !important;
+    }
+    .mobile-feature-card:hover { transform: translateY(-3px) !important; border-color: var(--accent-border) !important; }
+    .mobile-feature-card > div:first-child { display: none; }
+    .mobile-feature-card > div:nth-child(2) { border-radius: 12px !important; color: var(--accent) !important; background: var(--accent-bg) !important; }
+    .mobile-stats-section { display: none !important; }
+    .mobile-demo-preview { max-width: 1000px !important; margin: 0 auto !important; border-radius: 20px !important; background: var(--bg-secondary) !important; box-shadow: 0 26px 80px rgba(51,27,42,.12) !important; }
+    .mobile-demo-header { background: var(--bg-secondary) !important; }
+    .mobile-demo-body { min-height: 320px; padding: clamp(1rem, 4vw, 2.4rem) !important; background:
+      radial-gradient(ellipse at 56% 100%, rgba(234,119,158,.17), transparent 43%),
+      radial-gradient(ellipse at 8% 100%, rgba(255,187,160,.2), transparent 38%),
+      radial-gradient(ellipse at 93% 100%, rgba(167,131,228,.18), transparent 38%),
+      #fff !important; }
+    [data-theme="dark"] .mobile-demo-body { background: radial-gradient(ellipse at 56% 100%, rgba(174,76,124,.19), transparent 43%), #211e26 !important; }
+    .mobile-demo-cards { display: grid; grid-template-columns: minmax(160px, .8fr) minmax(0, 1.5fr) !important; align-items: stretch; gap: .8rem !important; }
+    .mobile-demo-card { border: 1px solid rgba(11,10,16,.1) !important; border-radius: 13px !important; background: rgba(255,255,255,.84) !important; padding: 1rem !important; }
+    .demo-plan-list { display: grid; gap: .6rem; margin-top: 1.2rem; }
+    .demo-plan-list span { display: flex; justify-content: space-between; align-items: center; padding: .55rem .65rem; border: 1px solid rgba(11,10,16,.08); border-radius: 9px; color: #57545d; font-size: .74rem; }
+    .demo-plan-list i { width: 28px; height: 7px; border-radius: 9px; background: linear-gradient(90deg,#f2a18e,#e6709d); opacity: .8; }
+    .demo-forecast { min-width: 0; border: 1px solid rgba(11,10,16,.1); border-radius: 13px; padding: 1rem; background: rgba(255,255,255,.84); }
+    .demo-forecast-heading, .demo-chart-labels { display: flex; justify-content: space-between; gap: .8rem; color: #77737c; font-size: .75rem; }
+    .demo-chart { position: relative; height: 205px; margin-top: 1rem; }
+    .demo-chart-grid { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: space-between; }
+    .demo-chart-grid i { display: block; height: 1px; background: rgba(11,10,16,.08); }
+    .demo-chart svg { position: relative; width: 100%; height: 100%; overflow: visible; }
+    .demo-chart-labels { padding: .2rem .4rem 0; font-size: .65rem; }
+    .mobile-cta-section { padding: 7rem 2rem !important; background: linear-gradient(180deg, transparent, rgba(239,126,154,.08)) !important; }
+    .mobile-footer { border-top: 1px solid var(--border-subtle) !important; }
+    @media (max-width: 768px) {
+      .app-header-content { gap: .65rem !important; }
+      .app-nav { overflow-x: auto; justify-content: flex-start !important; }
+      .app-nav-btn { min-width: 0; flex: 1; gap: .25rem !important; padding: .65rem .25rem !important; font-size: .68rem !important; white-space: nowrap; }
+      .app-nav-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+      .app-main { padding: 1.25rem 1rem 3rem !important; }
+      .mobile-hero { min-height: 610px !important; padding: 7.8rem 1.1rem 3rem !important; }
+      .mobile-hero h1 { font-size: clamp(3rem, 12vw, 4.7rem) !important; }
+      .mobile-section { padding: 4rem 1.15rem !important; }
+      .story-section { grid-template-columns: 1fr; gap: 2.5rem; padding: 4rem 1.15rem 5rem; }
+      .story-intro h2 { font-size: clamp(2.6rem,10vw,3.7rem); }
+      .story-note-section { padding: 1rem 1rem 4rem; }
+      .story-note-card { min-height: 0; padding: 2rem 1.4rem; }
+      .story-orbit { display: none; }
+      .mobile-demo-cards { grid-template-columns: 1fr !important; }
+      .mobile-demo-body { min-height: 230px; }
+      .mobile-cta-section { padding: 5rem 1rem !important; }
+    }
+    @media (max-width: 480px) {
+      .mobile-nav-content:has(.mobile-nav-actions > a) { flex-wrap: nowrap; }
+      .mobile-nav-actions:has(> a) { width: auto; flex-wrap: nowrap; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
+    }
   </style>
 </head>
 <body>
@@ -679,15 +944,14 @@
     }
 
     const THEME_KEY = 'mercury-theme';
-    const systemTheme = () =>
-      (typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
+    const systemTheme = () => 'light';
     const storedTheme = () => {
       try { const v = localStorage.getItem(THEME_KEY); return v === 'light' || v === 'dark' ? v : null; }
       catch (e) { return null; }
     };
 
-    // useTheme supports an explicit user override (persisted) that falls back to the
-    // OS preference. All hook instances stay in sync via a custom event + storage event.
+    // Explicit theme choices persist across visits; new visitors begin in light mode.
+    // All hook instances stay in sync via a custom event + storage event.
     function useTheme() {
       const [theme, setThemeState] = useState(() => storedTheme() || systemTheme());
 
@@ -698,7 +962,7 @@
       useEffect(() => {
         const mediaQuery = window.matchMedia('(prefers-color-scheme: light)');
         // OS changes only apply when the user hasn't chosen an explicit theme.
-        const handleSystem = (e) => { if (!storedTheme()) setThemeState(e.matches ? 'light' : 'dark'); };
+        const handleSystem = () => { if (!storedTheme()) setThemeState('light'); };
         const handleSync = () => setThemeState(storedTheme() || systemTheme());
         mediaQuery.addEventListener('change', handleSystem);
         window.addEventListener('mercury-theme-change', handleSync);
@@ -1282,7 +1546,7 @@
 
     function HomePage({ onEnterApp, user }) {
       const heroSectionRef = useRef(null);
-      const { theme, isDark } = useTheme();
+      const { theme, isDark, toggleTheme } = useTheme();
       
       const heroStyles = {
         wrapper: { minHeight: '100vh', position: 'relative', overflow: 'hidden' },
@@ -1345,6 +1609,9 @@
                 <span className="mobile-logo-text" style={heroStyles.logoText}>Mercury</span>
               </div>
               <div className="mobile-nav-actions" style={heroStyles.navActions}>
+                <button type="button" className="theme-toggle" onClick={toggleTheme} aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'} title={isDark ? 'Switch to light theme' : 'Switch to dark theme'}>
+                  {isDark ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg> : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M20.4 15.5A8.4 8.4 0 0 1 8.5 3.6 8.5 8.5 0 1 0 20.4 15.5Z"/></svg>}
+                </button>
                 {user ? (
                   <>
                     <div className="mobile-user-info" style={heroStyles.userInfo}>
@@ -1374,18 +1641,16 @@
           <div style={heroStyles.heroGlow} />
 
           <section ref={heroSectionRef} className="mobile-hero" style={heroStyles.hero}>
-            <MoneyRain containerRef={heroSectionRef} />
             <div className="mobile-hero-content" style={heroStyles.heroContent}>
               <div className="mobile-hero-tagline" style={heroStyles.heroTagline}>
-                <Icons.Star /> Personal finance, refined
+                <Icons.Star /> A clearer view of what comes next
               </div>
               <h1 style={heroStyles.heroTitle}>
-                Master Your Money with{' '}
-                <span style={heroStyles.heroGradient}>Precision</span>
+                Know what your money is{' '}
+                <span style={heroStyles.heroGradient}>doing next.</span>
               </h1>
               <p className="mobile-hero-subtitle" style={heroStyles.heroSubtitle}>
-                Mercury transforms the way you manage your finances. Track income, forecast expenses, 
-                and visualize your financial future with an elegant, intuitive interface.
+                Paydays, bills, and the balance between them — mapped day by day, so the month ahead feels a little less uncertain.
               </p>
               <div className="mobile-hero-actions" style={heroStyles.heroActions}>
                 {user ? (
@@ -1394,11 +1659,11 @@
                   </button>
                 ) : (
                   <a href="/api/login" className="mobile-primary-btn" style={{ ...heroStyles.primaryBtn, textDecoration: 'none' }}>
-                    Get Started — Free <Icons.ArrowRight />
+                  Start planning <Icons.ArrowRight />
                   </a>
                 )}
                 <button className="mobile-secondary-btn" style={heroStyles.secondaryBtn} onClick={() => document.getElementById('features').scrollIntoView({ behavior: 'smooth' })}>
-                  See Features <Icons.ChevronDown />
+                  Explore Mercury <Icons.ChevronDown />
                 </button>
               </div>
             </div>
@@ -1409,127 +1674,130 @@
           </section>
 
           <section id="features" className="mobile-section" style={heroStyles.section}>
-            <h2 style={heroStyles.sectionTitle}>Powerful Features</h2>
+            <h2 style={heroStyles.sectionTitle}>Your finances have a rhythm.</h2>
             <p style={heroStyles.sectionSubtitle}>
-              Everything you need to take control of your personal finances, 
-              designed with elegance and built for simplicity.
+              Mercury brings the moving parts into one considered view — with your own dates, amounts, and assumptions at the center.
             </p>
             <div className="mobile-features-grid" style={heroStyles.featuresGrid}>
               <div className="mobile-feature-card" style={heroStyles.featureCard}>
                 <div style={heroStyles.featureCardHover} />
                 <div style={heroStyles.featureIcon}><Icons.Money /></div>
-                <h3 style={heroStyles.featureTitle}>Payroll Intelligence</h3>
+                <h3 style={heroStyles.featureTitle}>Paydays, on the calendar</h3>
                 <p style={heroStyles.featureDesc}>
-                  Automatically track multiple income streams with flexible scheduling. 
-                  Supports weekly, biweekly, monthly, and semi-monthly pay cycles.
+                  Set up one or more income schedules and see each expected payday alongside the rest of your plan.
                 </p>
               </div>
               <div className="mobile-feature-card" style={heroStyles.featureCard}>
                 <div style={heroStyles.featureCardHover} />
                 <div style={heroStyles.featureIcon}><Icons.Calendar /></div>
-                <h3 style={heroStyles.featureTitle}>Calendar Clarity</h3>
+                <h3 style={heroStyles.featureTitle}>A day-by-day view</h3>
                 <p style={heroStyles.featureDesc}>
-                  Visualize every financial transaction on a day-by-day calendar. 
-                  See exactly when money comes in and when it goes out.
+                  Follow money in, money out, and your projected daily balance through the year.
                 </p>
               </div>
               <div className="mobile-feature-card" style={heroStyles.featureCard}>
                 <div style={heroStyles.featureCardHover} />
                 <div style={heroStyles.featureIcon}><Icons.BarChart /></div>
-                <h3 style={heroStyles.featureTitle}>Smart Forecasting</h3>
+                <h3 style={heroStyles.featureTitle}>Look around the corner</h3>
                 <p style={heroStyles.featureDesc}>
-                  Project your year-end balance and identify your lowest balance points 
-                  before they happen. Stay ahead of cash flow challenges.
+                  Explore how scheduled income and expenses shape your balance over time, and spot tighter stretches early.
                 </p>
               </div>
               <div className="mobile-feature-card" style={heroStyles.featureCard}>
                 <div style={heroStyles.featureCardHover} />
                 <div style={heroStyles.featureIcon}><Icons.Recurring /></div>
-                <h3 style={heroStyles.featureTitle}>Recurring Expenses</h3>
+                <h3 style={heroStyles.featureTitle}>Bills that repeat</h3>
                 <p style={heroStyles.featureDesc}>
-                  Track subscriptions, bills, and regular expenses. Never forget a 
-                  payment with automatic scheduling and reminders.
+                  Add weekly, monthly, twice-monthly, or yearly expenses once; Mercury places each occurrence in your forecast.
                 </p>
               </div>
               <div className="mobile-feature-card" style={heroStyles.featureCard}>
                 <div style={heroStyles.featureCardHover} />
                 <div style={heroStyles.featureIcon}><Icons.Cloud /></div>
-                <h3 style={heroStyles.featureTitle}>Cloud Sync</h3>
+                <h3 style={heroStyles.featureTitle}>A plan that is yours</h3>
                 <p style={heroStyles.featureDesc}>
-                  Your data is securely stored in the cloud. Access your finances 
-                  from any device, anytime, with automatic synchronization.
+                  Shape the forecast around your own pay, bills, one-off plans, and starting balance.
                 </p>
               </div>
               <div className="mobile-feature-card" style={heroStyles.featureCard}>
                 <div style={heroStyles.featureCardHover} />
                 <div style={heroStyles.featureIcon}><Icons.Shield /></div>
-                <h3 style={heroStyles.featureTitle}>Balance Overrides</h3>
+                <h3 style={heroStyles.featureTitle}>Ground it in reality</h3>
                 <p style={heroStyles.featureDesc}>
-                  Reconcile your accounts anytime. Override calculated balances 
-                  to match your actual bank statements with a single click.
+                  Record an actual balance on any date, then continue the projection from that point.
                 </p>
               </div>
             </div>
           </section>
 
-          <section className="mobile-stats-section" style={{ ...heroStyles.section, ...heroStyles.statsSection }}>
-            <div className="mobile-stats-grid" style={heroStyles.statsGrid}>
-              <div>
-                <div className="mobile-stat-number" style={heroStyles.statNumber}>365</div>
-                <div style={heroStyles.statLabel}>Days Forecasted</div>
-              </div>
-              <div>
-                <div className="mobile-stat-number" style={heroStyles.statNumber}>24/7</div>
-                <div style={heroStyles.statLabel}>Cloud Access</div>
-              </div>
-              <div>
-                <div className="mobile-stat-number" style={heroStyles.statNumber}>100%</div>
-                <div style={heroStyles.statLabel}>Privacy Focused</div>
-              </div>
-              <div>
-                <div className="mobile-stat-number" style={heroStyles.statNumber}>Free</div>
-                <div style={heroStyles.statLabel}>Forever</div>
-              </div>
+          <section className="story-section" id="forecast">
+            <div className="story-intro">
+              <span className="story-kicker">01 / The forecast</span>
+              <h2>Nothing happens in isolation.</h2>
+              <p>A payday changes the picture. A bill changes it again. Mercury connects each moment, so you can see the shape of the days between.</p>
+            </div>
+            <div className="story-steps">
+              <article><span>01</span><div><h3>Set your rhythm</h3><p>Add the income schedules and recurring expenses that make up an ordinary month.</p></div><Icons.Money /></article>
+              <article><span>02</span><div><h3>Add what is different</h3><p>Place one-off income or expenses on the dates you expect them to happen.</p></div><Icons.Calendar /></article>
+              <article><span>03</span><div><h3>Follow the balance</h3><p>Read the calendar day by day, or zoom out to see how money moves across the year.</p></div><Icons.TrendUp /></article>
             </div>
           </section>
 
           <section className="mobile-section" style={heroStyles.section}>
-            <h2 style={heroStyles.sectionTitle}>See It In Action</h2>
+            <h2 style={heroStyles.sectionTitle}>A forecast you can follow.</h2>
             <p style={heroStyles.sectionSubtitle}>
-              A beautiful dashboard that gives you complete visibility into your financial health.
+              Not a snapshot of yesterday. A practical picture of the days ahead.
             </p>
             <div className="mobile-demo-preview" style={heroStyles.demoPreview}>
-              <div style={heroStyles.demoHeader}>
+              <div className="mobile-demo-header" style={heroStyles.demoHeader}>
                 <div style={heroStyles.demoDots}>
                   <div style={heroStyles.demoDot('#ef5350')} />
                   <div style={heroStyles.demoDot('#fbbf24')} />
                   <div style={heroStyles.demoDot('#4ade80')} />
                 </div>
-                <span style={{ color: 'var(--text-dim)', fontSize: '0.8125rem' }}>Mercury Dashboard</span>
+                <span style={{ color: 'var(--text-dim)', fontSize: '0.8125rem' }}>A look inside Mercury</span>
               </div>
               <div className="mobile-demo-body" style={heroStyles.demoBody}>
                 <div className="mobile-demo-cards" style={heroStyles.demoCards}>
                   <div style={heroStyles.demoCard}>
-                    <div style={heroStyles.demoCardLabel}>Starting Balance</div>
-                    <div style={{ ...heroStyles.demoCardValue, color: '#4ade80' }}>$5,000.00</div>
+                    <div style={heroStyles.demoCardLabel}>YOUR PLAN</div>
+                    <div style={{ ...heroStyles.demoCardValue, color: 'var(--text-primary)' }}>The days between</div>
+                    <div className="demo-plan-list"><span>Payday <i /></span><span>Home &amp; bills <i /></span><span>Everyday spending <i /></span></div>
                   </div>
-                  <div style={heroStyles.demoCard}>
-                    <div style={heroStyles.demoCardLabel}>Year-End Projection</div>
-                    <div style={{ ...heroStyles.demoCardValue, color: 'var(--accent)' }}>$12,450.00</div>
-                  </div>
-                  <div style={heroStyles.demoCard}>
-                    <div style={heroStyles.demoCardLabel}>Net Cashflow</div>
-                    <div style={{ ...heroStyles.demoCardValue, color: '#4ade80' }}>+$7,450.00</div>
+                  <div className="demo-forecast">
+                    <div className="demo-forecast-heading"><span>Daily balance</span><span>Forecast</span></div>
+                    <div className="demo-chart" aria-label="Illustrative rising and falling balance curve">
+                      <div className="demo-chart-grid"><i /><i /><i /></div>
+                      <svg viewBox="0 0 640 190" role="img" aria-label="Illustrative balance curve across several days">
+                        <defs><linearGradient id="demoFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#e75b87" stopOpacity=".2"/><stop offset="100%" stopColor="#e75b87" stopOpacity="0"/></linearGradient></defs>
+                        <path d="M0 128 C48 118 72 134 112 113 S170 90 216 106 S270 130 320 93 S390 82 430 93 S493 117 530 74 S590 64 640 35 V190 H0 Z" fill="url(#demoFill)"/>
+                        <path d="M0 128 C48 118 72 134 112 113 S170 90 216 106 S270 130 320 93 S390 82 430 93 S493 117 530 74 S590 64 640 35" fill="none" stroke="#df4f68" strokeWidth="3" strokeLinecap="round"/>
+                        <circle cx="320" cy="93" r="5" fill="#fff" stroke="#df4f68" strokeWidth="3"/>
+                        <circle cx="530" cy="74" r="5" fill="#fff" stroke="#df4f68" strokeWidth="3"/>
+                      </svg>
+                    </div>
+                    <div className="demo-chart-labels"><span>Payday</span><span>Bills</span><span>Next payday</span></div>
                   </div>
                 </div>
               </div>
             </div>
           </section>
 
+          <section className="story-note-section">
+            <div className="story-note-card">
+              <div>
+                <span className="story-kicker">02 / Always in your hands</span>
+                <h2>A forecast is a plan, not a promise.</h2>
+                <p>Mercury works from the details you enter. Change a date, adjust one occurrence, or record an actual balance when life moves differently.</p>
+              </div>
+              <div className="story-orbit" aria-hidden="true"><i /><i /><i /><span><Icons.Mercury /></span></div>
+            </div>
+          </section>
+
           <section className="mobile-cta-section" style={heroStyles.ctaSection}>
-            <h2 style={heroStyles.ctaTitle}>Ready to See Your Whole Year?</h2>
+            <h2 style={heroStyles.ctaTitle}>Make room for what comes next.</h2>
             <p style={heroStyles.ctaSubtitle}>
-              Map your income and expenses once, then watch your entire year come into focus — every payday, every bill, every balance.
+              Start with your paydays and bills. Mercury will lay out the balance in between.
             </p>
             {user ? (
               <button className="mobile-primary-btn" style={heroStyles.primaryBtn} onClick={onEnterApp}>
@@ -1537,13 +1805,13 @@
               </button>
             ) : (
               <a href="/api/login" className="mobile-primary-btn" style={{ ...heroStyles.primaryBtn, textDecoration: 'none' }}>
-                Get Started — Free <Icons.ArrowRight />
+                Start planning <Icons.ArrowRight />
               </a>
             )}
           </section>
 
           <footer className="mobile-footer" style={heroStyles.footer}>
-            <p>Mercury - Personal Finance Tracker</p>
+            <p>Mercury · Your money, in time.</p>
           </footer>
         </div>
       );
@@ -2061,7 +2329,7 @@
           .sort((a, b) => b.amount - a.amount);
       }, [dashboardYear, dashboardOccurrences]);
 
-const { theme, isDark } = useTheme();
+const { theme, isDark, toggleTheme } = useTheme();
 
       // Sankey diagram data computation
       const sankeyRef = useRef(null);
@@ -2177,8 +2445,8 @@ const { theme, isDark } = useTheme();
         if (ytdChartInstance.current) { ytdChartInstance.current.destroy(); ytdChartInstance.current = null; }
 
         const ctx = el.getContext('2d');
-        // Purple-free categorical palette tuned for the Quicksilver theme
-        const colors = ['#22d3ee', '#34d399', '#fb7185', '#fbbf24', '#38bdf8', '#2dd4bf', '#f97316', '#f472b6', '#a3e635', '#60a5fa'];
+        // Editorial palette shared with the rest of the workspace.
+        const colors = ['#df4f68', '#34856d', '#d64b8b', '#a653d2', '#f17865', '#9b769a', '#b68756', '#cf7596', '#719a92', '#8d7ab6'];
         
         const tooltipBg = isDark ? 'rgba(10, 18, 28, 0.95)' : 'rgba(255, 255, 255, 0.96)';
         const tooltipTitle = isDark ? '#eef5f8' : '#0c1b26';
@@ -2207,8 +2475,8 @@ const { theme, isDark } = useTheme();
               tooltip: {
                 backgroundColor: tooltipBg,
                 titleColor: tooltipTitle,
-                bodyColor: isDark ? '#22d3ee' : '#0e9bb8',
-                borderColor: isDark ? 'rgba(34, 211, 238, 0.35)' : 'rgba(14, 155, 184, 0.45)',
+                bodyColor: isDark ? '#f07882' : '#df4f68',
+                borderColor: isDark ? 'rgba(240, 120, 130, 0.35)' : 'rgba(223, 79, 104, 0.30)',
                 borderWidth: 1,
                 callbacks: {
                   label: (context) => `$${context.raw.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
@@ -2250,9 +2518,9 @@ const { theme, isDark } = useTheme();
         const ctx = el.getContext('2d');
         const todayIdx = forecast.isCurrentYear ? series.findIndex(d => d.isToday) : -1;
 
-        const accent = isDark ? '#22d3ee' : '#0e9bb8';
-        const danger = isDark ? '#fb7185' : '#e11d48';
-        const success = isDark ? '#34d399' : '#059669';
+        const accent = isDark ? '#f07882' : '#df4f68';
+        const danger = isDark ? '#f07882' : '#c9485c';
+        const success = isDark ? '#6dc3a1' : '#34856d';
         const grid = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(12,27,38,0.08)';
         const tick = isDark ? '#6f8693' : '#5c7382';
 
@@ -2272,7 +2540,7 @@ const { theme, isDark } = useTheme();
               pointBorderWidth: 2,
               fill: {
                 target: 'origin',
-                above: isDark ? 'rgba(34,211,238,0.10)' : 'rgba(14,155,184,0.10)',
+                above: isDark ? 'rgba(240,120,130,0.10)' : 'rgba(223,79,104,0.06)',
                 below: isDark ? 'rgba(251,113,133,0.20)' : 'rgba(225,29,72,0.16)',
               },
               segment: {
@@ -2291,7 +2559,7 @@ const { theme, isDark } = useTheme();
                 backgroundColor: isDark ? 'rgba(10,18,28,0.95)' : 'rgba(255,255,255,0.96)',
                 titleColor: isDark ? '#eef5f8' : '#0c1b26',
                 bodyColor: isDark ? '#a3b6c1' : '#3c5260',
-                borderColor: isDark ? 'rgba(34,211,238,0.35)' : 'rgba(14,155,184,0.45)',
+                borderColor: isDark ? 'rgba(240,120,130,0.35)' : 'rgba(223,79,104,0.30)',
                 borderWidth: 1,
                 padding: 12,
                 callbacks: {
@@ -2344,7 +2612,7 @@ const { theme, isDark } = useTheme();
             const base = stdPts.length >= snowPts.length ? stdPts : snowPts;
             const labels = base.map(p => p.date);
             const padTo = (pts) => labels.map((_, i) => i < pts.length ? pts[i].total : 0);
-            const success = isDark ? '#34d399' : '#059669';
+            const success = isDark ? '#6dc3a1' : '#34856d';
             const muted = isDark ? '#6f8693' : '#94a3b8';
             const grid = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(12,27,38,0.08)';
             const tick = isDark ? '#6f8693' : '#5c7382';
@@ -2418,10 +2686,10 @@ const { theme, isDark } = useTheme();
           .style('max-width', '100%');
 
         // Theme-aware palette
-        const incomeColor = isDark ? '#34d399' : '#059669';
-        const aggregateColor = isDark ? '#22d3ee' : '#0e9bb8';
-        const labelColor = isDark ? '#eef5f8' : '#0c1b26';
-        const mutedColor = isDark ? '#6f8693' : '#5c7382';
+        const incomeColor = isDark ? '#6dc3a1' : '#34856d';
+        const aggregateColor = isDark ? '#f07882' : '#df4f68';
+        const labelColor = isDark ? '#f4f0f3' : '#0b0a10';
+        const mutedColor = isDark ? '#958d97' : '#77737c';
         const truncate = (s, n) => (s && s.length > n ? s.slice(0, n - 1) + '…' : s);
         const nameMax = isNarrow ? 11 : 20;
 
@@ -2435,8 +2703,8 @@ const { theme, isDark } = useTheme();
         incomeGradient.append('stop').attr('offset', '0%').attr('stop-color', incomeColor);
         incomeGradient.append('stop').attr('offset', '100%').attr('stop-color', '#6ee7b7');
 
-        // Expense colors — purple-free Quicksilver categorical palette
-        const expenseColors = ['#22d3ee', '#fb7185', '#fbbf24', '#38bdf8', '#2dd4bf', '#f97316', '#f472b6', '#a3e635', '#60a5fa', '#fb923c', '#14b8a6', '#facc15'];
+        // Expense colors follow the workspace's coral and lilac palette.
+        const expenseColors = ['#df4f68', '#a653d2', '#d67c52', '#c76b91', '#cf9b52', '#9a76ab', '#c65c61', '#8b8f62', '#d1786b', '#ae6682', '#8e7bc2', '#c49268'];
 
         // Create sankey layout.
         // NOTE: links in sankeyData reference nodes by numeric index, so we rely on
@@ -3409,12 +3677,12 @@ const { theme, isDark } = useTheme();
                         <div style={styles.expensesList}>
                           {day.payrollDetails.map((p, i) => (
                             p.kind === 'recurring'
-                              ? <span key={i} draggable="true" onDragStart={(ev) => handleDragStart(ev, { type: 'recurringIncome', id: p.id, origin: p.origin })} onDragEnd={handleDragEnd} onClick={() => openOccurrenceEditor('income', p, day.dateKey)} style={{ ...styles.payrollBadge, cursor: 'grab' }} title="Drag to move · click to adjust or skip">+{formatCurrency(p.amount)} {p.name}{(p.moved || p.adjusted) ? ' ✎' : ''}</span>
+                              ? <span key={i} draggable="true" onDragStart={(ev) => handleDragStart(ev, { type: 'recurringIncome', id: p.id, origin: p.origin })} onDragEnd={handleDragEnd} onClick={() => openOccurrenceEditor('income', p, day.dateKey)} style={{ ...styles.payrollBadge, cursor: 'grab' }} title="Drag to move · click to adjust or skip">+{formatCurrency(p.amount)} {p.name}{(p.moved || p.adjusted) ? ' ·' : ''}</span>
                               : <span key={i} draggable="true" onDragStart={(ev) => handleDragStart(ev, { type: 'oneoffIncome', id: p.id })} onDragEnd={handleDragEnd} onClick={() => editOneOffIncome(p)} style={{ ...styles.payrollBadge, cursor: 'grab' }} title="Drag to move · click to edit">+{formatCurrency(p.amount)} {p.name}</span>
                           ))}
                           {day.expenseDetails.map((e, i) => (
                             e.isRecurring
-                              ? <span key={i} draggable="true" onDragStart={(ev) => handleDragStart(ev, { type: 'recurringExpense', id: e.id, origin: e.origin })} onDragEnd={handleDragEnd} onClick={() => openOccurrenceEditor('expense', e, day.dateKey)} style={{ ...styles.recurringExpenseBadge, cursor: 'grab' }} title="Drag to move · click to adjust or skip">-{formatCurrency(e.amount)} {e.name}{(e.moved || e.adjusted) ? ' ✎' : ''}</span>
+                              ? <span key={i} draggable="true" onDragStart={(ev) => handleDragStart(ev, { type: 'recurringExpense', id: e.id, origin: e.origin })} onDragEnd={handleDragEnd} onClick={() => openOccurrenceEditor('expense', e, day.dateKey)} style={{ ...styles.recurringExpenseBadge, cursor: 'grab' }} title="Drag to move · click to adjust or skip">-{formatCurrency(e.amount)} {e.name}{(e.moved || e.adjusted) ? ' ·' : ''}</span>
                               : <span key={i} draggable="true" onDragStart={(ev) => handleDragStart(ev, { type: 'oneoffExpense', id: e.id })} onDragEnd={handleDragEnd} onClick={() => editOneOffExpense(e)} style={{ ...styles.oneOffExpenseBadge, cursor: 'grab' }} title="Drag to move · click to edit">-{formatCurrency(e.amount)} {e.name}</span>
                           ))}
                         </div>
@@ -3455,6 +3723,9 @@ const { theme, isDark } = useTheme();
               <div className="app-header-brand" style={styles.logo} onClick={onBackToHome}><div style={styles.logoIcon}><Icons.Mercury /></div><span className="app-logo-text" style={styles.logoText}>Mercury</span><span className="app-year-badge" style={styles.yearBadge}>{activeYear}</span></div>
               <nav className="app-nav" style={styles.nav}><button className="app-nav-btn" style={styles.navButton(activeView === 'dashboard')} onClick={() => setActiveView('dashboard')}><Icons.Dashboard /> Dashboard</button><button className="app-nav-btn" style={styles.navButton(activeView === 'cashflow')} onClick={() => setActiveView('cashflow')}><Icons.CashFlow /> Cash Flow</button><button className="app-nav-btn" style={styles.navButton(activeView === 'debt')} onClick={() => setActiveView('debt')}><Icons.Debt /> Debt</button><button className="app-nav-btn" style={styles.navButton(activeView === 'calendar')} onClick={() => setActiveView('calendar')}><Icons.Calendar /> Calendar</button></nav>
               <div className="app-header-actions" style={styles.headerActions}>
+                <button type="button" className="theme-toggle" onClick={toggleTheme} aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'} title={isDark ? 'Switch to light theme' : 'Switch to dark theme'}>
+                  {isDark ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg> : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M20.4 15.5A8.4 8.4 0 0 1 8.5 3.6 8.5 8.5 0 1 0 20.4 15.5Z"/></svg>}
+                </button>
                 <div className="app-hide-mobile" style={styles.saveIndicator(saveState)} role="status" aria-live="polite">
                   {saveState === 'saving' ? <><Icons.Cloud /> Saving…</> : saveState === 'error' ? <><Icons.Warning /> Save failed</> : <><Icons.Check /> Saved</>}
                 </div>

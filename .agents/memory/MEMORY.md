@@ -1,0 +1,1 @@
+- [Visual direction](design-direction.md) — ChatPRD is the user's reference for the entire Mercury website and signed-in app.
