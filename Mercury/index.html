@@ -223,7 +223,7 @@
     @keyframes popIn { from { opacity: 0; transform: scale(0.96) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
     @keyframes sheen { 0% { transform: translateX(-130%) skewX(-18deg); } 100% { transform: translateX(230%) skewX(-18deg); } }
 
-    /* ============ Liquid Glass surfaces ============ */
+    /* Liquid Glass surfaces */
     .glass, .app-panel, .app-stat-card, .app-form-card, .cashflow-stat-card,
     .sankey-container, .cashflow-detail-panel, .mobile-feature-card, .mobile-demo-preview {
       position: relative;
@@ -240,7 +240,7 @@
       -webkit-mask: linear-gradient(180deg, #000, transparent 40%); mask: linear-gradient(180deg, #000, transparent 40%);
     }
 
-    /* ============ Micro-interactions ============ */
+    /* Micro-interactions */
     .app-stat-card, .mobile-feature-card, .cashflow-stat-card {
       transition: transform 0.35s var(--ease-out), box-shadow 0.35s var(--ease-out), border-color 0.35s var(--ease-out);
       will-change: transform;
@@ -1871,9 +1871,9 @@
     // Keep chart labels in the same quiet, legible type system as the workspace.
     if (window.Chart) Chart.defaults.font.family = 'Inter, sans-serif';
 
-    // ========================================
+    // ----------------------------------------
     // Reusable UI Components
-    // ========================================
+    // ----------------------------------------
 
     // StatCard - Displays a single statistic with accent color and optional subtext
     const StatCard = ({ label, value, subtext, accentColor, valueColor, styles }) => (
@@ -1924,9 +1924,9 @@
       </div>
     );
 
-    // ========================================
+    // ----------------------------------------
     // Form State Management
-    // ========================================
+    // ----------------------------------------
 
     // Form state reducer - consolidates 7 useState calls into 1
     const initialFormState = {
