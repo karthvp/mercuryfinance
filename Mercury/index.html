@@ -26,8 +26,8 @@
     :root {
       /* Mercury / light: paper, ink, and a bright coral-to-orchid signal */
       --bg-primary: #fff;
-      --bg-secondary: #fff;
-      --bg-tertiary: #fbf8f8;
+      --bg-secondary: #fffdfd;
+      --bg-tertiary: #faf6f8;
       --bg-gradient: linear-gradient(180deg, #fff 0%, #fffafa 100%);
       --bg-surface: #fff;
       --bg-surface-hover: #fff7f7;
@@ -49,16 +49,16 @@
       --accent-border: rgba(223,79,104,.22);
       --accent-border-strong: rgba(223,79,104,.4);
       --accent-text-on: #fff;
-      --success: #34856d;
-      --success-bg: rgba(52,133,109,.1);
-      --danger: #c9485c;
-      --danger-bg: rgba(201,72,92,.1);
+      --success: #477d6b;
+      --success-bg: rgba(71,125,107,.09);
+      --danger: #ad4f5d;
+      --danger-bg: rgba(173,79,93,.09);
       --warning: #a66b23;
       --warning-bg: rgba(166,107,35,.1);
       --scrollbar-track: rgba(11,10,16,.03);
       --scrollbar-thumb: rgba(223,79,104,.28);
       --shadow-color: rgba(42,20,32,.1);
-      --chart-grid: rgba(11,10,16,.08);
+      --chart-grid: rgba(76,66,77,.09);
       --rain-bg: rgba(255,255,255,.08);
       --rain-color: rgba(223,79,104,.16);
       --glass-bg: #fff;
@@ -102,16 +102,16 @@
       --accent-border: rgba(240,120,130,.25);
       --accent-border-strong: rgba(240,120,130,.44);
       --accent-text-on: #201018;
-      --success: #6dc3a1;
+      --success: #80b9a3;
       --success-bg: rgba(109,195,161,.12);
-      --danger: #f07882;
+      --danger: #e28a91;
       --danger-bg: rgba(240,120,130,.12);
       --warning: #e8b36d;
       --warning-bg: rgba(232,179,109,.12);
       --scrollbar-track: rgba(255,255,255,.025);
       --scrollbar-thumb: rgba(240,120,130,.3);
       --shadow-color: rgba(0,0,0,.32);
-      --chart-grid: rgba(255,255,255,.08);
+      --chart-grid: rgba(238,224,235,.1);
       --rain-bg: rgba(17,16,22,.1);
       --rain-color: rgba(240,120,130,.16);
       --glass-bg: rgba(255,255,255,.045);
@@ -130,8 +130,8 @@
 
     [data-theme="light"] {
       --bg-primary: #fff;
-      --bg-secondary: #fff;
-      --bg-tertiary: #fbf8f8;
+      --bg-secondary: #fffdfd;
+      --bg-tertiary: #faf6f8;
       --bg-gradient: linear-gradient(180deg, #fff 0%, #fffafa 100%);
       --bg-surface: #fff;
       --bg-surface-hover: #fff7f7;
@@ -153,16 +153,16 @@
       --accent-border: rgba(223,79,104,.22);
       --accent-border-strong: rgba(223,79,104,.4);
       --accent-text-on: #fff;
-      --success: #34856d;
-      --success-bg: rgba(52,133,109,.1);
-      --danger: #c9485c;
-      --danger-bg: rgba(201,72,92,.1);
+      --success: #477d6b;
+      --success-bg: rgba(71,125,107,.09);
+      --danger: #ad4f5d;
+      --danger-bg: rgba(173,79,93,.09);
       --warning: #a66b23;
       --warning-bg: rgba(166,107,35,.1);
       --scrollbar-track: rgba(11,10,16,.03);
       --scrollbar-thumb: rgba(223,79,104,.28);
       --shadow-color: rgba(42,20,32,.1);
-      --chart-grid: rgba(11,10,16,.08);
+      --chart-grid: rgba(76,66,77,.09);
       --rain-bg: rgba(255,255,255,.08);
       --rain-color: rgba(223,79,104,.16);
       --glass-bg: #fff;
@@ -339,7 +339,8 @@
       .app-year-selector { flex-wrap: wrap; padding: 0.75rem 1rem !important; }
       .app-dashboard-grid { grid-template-columns: 1fr !important; }
       .app-stat-card { padding: 1rem !important; }
-      .app-stat-value { font-size: 1.5rem !important; }
+      .app-stat-value { font-size: 1.35rem !important; }
+      .app-hero-balance { font-size: 1.7rem !important; }
       .app-three-column { grid-template-columns: 1fr !important; }
       .app-panel { padding: 1rem !important; }
       .app-panel-header { flex-direction: column; align-items: stretch !important; }
@@ -425,9 +426,11 @@
 
     .cashflow-stat-value {
       font-size: 1.5rem;
-      font-weight: 600;
+      font-weight: 500;
       color: var(--text-primary);
-      font-family: 'Playfair Display', serif;
+      font-family: 'Inter', sans-serif;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -.025em;
     }
 
     .cashflow-stat-value.income { color: var(--success); }
@@ -471,12 +474,12 @@
 
     .sankey-link {
       fill: none;
-      stroke-opacity: 0.4;
+      stroke-opacity: 0.3;
       transition: stroke-opacity 0.3s ease;
     }
 
     .sankey-link:hover {
-      stroke-opacity: 0.7;
+      stroke-opacity: 0.58;
     }
 
     .sankey-link.dimmed {
@@ -484,7 +487,7 @@
     }
 
     .sankey-link.highlighted {
-      stroke-opacity: 0.8;
+      stroke-opacity: 0.68;
     }
 
     .sankey-label {
@@ -495,8 +498,9 @@
     }
 
     .sankey-label-amount {
-      font-weight: 600;
-      fill: var(--accent);
+      font-weight: 500;
+      fill: var(--text-secondary);
+      font-variant-numeric: tabular-nums;
     }
 
     .sankey-label-percent {
@@ -532,10 +536,11 @@
     }
 
     .sankey-tooltip-amount {
-      font-size: 1.125rem;
-      font-weight: 700;
+      font-size: 1rem;
+      font-weight: 500;
       color: var(--accent);
       margin-bottom: 0.25rem;
+      font-variant-numeric: tabular-nums;
     }
 
     .sankey-tooltip-percent {
@@ -747,8 +752,39 @@
     .app-panel { padding: 1.5rem !important; }
     .app-panel::before, .app-stat-card::before, .cashflow-stat-card::before { display: none !important; }
     .app-panel:hover { border-color: var(--border-light) !important; }
-    .app-stat-card, .cashflow-stat-card { padding: 1.4rem !important; }
-    .app-stat-value, .cashflow-stat-value { font-family: 'Playfair Display', Georgia, serif !important; letter-spacing: -.035em; }
+    .app-stat-value, .cashflow-stat-value {
+      font-family: 'Inter', sans-serif !important;
+      font-size: 1.45rem !important;
+      font-weight: 500 !important;
+      letter-spacing: -.025em !important;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.25;
+    }
+    .app-stat-value { color: var(--text-primary) !important; }
+    .app-stat-card > div:first-child { opacity: .48; }
+    .app-stat-card, .cashflow-stat-card { padding: 1.2rem 1.3rem !important; }
+    .app-hero-balance {
+      font-family: 'Inter', sans-serif !important;
+      font-size: clamp(1.7rem, 3.6vw, 2.3rem) !important;
+      font-weight: 500 !important;
+      letter-spacing: -.035em !important;
+      font-variant-numeric: tabular-nums;
+    }
+    .app-stat-value, .cashflow-stat-value, .app-hero-balance,
+    .app-item-actions, .app-table-cell, .cashflow-detail-item-amount {
+      font-variant-numeric: tabular-nums lining-nums;
+    }
+    .cashflow-stat-card { background: color-mix(in srgb, var(--bg-secondary) 88%, var(--accent) 12%) !important; }
+    .app-stat-card { background: color-mix(in srgb, var(--bg-secondary) 94%, var(--accent) 6%) !important; }
+    .app-table-row { font-variant-numeric: tabular-nums lining-nums; }
+    .app-debt-balance {
+      color: var(--text-primary) !important;
+      font-family: 'Inter', sans-serif !important;
+      font-size: 1.2rem !important;
+      font-weight: 500 !important;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -.02em;
+    }
     .app-panel-title, .cashflow-title { font-family: 'Playfair Display', Georgia, serif !important; font-weight: 500 !important; letter-spacing: -.035em; }
     .app-main > div > .app-year-selector:first-child { border-radius: 14px !important; padding: .85rem 1.1rem !important; }
     .app-panel-header { gap: 1rem; }
@@ -1769,11 +1805,11 @@
                     <div className="demo-chart" aria-label="Illustrative rising and falling balance curve">
                       <div className="demo-chart-grid"><i /><i /><i /></div>
                       <svg viewBox="0 0 640 190" role="img" aria-label="Illustrative balance curve across several days">
-                        <defs><linearGradient id="demoFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#e75b87" stopOpacity=".2"/><stop offset="100%" stopColor="#e75b87" stopOpacity="0"/></linearGradient></defs>
+                        <defs><linearGradient id="demoFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#bd7582" stopOpacity=".15"/><stop offset="100%" stopColor="#bd7582" stopOpacity="0"/></linearGradient></defs>
                         <path d="M0 128 C48 118 72 134 112 113 S170 90 216 106 S270 130 320 93 S390 82 430 93 S493 117 530 74 S590 64 640 35 V190 H0 Z" fill="url(#demoFill)"/>
-                        <path d="M0 128 C48 118 72 134 112 113 S170 90 216 106 S270 130 320 93 S390 82 430 93 S493 117 530 74 S590 64 640 35" fill="none" stroke="#df4f68" strokeWidth="3" strokeLinecap="round"/>
-                        <circle cx="320" cy="93" r="5" fill="#fff" stroke="#df4f68" strokeWidth="3"/>
-                        <circle cx="530" cy="74" r="5" fill="#fff" stroke="#df4f68" strokeWidth="3"/>
+                        <path d="M0 128 C48 118 72 134 112 113 S170 90 216 106 S270 130 320 93 S390 82 430 93 S493 117 530 74 S590 64 640 35" fill="none" stroke="#bd7582" strokeWidth="2.5" strokeLinecap="round"/>
+                        <circle cx="320" cy="93" r="4.5" fill="#fffdfd" stroke="#bd7582" strokeWidth="2.5"/>
+                        <circle cx="530" cy="74" r="4.5" fill="#fffdfd" stroke="#bd7582" strokeWidth="2.5"/>
                       </svg>
                     </div>
                     <div className="demo-chart-labels"><span>Payday</span><span>Bills</span><span>Next payday</span></div>
@@ -1816,6 +1852,9 @@
         </div>
       );
     }
+
+    // Keep chart labels in the same quiet, legible type system as the workspace.
+    if (window.Chart) Chart.defaults.font.family = 'Inter, sans-serif';
 
     // ========================================
     // Reusable UI Components
@@ -2446,13 +2485,13 @@ const { theme, isDark, toggleTheme } = useTheme();
 
         const ctx = el.getContext('2d');
         // Editorial palette shared with the rest of the workspace.
-        const colors = ['#df4f68', '#34856d', '#d64b8b', '#a653d2', '#f17865', '#9b769a', '#b68756', '#cf7596', '#719a92', '#8d7ab6'];
+        const colors = ['#c77b85', '#709783', '#bd789a', '#957eaa', '#c58a70', '#957f94', '#a78965', '#b77c91', '#718f89', '#857b9d'];
         
-        const tooltipBg = isDark ? 'rgba(10, 18, 28, 0.95)' : 'rgba(255, 255, 255, 0.96)';
-        const tooltipTitle = isDark ? '#eef5f8' : '#0c1b26';
-        const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(12, 27, 38, 0.08)';
-        const tickColor = isDark ? '#6f8693' : '#5c7382';
-        const labelColor = isDark ? '#eef5f8' : '#0c1b26';
+        const tooltipBg = isDark ? 'rgba(35, 31, 39, 0.97)' : 'rgba(255, 253, 253, 0.98)';
+        const tooltipTitle = isDark ? '#f4f0f3' : '#29242c';
+        const gridColor = isDark ? 'rgba(238, 224, 235, 0.08)' : 'rgba(76, 66, 77, 0.09)';
+        const tickColor = isDark ? '#b4a9b5' : '#716a73';
+        const labelColor = isDark ? '#e9e1e9' : '#413b43';
         
         ytdChartInstance.current = new Chart(ctx, {
           type: 'bar',
@@ -2475,18 +2514,18 @@ const { theme, isDark, toggleTheme } = useTheme();
               tooltip: {
                 backgroundColor: tooltipBg,
                 titleColor: tooltipTitle,
-                bodyColor: isDark ? '#f07882' : '#df4f68',
-                borderColor: isDark ? 'rgba(240, 120, 130, 0.35)' : 'rgba(223, 79, 104, 0.30)',
+                bodyColor: isDark ? '#e6a1a5' : '#a75a67',
+                borderColor: isDark ? 'rgba(226, 138, 145, 0.34)' : 'rgba(173, 79, 93, 0.24)',
                 borderWidth: 1,
                 callbacks: {
-                  label: (context) => `$${context.raw.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+                  label: (context) => formatCurrency(context.raw)
                 }
               }
             },
             scales: {
               x: {
                 grid: { color: gridColor },
-                ticks: { color: tickColor, callback: (value) => '$' + value.toLocaleString() }
+                ticks: { color: tickColor, font: { size: 11 }, callback: (value) => formatCurrency(Number(value)) }
               },
               y: {
                 grid: { display: false },
@@ -2518,11 +2557,11 @@ const { theme, isDark, toggleTheme } = useTheme();
         const ctx = el.getContext('2d');
         const todayIdx = forecast.isCurrentYear ? series.findIndex(d => d.isToday) : -1;
 
-        const accent = isDark ? '#f07882' : '#df4f68';
-        const danger = isDark ? '#f07882' : '#c9485c';
-        const success = isDark ? '#6dc3a1' : '#34856d';
-        const grid = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(12,27,38,0.08)';
-        const tick = isDark ? '#6f8693' : '#5c7382';
+        const accent = isDark ? '#db919d' : '#bd7582';
+        const danger = isDark ? '#e28a91' : '#ad4f5d';
+        const success = isDark ? '#80b9a3' : '#477d6b';
+        const grid = isDark ? 'rgba(238,224,235,0.08)' : 'rgba(76,66,77,0.09)';
+        const tick = isDark ? '#b4a9b5' : '#716a73';
 
         balanceChartInstance.current = new Chart(ctx, {
           type: 'line',
@@ -2533,15 +2572,15 @@ const { theme, isDark, toggleTheme } = useTheme();
               borderColor: accent,
               borderWidth: 2,
               tension: 0.15,
-              pointRadius: series.map(d => d.isToday ? 5 : (d.isOverridden ? 4 : 0)),
-              pointHoverRadius: series.map(d => d.isToday ? 7 : (d.isOverridden ? 6 : 4)),
+              pointRadius: series.map(d => d.isToday ? 4 : (d.isOverridden ? 3 : 0)),
+              pointHoverRadius: series.map(d => d.isToday ? 6 : (d.isOverridden ? 5 : 4)),
               pointBackgroundColor: series.map(d => d.isToday ? accent : (d.isOverridden ? success : accent)),
-              pointBorderColor: isDark ? '#06121c' : '#ffffff',
+              pointBorderColor: isDark ? '#211e26' : '#fffdfd',
               pointBorderWidth: 2,
               fill: {
                 target: 'origin',
-                above: isDark ? 'rgba(240,120,130,0.10)' : 'rgba(223,79,104,0.06)',
-                below: isDark ? 'rgba(251,113,133,0.20)' : 'rgba(225,29,72,0.16)',
+                above: isDark ? 'rgba(219,145,157,0.10)' : 'rgba(189,117,130,0.08)',
+                below: isDark ? 'rgba(226,138,145,0.14)' : 'rgba(173,79,93,0.12)',
               },
               segment: {
                 borderColor: (c) => (c.p0.parsed.y < 0 || c.p1.parsed.y < 0) ? danger : accent,
@@ -2556,10 +2595,10 @@ const { theme, isDark, toggleTheme } = useTheme();
             plugins: {
               legend: { display: false },
               tooltip: {
-                backgroundColor: isDark ? 'rgba(10,18,28,0.95)' : 'rgba(255,255,255,0.96)',
-                titleColor: isDark ? '#eef5f8' : '#0c1b26',
-                bodyColor: isDark ? '#a3b6c1' : '#3c5260',
-                borderColor: isDark ? 'rgba(240,120,130,0.35)' : 'rgba(223,79,104,0.30)',
+                 backgroundColor: isDark ? 'rgba(35,31,39,0.97)' : 'rgba(255,253,253,0.98)',
+                 titleColor: isDark ? '#f4f0f3' : '#29242c',
+                 bodyColor: isDark ? '#c8bdc9' : '#5b535c',
+                 borderColor: isDark ? 'rgba(226,138,145,0.3)' : 'rgba(173,79,93,0.22)',
                 borderWidth: 1,
                 padding: 12,
                 callbacks: {
@@ -2586,7 +2625,7 @@ const { theme, isDark, toggleTheme } = useTheme();
               },
               y: {
                 grid: { color: grid },
-                ticks: { color: tick, callback: (v) => '$' + Math.round(v).toLocaleString() },
+                 ticks: { color: tick, font: { size: 11 }, callback: (v) => formatCurrency(Number(v)) },
               },
             },
           },
@@ -2612,18 +2651,18 @@ const { theme, isDark, toggleTheme } = useTheme();
             const base = stdPts.length >= snowPts.length ? stdPts : snowPts;
             const labels = base.map(p => p.date);
             const padTo = (pts) => labels.map((_, i) => i < pts.length ? pts[i].total : 0);
-            const success = isDark ? '#6dc3a1' : '#34856d';
-            const muted = isDark ? '#6f8693' : '#94a3b8';
-            const grid = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(12,27,38,0.08)';
-            const tick = isDark ? '#6f8693' : '#5c7382';
+            const success = isDark ? '#80b9a3' : '#477d6b';
+            const muted = isDark ? '#9f94a0' : '#938994';
+            const grid = isDark ? 'rgba(238,224,235,0.08)' : 'rgba(76,66,77,0.09)';
+            const tick = isDark ? '#b4a9b5' : '#716a73';
             const active = snowballMode ? debtProjectionSnow : debtProjectionStd;
             const datasets = [];
             datasets.push({
               label: snowballMode ? 'Snowball' : 'Payoff',
               data: padTo(active.points),
-              borderColor: success, borderWidth: 2.5, tension: 0.2,
+              borderColor: success, borderWidth: 2, tension: 0.2,
               pointRadius: 0, pointHoverRadius: 4,
-              fill: { target: 'origin', above: isDark ? 'rgba(52,211,153,0.14)' : 'rgba(5,150,105,0.10)' },
+              fill: { target: 'origin', above: isDark ? 'rgba(128,185,163,0.12)' : 'rgba(71,125,107,0.08)' },
             });
             if (snowballMode) {
               datasets.push({
@@ -2641,9 +2680,9 @@ const { theme, isDark, toggleTheme } = useTheme();
                 plugins: {
                   legend: { display: snowballMode, labels: { color: tick, usePointStyle: true, boxWidth: 8 } },
                   tooltip: {
-                    backgroundColor: isDark ? 'rgba(10,18,28,0.95)' : 'rgba(255,255,255,0.96)',
-                    titleColor: isDark ? '#eef5f8' : '#0c1b26', bodyColor: isDark ? '#a3b6c1' : '#3c5260',
-                    borderColor: isDark ? 'rgba(52,211,153,0.35)' : 'rgba(5,150,105,0.45)', borderWidth: 1, padding: 12,
+                    backgroundColor: isDark ? 'rgba(35,31,39,0.97)' : 'rgba(255,253,253,0.98)',
+                    titleColor: isDark ? '#f4f0f3' : '#29242c', bodyColor: isDark ? '#c8bdc9' : '#5b535c',
+                    borderColor: isDark ? 'rgba(128,185,163,0.32)' : 'rgba(71,125,107,0.24)', borderWidth: 1, padding: 12,
                     callbacks: {
                       title: (items) => { const d = labels[items[0].dataIndex]; return months[d.getMonth()] + ' ' + d.getFullYear(); },
                       label: (item) => (item.dataset.label ? item.dataset.label + ': ' : '') + formatCurrency(item.raw),
@@ -2652,7 +2691,7 @@ const { theme, isDark, toggleTheme } = useTheme();
                 },
                 scales: {
                   x: { grid: { display: false }, ticks: { color: tick, maxRotation: 0, autoSkip: true, maxTicksLimit: 8, callback: (v, idx) => { const d = labels[idx]; return d ? months[d.getMonth()].slice(0, 3) + " '" + String(d.getFullYear()).slice(2) : ''; } } },
-                  y: { grid: { color: grid }, beginAtZero: true, ticks: { color: tick, callback: (v) => '$' + Math.round(v).toLocaleString() } },
+                  y: { grid: { color: grid }, beginAtZero: true, ticks: { color: tick, font: { size: 11 }, callback: (v) => formatCurrency(Number(v)) } },
                 },
               },
             });
@@ -2686,10 +2725,10 @@ const { theme, isDark, toggleTheme } = useTheme();
           .style('max-width', '100%');
 
         // Theme-aware palette
-        const incomeColor = isDark ? '#6dc3a1' : '#34856d';
-        const aggregateColor = isDark ? '#f07882' : '#df4f68';
-        const labelColor = isDark ? '#f4f0f3' : '#0b0a10';
-        const mutedColor = isDark ? '#958d97' : '#77737c';
+        const incomeColor = isDark ? '#80b9a3' : '#6d9583';
+        const aggregateColor = isDark ? '#db919d' : '#bd7582';
+        const labelColor = isDark ? '#f4f0f3' : '#29242c';
+        const mutedColor = isDark ? '#b4a9b5' : '#716a73';
         const truncate = (s, n) => (s && s.length > n ? s.slice(0, n - 1) + '…' : s);
         const nameMax = isNarrow ? 11 : 20;
 
@@ -2701,10 +2740,10 @@ const { theme, isDark, toggleTheme } = useTheme();
           .attr('id', 'income-gradient')
           .attr('x1', '0%').attr('y1', '0%').attr('x2', '100%').attr('y2', '0%');
         incomeGradient.append('stop').attr('offset', '0%').attr('stop-color', incomeColor);
-        incomeGradient.append('stop').attr('offset', '100%').attr('stop-color', '#6ee7b7');
+        incomeGradient.append('stop').attr('offset', '100%').attr('stop-color', isDark ? '#a4cdbb' : '#91ad9e');
 
         // Expense colors follow the workspace's coral and lilac palette.
-        const expenseColors = ['#df4f68', '#a653d2', '#d67c52', '#c76b91', '#cf9b52', '#9a76ab', '#c65c61', '#8b8f62', '#d1786b', '#ae6682', '#8e7bc2', '#c49268'];
+        const expenseColors = ['#c77b85', '#957eaa', '#b88c70', '#b77c91', '#a78965', '#957f94', '#b46e73', '#8a9277', '#b47f76', '#a67586', '#887da6', '#ae8d72'];
 
         // Create sankey layout.
         // NOTE: links in sankeyData reference nodes by numeric index, so we rely on
@@ -2735,8 +2774,8 @@ const { theme, isDark, toggleTheme } = useTheme();
           const targetColor = link.target.type === 'expense' ? expenseColors[nodes.filter(n => n.type === 'expense').indexOf(link.target) % expenseColors.length] :
                              link.target.type === 'aggregate' ? aggregateColor : incomeColor;
 
-          gradient.append('stop').attr('offset', '0%').attr('stop-color', sourceColor).attr('stop-opacity', 0.8);
-          gradient.append('stop').attr('offset', '100%').attr('stop-color', targetColor).attr('stop-opacity', 0.8);
+          gradient.append('stop').attr('offset', '0%').attr('stop-color', sourceColor).attr('stop-opacity', 0.62);
+          gradient.append('stop').attr('offset', '100%').attr('stop-color', targetColor).attr('stop-opacity', 0.62);
 
           link.gradientId = gradientId;
         });
@@ -2753,9 +2792,9 @@ const { theme, isDark, toggleTheme } = useTheme();
           .attr('stroke', d => `url(#${d.gradientId})`)
           .attr('stroke-width', d => Math.max(1, d.width))
           .attr('fill', 'none')
-          .style('stroke-opacity', 0.4)
+           .style('stroke-opacity', 0.3)
           .on('mouseenter', function(event, d) {
-            d3.select(this).style('stroke-opacity', 0.8);
+             d3.select(this).style('stroke-opacity', 0.65);
             const rect = container.getBoundingClientRect();
             setSankeyTooltip({
               x: event.clientX - rect.left + 10,
@@ -2770,7 +2809,7 @@ const { theme, isDark, toggleTheme } = useTheme();
             setSankeyTooltip(prev => prev ? { ...prev, x: event.clientX - rect.left + 10, y: event.clientY - rect.top - 10 } : null);
           })
           .on('mouseleave', function() {
-            d3.select(this).style('stroke-opacity', 0.4);
+             d3.select(this).style('stroke-opacity', 0.3);
             setSankeyTooltip(null);
           });
 
@@ -2798,7 +2837,7 @@ const { theme, isDark, toggleTheme } = useTheme();
           .on('mouseenter', function(event, d) {
             // Highlight connected links
             linkPaths.style('stroke-opacity', link =>
-              (link.source === d || link.target === d) ? 0.8 : 0.1
+              (link.source === d || link.target === d) ? 0.65 : 0.12
             );
             nodeRects.style('opacity', node =>
               node === d || links.some(l => (l.source === d && l.target === node) || (l.target === d && l.source === node)) ? 1 : 0.3
@@ -2821,7 +2860,7 @@ const { theme, isDark, toggleTheme } = useTheme();
             setSankeyTooltip(prev => prev ? { ...prev, x: event.clientX - rect.left + 10, y: event.clientY - rect.top - 10 } : null);
           })
           .on('mouseleave', function() {
-            linkPaths.style('stroke-opacity', 0.4);
+            linkPaths.style('stroke-opacity', 0.3);
             nodeRects.style('opacity', 1);
             setSankeyTooltip(null);
           })
@@ -3063,7 +3102,7 @@ const { theme, isDark, toggleTheme } = useTheme();
         statCard: () => ({ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '16px', padding: '1.5rem', position: 'relative', overflow: 'hidden', backdropFilter: 'blur(10px)' }),
         statCardAccent: (color) => ({ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: `linear-gradient(90deg, ${color}, transparent)` }),
         statLabel: { fontSize: '0.6875rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem', fontWeight: '500' },
-        statValue: (color) => ({ fontSize: '1.75rem', fontWeight: '600', color: color || 'var(--text-primary)', letterSpacing: '-0.02em', fontFamily: '"Playfair Display", serif' }),
+        statValue: (color) => ({ fontSize: '1.45rem', fontWeight: '500', color: color || 'var(--text-primary)', letterSpacing: '-0.025em', fontFamily: 'Inter, sans-serif', fontVariantNumeric: 'tabular-nums' }),
         statSubtext: { fontSize: '0.6875rem', color: 'var(--text-dim)', marginTop: '0.5rem' },
         panel: { background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '16px', padding: '1.5rem', marginBottom: '1.5rem' },
         panelHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'nowrap', gap: '0.75rem' },
@@ -3093,8 +3132,8 @@ const { theme, isDark, toggleTheme } = useTheme();
         tableCell: { fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center' },
         monthDivider: { padding: '0.625rem 1.25rem', background: 'linear-gradient(90deg, var(--accent-bg), transparent)', borderBottom: '1px solid var(--accent-border)' },
         monthLabel: { fontSize: '0.75rem', fontWeight: '600', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.2em' },
-        balancePositive: { color: 'var(--success)', fontWeight: '600' },
-        balanceNegative: { color: 'var(--danger)', fontWeight: '600' },
+        balancePositive: { color: 'var(--success)', fontWeight: '500' },
+        balanceNegative: { color: 'var(--danger)', fontWeight: '500', textDecoration: 'underline dotted', textUnderlineOffset: '3px' },
         expenseCell: { color: 'var(--danger)', fontWeight: '500' },
         payrollBadge: { display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.125rem 0.375rem', background: 'var(--success-bg)', border: '1px solid var(--success)', borderRadius: '4px', fontSize: '0.625rem', color: 'var(--success)', marginRight: '0.3125rem', marginBottom: '0.1875rem' },
         recurringExpenseBadge: { display: 'inline-flex', alignItems: 'center', padding: '0.125rem 0.375rem', background: 'var(--danger-bg)', border: '1px solid var(--danger)', borderRadius: '4px', fontSize: '0.625rem', color: 'var(--danger)', marginRight: '0.3125rem', marginBottom: '0.1875rem' },
@@ -3183,7 +3222,7 @@ const { theme, isDark, toggleTheme } = useTheme();
               </div>
               <div style={{ fontSize: '1.0625rem', lineHeight: 1.55, color: 'var(--text-secondary)' }}>
                 {negative ? (
-                  <>Your balance is projected to fall below <strong style={{ color: 'var(--danger)' }}>$0</strong> on <strong style={{ color: 'var(--text-primary)' }}>{formatFullDate(forecast.firstNegDate)}</strong>, bottoming out at <strong style={{ color: 'var(--danger)' }}>{formatCurrency(forecast.lowestAheadBal)}</strong>. Trim expenses or add income before then.</>
+                  <>Your balance is projected to fall below <strong style={{ color: 'var(--danger)' }}>$0</strong> on <strong style={{ color: 'var(--text-primary)' }}>{formatFullDate(forecast.firstNegDate)}</strong>, reaching <strong style={{ color: 'var(--danger)' }}>{formatCurrency(forecast.lowestAheadBal)}</strong>. Review the dates and amounts below to see what contributes to the projected shortfall.</>
                 ) : (
                   <>You stay above zero {forecast.isCurrentYear ? 'all the way to Dec 31' : 'all year'}. Your tightest point {forecast.isCurrentYear ? 'ahead' : ''} is <strong style={{ color: 'var(--text-primary)' }}>{formatCurrency(forecast.lowestAheadBal)}</strong>{forecast.lowestAheadDate ? <> on <strong style={{ color: 'var(--text-primary)' }}>{formatFullDate(forecast.lowestAheadDate)}</strong></> : ''}.</>
                 )}
@@ -3191,7 +3230,7 @@ const { theme, isDark, toggleTheme } = useTheme();
             </div>
             <div style={{ textAlign: 'right', flex: '0 0 auto' }}>
               <div style={styles.statLabel}>{balanceLabel}</div>
-              <div style={{ fontFamily: '"Playfair Display", serif', fontSize: 'clamp(2rem, 5vw, 2.75rem)', fontWeight: 600, color: forecast.currentBalance >= 0 ? 'var(--text-primary)' : 'var(--danger)', letterSpacing: '-0.02em', lineHeight: 1.1 }}>{formatCurrency(forecast.currentBalance)}</div>
+              <div className="app-hero-balance" style={{ fontFamily: '"Playfair Display", serif', fontSize: 'clamp(2rem, 5vw, 2.75rem)', fontWeight: 600, color: forecast.currentBalance >= 0 ? 'var(--text-primary)' : 'var(--danger)', letterSpacing: '-0.02em', lineHeight: 1.1 }}>{formatCurrency(forecast.currentBalance)}</div>
               {forecast.latestCheckIn && <div style={styles.statSubtext}>Anchored to your {formatFullDate(parseDateKey(forecast.latestCheckIn.date))} check-in</div>}
             </div>
           </div>
@@ -3607,7 +3646,7 @@ const { theme, isDark, toggleTheme } = useTheme();
                             </div>
                           </div>
                           <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                            <div style={{ fontFamily: '"Playfair Display", serif', fontSize: '1.5rem', fontWeight: 600, color: 'var(--danger)', lineHeight: 1.1 }}>{formatCurrency(debt.balance)}</div>
+                            <div className="app-debt-balance" style={{ fontFamily: '"Playfair Display", serif', fontSize: '1.5rem', fontWeight: 600, color: 'var(--danger)', lineHeight: 1.1 }}>{formatCurrency(debt.balance)}</div>
                             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
                               <button className="icon-btn" aria-label={`Edit debt ${debt.name}`} style={editBtn} onClick={() => editDebt(debt)}><Icons.Edit /></button>
                               <button className="icon-btn" aria-label={`Delete debt ${debt.name}`} style={styles.deleteBtn} onClick={() => deleteDebt(debt.id)}><Icons.Trash /></button>
