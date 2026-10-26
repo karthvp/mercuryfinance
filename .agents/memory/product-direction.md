@@ -8,3 +8,9 @@ The goal is to take the running calendar of expenses and help it plan and foreca
 **Why:** The user stated this as the product's intended direction.
 
 **How to apply:** Evaluate new features against better forward-looking budgeting and a trustworthy connection between planned and actual money. Plaid was raised as an option, not a committed provider decision.
+
+Signing in should automatically take users to their dashboard, not back to the homepage.
+
+**Why:** The user explicitly requested this sign-in behavior.
+
+**How to apply:** Keep the dashboard as the successful sign-in destination when changing authentication or app navigation.

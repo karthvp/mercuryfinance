@@ -268,7 +268,18 @@ app.get('/api/callback', async (req, res) => {
     req.session.user = result.rows[0];
     delete req.session.auth;
     
-    res.redirect('/');
+    // Make the authenticated session durable before the browser requests the app.
+    await new Promise((resolve, reject) => {
+      req.session.save(error => {
+        if (error) {
+          delete req.session.userId;
+          delete req.session.user;
+          return reject(error);
+        }
+        resolve();
+      });
+    });
+    res.redirect('/#app/dashboard');
   } catch (error) {
     console.error('Auth callback error:', error);
     delete req.session.auth;
