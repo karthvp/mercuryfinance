@@ -133,6 +133,24 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use((req, res, next) => {
+  res.set(
+    'Content-Security-Policy',
+    [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://d3js.org https://unpkg.com",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "font-src 'self' https://fonts.gstatic.com",
+      "img-src 'self' data: https:",
+      "connect-src 'self'",
+      "frame-ancestors 'none'",
+      "object-src 'none'",
+      "base-uri 'self'",
+    ].join('; ')
+  );
+  next();
+});
+
 app.set('trust proxy', 1);
 
 const sessionTtl = 7 * 24 * 60 * 60 * 1000;
