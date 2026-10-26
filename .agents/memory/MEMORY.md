@@ -1,1 +1,2 @@
 - [Visual direction](design-direction.md) — ChatPRD is the user's reference for the entire Mercury website and signed-in app.
+- [Product direction](product-direction.md) — Evolve the expense calendar into budget planning and forecasting with actual transaction reconciliation.
