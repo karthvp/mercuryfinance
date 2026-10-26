@@ -22,6 +22,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/ledger-workspace.css">
+  <script src="/ledger-model.js"></script>
+  <script src="/ledger-workspace.jsx"></script>
   <style>
     :root {
       /* Mercury / light: paper, ink, and a bright coral-to-orchid signal */
@@ -1046,7 +1049,7 @@
           credentials: 'include'
         });
         if (res.status === 401) throw new Error('Unauthorized');
-        if (!res.ok) throw new Error('Failed to save data');
+        if (!res.ok) { const body = await res.json(); throw new Error(body.error || 'Failed to save data'); }
         return res.json();
       },
       async updateField(field, value) {
@@ -1059,6 +1062,18 @@
         if (res.status === 401) throw new Error('Unauthorized');
         if (!res.ok) throw new Error('Failed to update field');
         return res.json();
+      },
+      async loadLedger() {
+        const res = await fetch('/api/ledger', { credentials: 'include', headers: { 'X-Mercury-Timezone': Intl.DateTimeFormat().resolvedOptions().timeZone } });
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.error || 'Could not load accounts and actuals.');
+        return body;
+      },
+      async saveLedger(revision, ledger, requestId) {
+        const res = await fetch('/api/ledger', { method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json', 'X-Mercury-CSRF': '1' }, body: JSON.stringify({ revision, ledger, requestId }) });
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.error || 'The ledger save was not confirmed.');
+        return body;
       }
     };
 
@@ -1977,11 +1992,36 @@
       const [oneOffIncomes, setOneOffIncomes] = useState([]);
       const [debts, setDebts] = useState([]);
       const [balanceOverrides, setBalanceOverrides] = useState({});
+      const [ledgerState, setLedgerState] = useState(null);
+      const [ledgerBusy, setLedgerBusy] = useState(false);
+      const [ledgerError, setLedgerError] = useState(null);
+      const [ledgerAccount, setLedgerAccount] = useState('all');
+      const ledgerSavingRef = useRef(false);
+      const [planSaveError, setPlanSaveError] = useState(null);
+      const reconciliationPlan = useMemo(() => ({ payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes, debts, initialBalances, balanceOverrides }), [payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes, debts, initialBalances, balanceOverrides]);
+      const refreshLedger = useCallback(async () => {
+        setLedgerBusy(true);
+        try { const next = await api.loadLedger(); setLedgerState(next); setLedgerError(null); }
+        catch (e) { setLedgerError(e.message); throw e; }
+        finally { setLedgerBusy(false); }
+      }, []);
+      useEffect(() => { refreshLedger().catch(() => {}); }, [refreshLedger]);
+      const saveLedger = async next => {
+        if (ledgerSavingRef.current || !ledgerState) return false;
+        ledgerSavingRef.current = true; setLedgerBusy(true); setLedgerError(null);
+        try {
+          const saved = await api.saveLedger(ledgerState.revision, next, crypto.randomUUID());
+          setLedgerState(saved);
+          return true;
+        } catch (e) { setLedgerError(e.message); return false; }
+        finally { ledgerSavingRef.current = false; setLedgerBusy(false); }
+      };
       const [rolloverNotice, setRolloverNotice] = useState(null); // summary of an automatic year rollover
       const [snowballMode, setSnowballMode] = useState(false); // debt projection: snowball vs independent
       const didRolloverRef = useRef(false);
       const getInitialActiveView = () => {
         const hash = window.location.hash;
+        if (hash.includes('/accounts')) return 'accounts';
         if (hash.includes('/calendar')) return 'calendar';
         if (hash.includes('/cashflow')) return 'cashflow';
         if (hash.includes('/debt')) return 'debt';
@@ -1997,7 +2037,9 @@
       useEffect(() => {
         const handleHashChange = () => {
           const hash = window.location.hash;
-          if (hash.includes('/calendar')) {
+          if (hash.includes('/accounts')) {
+            setActiveViewState('accounts');
+          } else if (hash.includes('/calendar')) {
             setActiveViewState('calendar');
           } else if (hash.includes('/cashflow')) {
             setActiveViewState('cashflow');
@@ -2162,6 +2204,7 @@
           setSaveState('saving');
           api.saveData(data)
             .then(() => {
+              setPlanSaveError(null);
               setSaveState('saved');
               if (savedTimeoutRef.current) clearTimeout(savedTimeoutRef.current);
               savedTimeoutRef.current = setTimeout(() => setSaveState('idle'), 1800);
@@ -2169,6 +2212,7 @@
             .catch(err => {
               console.error('Save failed:', err);
               setSaveState('error');
+              setPlanSaveError(err.message);
               if (savedTimeoutRef.current) clearTimeout(savedTimeoutRef.current);
               savedTimeoutRef.current = setTimeout(() => setSaveState('idle'), 3000);
             });
@@ -2230,9 +2274,28 @@
         [activeYear, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes, payoffDateByDebtId]
       );
 
+      const reconciledSeries = useCallback((year, base) => {
+        if (!ledgerState) return base;
+        const ledger = ledgerState.ledger;
+        const firstYear = Math.min(year - 1, ...ledger.checkpoints.map(c => Number(c.date.slice(0, 4))));
+        const all = MercuryLedger.occurrences(reconciliationPlan, firstYear, year + 1, todayKey);
+        const projected = MercuryLedger.forecast(ledger, all, year, todayKey, ledgerAccount === 'all' ? undefined : ledgerAccount);
+        return base.map((day, i) => ({
+          ...day, startingBalance: projected[i].startingCents / 100, endingBalance: projected[i].endingCents / 100,
+          payrollAmount: projected[i].incomeCents / 100, expenses: projected[i].expenseCents / 100,
+          isOverridden: projected[i].checkpoint,
+        }));
+      }, [ledgerState, reconciliationPlan, todayKey, ledgerAccount]);
+      const ledgerOccurrences = useMemo(() => ledgerState ? MercuryLedger.occurrences(reconciliationPlan, Math.min(activeYear - 1, dashboardYear - 1, ...ledgerState.ledger.checkpoints.map(c => Number(c.date.slice(0, 4)))), Math.max(activeYear, dashboardYear) + 1, todayKey).map(o => MercuryLedger.decorate(o, ledgerState.ledger)) : [], [ledgerState, reconciliationPlan, activeYear, dashboardYear, todayKey]);
+      const visibleLedgerOccurrences = ledgerOccurrences.filter(o => ledgerAccount === 'all' || o.accountId === ledgerAccount);
+      const ledgerRisks = useMemo(() => ledgerState ? ledgerState.ledger.accounts.map(account => ({
+        account, day: MercuryLedger.forecast(ledgerState.ledger, ledgerOccurrences, activeView === 'calendar' ? activeYear : dashboardYear, todayKey, account.id).find(d => d.date >= todayKey && d.endingCents < 0)
+      })).filter(r => r.day) : [], [ledgerState, ledgerOccurrences, activeView, activeYear, dashboardYear, todayKey]);
+      const ledgerUnreviewed = ledgerState ? ledgerState.ledger.transactions.filter(t => t.amountCents > ledgerState.ledger.allocations.filter(a => a.transactionId === t.id).reduce((sum, a) => sum + a.amountCents, 0)).length : 0;
+      const ledgerOverdue = ledgerState ? visibleLedgerOccurrences.filter(o => !o.skipped && o.date >= ledgerState.ledger.cutoverDate && o.date < todayKey && o.remainingCents > 0).length : 0;
       const financialData = useMemo(
-        () => buildYearSeries(activeYear, activeOccurrences, initialBalances[activeYear] || 5000, balanceOverrides, today, todayKey),
-        [activeYear, activeOccurrences, initialBalances, balanceOverrides, todayKey]
+        () => reconciledSeries(activeYear, buildYearSeries(activeYear, activeOccurrences, initialBalances[activeYear] ?? 0, balanceOverrides, today, todayKey)),
+        [activeYear, activeOccurrences, initialBalances, balanceOverrides, todayKey, reconciledSeries]
       );
 
       // Per-day balance series for the viewed year. Reuses financialData for the
@@ -2241,8 +2304,8 @@
       const dashboardSeries = useMemo(() => {
         if (dashboardYear === activeYear) return financialData;
         const occ = generateOccurrences(dashboardYear, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes, payoffDateByDebtId);
-        return buildYearSeries(dashboardYear, occ, initialBalances[dashboardYear] || 5000, balanceOverrides, today, todayKey);
-      }, [financialData, dashboardYear, activeYear, initialBalances, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes, payoffDateByDebtId, balanceOverrides, todayKey]);
+        return reconciledSeries(dashboardYear, buildYearSeries(dashboardYear, occ, initialBalances[dashboardYear] ?? 0, balanceOverrides, today, todayKey));
+      }, [financialData, dashboardYear, activeYear, initialBalances, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes, payoffDateByDebtId, balanceOverrides, todayKey, reconciledSeries]);
 
       const stats = useMemo(() => {
         const yearData = dashboardSeries;
@@ -2272,7 +2335,7 @@
         });
 
         return {
-          initialBalance: initialBalances[dashboardYear] || 5000,
+          initialBalance: yearData[0]?.startingBalance ?? 0,
           endOfYearBalance: yearData[yearData.length - 1]?.endingBalance || 0,
           lowestBalance,
           lowestBalanceDate,
@@ -2313,7 +2376,7 @@
 
         let currentBalance;
         if (isCurrentYear && todayIdx >= 0) currentBalance = series[todayIdx].endingBalance;
-        else if (isFutureYear) currentBalance = initialBalances[dashboardYear] || 5000;
+        else if (isFutureYear) currentBalance = series[0]?.startingBalance ?? 0;
         else currentBalance = series[series.length - 1]?.endingBalance ?? 0;
 
         // Window of days still ahead (for the current year); whole year otherwise.
@@ -2333,9 +2396,11 @@
           series.forEach(d => { if (d.date.getMonth() === m) { monthIncome += d.payrollAmount; monthExpenses += d.expenses; } });
         }
 
-        const checkIns = Object.keys(balanceOverrides)
+        const checkIns = (ledgerState ? ledgerState.ledger.checkpoints
+          .filter(c => c.date.startsWith(String(dashboardYear) + '-') && (ledgerAccount === 'all' || c.accountId === ledgerAccount))
+          .map(c => ({ date: c.date, balance: c.balanceCents / 100, accountId: c.accountId, source: c.source })) : Object.keys(balanceOverrides)
           .filter(k => k.startsWith(String(dashboardYear) + '-'))
-          .map(k => ({ date: k, balance: balanceOverrides[k] }))
+          .map(k => ({ date: k, balance: balanceOverrides[k] })))
           .sort((a, b) => a.date.localeCompare(b.date));
         const latestCheckIn = isCurrentYear
           ? [...checkIns].reverse().find(c => c.date <= todayKey) || null
@@ -2348,13 +2413,19 @@
           checkIns, latestCheckIn,
           avgMonthlyNet: stats.netAnnual / 12,
         };
-      }, [dashboardSeries, dashboardYear, realCurrentYear, initialBalances, balanceOverrides, todayKey, stats.netAnnual]);
+      }, [dashboardSeries, dashboardYear, realCurrentYear, initialBalances, balanceOverrides, todayKey, stats.netAnnual, ledgerState, ledgerAccount]);
 
       // Occurrences for the viewed year (reuses the active-year expansion when possible).
-      const dashboardOccurrences = useMemo(
-        () => dashboardYear === activeYear ? activeOccurrences : generateOccurrences(dashboardYear, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes, payoffDateByDebtId),
-        [dashboardYear, activeYear, activeOccurrences, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes, payoffDateByDebtId]
-      );
+      const dashboardOccurrences = useMemo(() => {
+        if (!ledgerState) return dashboardYear === activeYear ? activeOccurrences : generateOccurrences(dashboardYear, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes, payoffDateByDebtId);
+        const mapped = { incomeByDate: {}, expenseByDate: {} };
+        MercuryLedger.activity(ledgerState.ledger, ledgerOccurrences, todayKey, ledgerAccount === 'all' ? undefined : ledgerAccount).forEach(item => {
+          if (!item.date.startsWith(String(dashboardYear))) return;
+          const map = item.direction === 'income' ? mapped.incomeByDate : mapped.expenseByDate;
+          (map[item.date] ||= []).push({ ...item, amount: item.amountCents / 100 });
+        });
+        return mapped;
+      }, [dashboardYear, activeYear, activeOccurrences, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes, payoffDateByDebtId, ledgerState, ledgerOccurrences, todayKey, ledgerAccount]);
 
       const ytdExpensesByName = useMemo(() => {
         const cutoffDate = getYearCutoffDate(dashboardYear);
@@ -2982,9 +3053,23 @@ const { theme, isDark, toggleTheme } = useTheme();
 
       }, [sankeyData, activeView, dashboardYear, isDark, sankeyTick]);
 
-      const handleOverrideBalance = (dateKey, newBalance) => { const v = parseFloat(newBalance); if (!isNaN(v)) setBalanceOverrides(prev => ({ ...prev, [dateKey]: v })); setEditingCell(null); };
-      const clearOverride = (dateKey) => { setBalanceOverrides(prev => { const n = { ...prev }; delete n[dateKey]; return n; }); };
+      const handleOverrideBalance = (dateKey, newBalance) => {
+        if (ledgerState) {
+          const accountId = ledgerAccount === 'all' ? 'legacy-opening' : ledgerAccount;
+          const existing = ledgerState.ledger.checkpoints.find(c => c.accountId === accountId && c.date === dateKey);
+          let value;
+          try { value = MercuryLedger.cents(newBalance); } catch (e) { setLedgerError(e.message); return; }
+          saveLedger({ ...ledgerState.ledger, checkpoints: [...ledgerState.ledger.checkpoints.filter(c => c.id !== existing?.id), { id: existing?.id || crypto.randomUUID(), accountId, date: dateKey, balanceCents: value, timing: 'start', source: 'manual' }] }).then(ok => { if (ok) setEditingCell(null); });
+          return;
+        }
+        const v = parseFloat(newBalance); if (!isNaN(v)) setBalanceOverrides(prev => ({ ...prev, [dateKey]: v })); setEditingCell(null);
+      };
+      const clearOverride = (dateKey) => {
+        if (ledgerState) { setActiveView('accounts'); return; }
+        setBalanceOverrides(prev => { const n = { ...prev }; delete n[dateKey]; return n; });
+      };
       const clearCheckInsForYear = (year) => {
+        if (ledgerState) { setActiveView('accounts'); return; }
         if (!confirm(`Clear all balance check-ins for ${year}? Your forecast will fall back to a pure projection from your inputs.`)) return;
         setBalanceOverrides(prev => Object.fromEntries(Object.entries(prev).filter(([k]) => !k.startsWith(String(year) + '-'))));
       };
@@ -3175,7 +3260,7 @@ const { theme, isDark, toggleTheme } = useTheme();
       const renderDashboard = () => {
         const negative = forecast.firstNegDate !== null;
         const checkInCount = forecast.checkIns.length;
-        const balanceLabel = forecast.isCurrentYear ? 'Balance today' : forecast.isFutureYear ? `Projected start of ${dashboardYear}` : `${dashboardYear} year-end`;
+        const balanceLabel = forecast.isCurrentYear ? 'Projected balance today' : forecast.isFutureYear ? `Projected start of ${dashboardYear}` : `${dashboardYear} year-end`;
         const ytdNet = stats.historicalPayrollReceived - stats.historicalTotalExpensesPaid;
         const legendDot = (color, filled) => ({ width: '10px', height: '10px', borderRadius: '50%', background: filled ? color : 'transparent', border: `2px solid ${color}`, display: 'inline-block' });
         const legendItem = { display: 'inline-flex', alignItems: 'center', gap: '0.4rem' };
@@ -3209,7 +3294,7 @@ const { theme, isDark, toggleTheme } = useTheme();
             </div>
             <div className="app-initial-balance-section" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <span style={styles.initialBalanceLabel}>Starting Balance (Jan 1, {dashboardYear}):</span>
-              <input type="number" value={initialBalances[dashboardYear] || 5000} onChange={(e) => updateInitialBalance(dashboardYear, e.target.value)} style={styles.initialBalanceInput} />
+              {ledgerState ? <button type="button" style={styles.cancelBtn} onClick={() => setActiveView('accounts')}>Manage account balances</button> : <input type="number" value={initialBalances[dashboardYear] ?? 0} onChange={(e) => updateInitialBalance(dashboardYear, e.target.value)} style={styles.initialBalanceInput} />}
             </div>
           </div>
 
@@ -3338,20 +3423,20 @@ const { theme, isDark, toggleTheme } = useTheme();
             <div className="app-panel-header" style={styles.panelHeader}>
               <div style={styles.panelTitle}><Icons.Shield /> Balance Check-ins</div>
               {forecast.checkIns.length > 0 && (
-                <button style={styles.cancelBtn} onClick={() => clearCheckInsForYear(dashboardYear)}>Clear all</button>
+                <button style={styles.cancelBtn} onClick={() => clearCheckInsForYear(dashboardYear)}>{ledgerState ? 'Manage account checkpoints' : 'Clear legacy check-ins'}</button>
               )}
             </div>
             <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.55, marginBottom: forecast.checkIns.length > 0 ? '0.875rem' : 0 }}>
-              A check-in pins your <strong style={{ color: 'var(--text-secondary)' }}>actual</strong> account balance on a date; the forecast continues from there. Record one anytime by editing a day&rsquo;s starting balance on the <strong style={{ color: 'var(--text-secondary)' }}>Calendar</strong>.
+              Manual checkpoints set an account&rsquo;s start-of-day balance; transactions on that date follow it. Imported legacy checkpoints are <strong style={{ color: 'var(--text-secondary)' }}>estimates, not verified actual balances</strong>. Edit or remove account-specific checkpoints in <strong style={{ color: 'var(--text-secondary)' }}>Actuals</strong>.
             </div>
             {forecast.checkIns.length === 0 ? (
               <div style={styles.emptyState}>No check-ins yet — your {dashboardYear} forecast is a pure projection from your income &amp; expenses.</div>
             ) : forecast.checkIns.map(c => (
-              <div key={c.date} className="app-item-row" style={styles.itemRow}>
-                <div><div style={styles.itemName}>{formatFullDate(parseDateKey(c.date))}</div><div style={styles.itemMeta}>Actual balance recorded</div></div>
+              <div key={`${c.accountId || 'legacy'}:${c.date}`} className="app-item-row" style={styles.itemRow}>
+                <div><div style={styles.itemName}>{formatFullDate(parseDateKey(c.date))}</div><div style={styles.itemMeta}>{ledgerState ? `${ledgerState.ledger.accounts.find(a => a.id === c.accountId)?.name || 'Account'} · ${c.source === 'legacy' ? 'Imported estimate · verify this balance' : 'Manual start-of-day checkpoint'}` : 'Legacy balance check-in'}</div></div>
                 <div className="app-item-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                   <span style={{ fontSize: '0.9375rem', fontWeight: 600, color: c.balance >= 0 ? 'var(--success)' : 'var(--danger)' }}>{formatCurrency(c.balance)}</span>
-                  <button className="icon-btn" aria-label={`Remove check-in on ${c.date}`} style={styles.deleteBtn} onClick={() => clearOverride(c.date)}><Icons.Trash /></button>
+                  <button className="icon-btn" aria-label={`${ledgerState ? 'Manage account checkpoint' : 'Remove legacy check-in'} on ${c.date}`} style={styles.deleteBtn} onClick={() => clearOverride(c.date)}>{ledgerState ? <Icons.Edit /> : <Icons.Trash />}</button>
                 </div>
               </div>
             ))}
@@ -3714,6 +3799,19 @@ const { theme, isDark, toggleTheme } = useTheme();
                       <div className="app-table-cell app-hide-xs" style={styles.tableCell}>{day.dayOfWeek}</div>
                       <div className="app-table-cell" style={{ ...styles.tableCell, flexWrap: 'wrap' }}>
                         <div style={styles.expensesList}>
+                          {ledgerState && <>
+                            {visibleLedgerOccurrences.filter(o => o.date === day.dateKey).map(o => <button key={o.key} type="button" style={{ ...styles.recurringExpenseBadge, color: o.direction === 'income' ? 'var(--success)' : 'var(--text-secondary)', cursor: 'pointer', textAlign: 'left' }} onClick={() => {
+                              const detail = { ...o, amount: o.amountCents / 100 };
+                              if (o.kind === 'recurring') openOccurrenceEditor(o.direction, detail, day.dateKey);
+                              else if (o.direction === 'income') editOneOffIncome({ ...detail, date: o.date });
+                              else editOneOffExpense({ ...detail, date: o.date });
+                            }} title="Edit this planned occurrence">{o.direction === 'income' ? '+' : '−'}{MercuryLedger.money(o.amountCents)} {o.name} · {o.status}{o.remainingCents > 0 && o.allocatedCents > 0 ? ` · ${MercuryLedger.money(o.remainingCents)} remaining` : ''}</button>)}
+                            {ledgerState.ledger.transactions.filter(t => t.date === day.dateKey && (ledgerAccount === 'all' || t.accountId === ledgerAccount)).map(t => {
+                              const allocated = ledgerState.ledger.allocations.filter(a => a.transactionId === t.id).reduce((sum, a) => sum + a.amountCents, 0);
+                              return <button key={t.id} type="button" style={{ ...styles.payrollBadge, cursor: 'pointer', textAlign: 'left' }} onClick={() => setActiveView('accounts')}>{t.direction === 'income' ? '+' : '−'}{MercuryLedger.money(t.amountCents)} {t.description} · Actual · {allocated === t.amountCents ? 'Matched' : `Unmatched ${MercuryLedger.money(t.amountCents - allocated)}`}</button>;
+                            })}
+                          </>}
+                          {!ledgerState && <>
                           {day.payrollDetails.map((p, i) => (
                             p.kind === 'recurring'
                               ? <span key={i} draggable="true" onDragStart={(ev) => handleDragStart(ev, { type: 'recurringIncome', id: p.id, origin: p.origin })} onDragEnd={handleDragEnd} onClick={() => openOccurrenceEditor('income', p, day.dateKey)} style={{ ...styles.payrollBadge, cursor: 'grab' }} title="Drag to move · click to adjust or skip">+{formatCurrency(p.amount)} {p.name}{(p.moved || p.adjusted) ? ' ·' : ''}</span>
@@ -3724,6 +3822,7 @@ const { theme, isDark, toggleTheme } = useTheme();
                               ? <span key={i} draggable="true" onDragStart={(ev) => handleDragStart(ev, { type: 'recurringExpense', id: e.id, origin: e.origin })} onDragEnd={handleDragEnd} onClick={() => openOccurrenceEditor('expense', e, day.dateKey)} style={{ ...styles.recurringExpenseBadge, cursor: 'grab' }} title="Drag to move · click to adjust or skip">-{formatCurrency(e.amount)} {e.name}{(e.moved || e.adjusted) ? ' ·' : ''}</span>
                               : <span key={i} draggable="true" onDragStart={(ev) => handleDragStart(ev, { type: 'oneoffExpense', id: e.id })} onDragEnd={handleDragEnd} onClick={() => editOneOffExpense(e)} style={{ ...styles.oneOffExpenseBadge, cursor: 'grab' }} title="Drag to move · click to edit">-{formatCurrency(e.amount)} {e.name}</span>
                           ))}
+                          </>}
                         </div>
                       </div>
                       <div className="app-table-cell" style={styles.tableCell}>
@@ -3738,8 +3837,11 @@ const { theme, isDark, toggleTheme } = useTheme();
                         ) : (
                           <span style={day.startingBalance >= 0 ? styles.balancePositive : styles.balanceNegative}>
                             {formatCurrency(day.startingBalance)}
-                            {day.isOverridden && (<span style={styles.overrideBadge} onClick={() => clearOverride(day.dateKey)} title="Click to remove this check-in">Check-in</span>)}
-                            <button className="icon-btn" aria-label="Record actual balance (check-in)" title="Record actual balance here" style={styles.editButton} onClick={() => { setEditingCell(day.dateKey); setEditValue(day.startingBalance.toString()); }}><Icons.Edit /></button>
+                            {day.isOverridden && (<button type="button" style={styles.overrideBadge} onClick={() => clearOverride(day.dateKey)} title={ledgerState ? 'Edit or remove account checkpoints in Actuals' : 'Remove this legacy check-in'}>{ledgerState ? 'Manage checkpoint' : 'Check-in'}</button>)}
+                            <button className="icon-btn" aria-label="Record actual balance (check-in)" title="Start-of-day checkpoint. Select a single account first when using multiple accounts." style={styles.editButton} onClick={() => {
+                              if (ledgerState && ledgerAccount === 'all' && ledgerState.ledger.accounts.length > 1) { setLedgerError('Choose one forecast account before recording its starting balance.'); return; }
+                              setEditingCell(day.dateKey); setEditValue(day.startingBalance.toString());
+                            }}><Icons.Edit /></button>
                           </span>
                         )}
                       </div>
@@ -3760,7 +3862,13 @@ const { theme, isDark, toggleTheme } = useTheme();
           <header className="app-header" style={styles.header}>
             <div className="app-header-content" style={styles.headerContent}>
               <div className="app-header-brand" style={styles.logo} onClick={onBackToHome}><div style={styles.logoIcon}><Icons.Mercury /></div><span className="app-logo-text" style={styles.logoText}>Mercury</span><span className="app-year-badge" style={styles.yearBadge}>{activeYear}</span></div>
-              <nav className="app-nav" style={styles.nav}><button className="app-nav-btn" style={styles.navButton(activeView === 'dashboard')} onClick={() => setActiveView('dashboard')}><Icons.Dashboard /> Dashboard</button><button className="app-nav-btn" style={styles.navButton(activeView === 'cashflow')} onClick={() => setActiveView('cashflow')}><Icons.CashFlow /> Cash Flow</button><button className="app-nav-btn" style={styles.navButton(activeView === 'debt')} onClick={() => setActiveView('debt')}><Icons.Debt /> Debt</button><button className="app-nav-btn" style={styles.navButton(activeView === 'calendar')} onClick={() => setActiveView('calendar')}><Icons.Calendar /> Calendar</button></nav>
+              <nav className="app-nav" style={styles.nav}>
+                <button className="app-nav-btn" style={styles.navButton(activeView === 'dashboard')} onClick={() => setActiveView('dashboard')}><Icons.Dashboard /> Dashboard</button>
+                <button className="app-nav-btn" style={styles.navButton(activeView === 'cashflow')} onClick={() => setActiveView('cashflow')}><Icons.CashFlow /> Cash Flow</button>
+                <button className="app-nav-btn" style={styles.navButton(activeView === 'debt')} onClick={() => setActiveView('debt')}><Icons.Debt /> Debt</button>
+                <button className="app-nav-btn" style={styles.navButton(activeView === 'calendar')} onClick={() => setActiveView('calendar')}><Icons.Calendar /> Calendar</button>
+                <button className="app-nav-btn" style={styles.navButton(activeView === 'accounts')} onClick={() => setActiveView('accounts')}>Actuals</button>
+              </nav>
               <div className="app-header-actions" style={styles.headerActions}>
                 <button type="button" className="theme-toggle" onClick={toggleTheme} aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'} title={isDark ? 'Switch to light theme' : 'Switch to dark theme'}>
                   {isDark ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg> : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M20.4 15.5A8.4 8.4 0 0 1 8.5 3.6 8.5 8.5 0 1 0 20.4 15.5Z"/></svg>}
@@ -3782,7 +3890,27 @@ const { theme, isDark, toggleTheme } = useTheme();
               </div>
             </div>
           </header>
-          <main className="app-main" style={styles.main}>{activeView === 'dashboard' ? renderDashboard() : activeView === 'cashflow' ? renderCashFlow() : activeView === 'debt' ? renderDebt() : renderCalendar()}</main>
+          <main className="app-main" style={styles.main}>
+            {planSaveError && <div role="alert" className="lw-notice is-error">Plan changes were not saved: {planSaveError}. Your last saved plan is preserved. <button type="button" onClick={() => setActiveView('accounts')}>Review matches</button></div>}
+            {ledgerError && activeView !== 'accounts' && <div role="alert" className="lw-notice is-error">{ledgerError} <button onClick={() => setActiveView('accounts')}>Review accounts</button></div>}
+            {ledgerState && activeView !== 'accounts' && <section className="lw-card" style={{ marginBottom: '1.5rem', padding: '1rem' }}>
+              <label className="lw-field">Forecast account
+                <select aria-label="Forecast account" value={ledgerAccount} onChange={e => setLedgerAccount(e.target.value)}>
+                  <option value="all">All accounts · combined only</option>
+                  {ledgerState.ledger.accounts.map(a => <option key={a.id} value={a.id}>{a.name}{a.archived ? ' · archived' : ''}</option>)}
+                </select>
+              </label>
+              <p className="lw-help">Provisional forecast: {ledgerUnreviewed} actual transactions with unallocated amounts · {ledgerOverdue} overdue plans to review. Savings do not automatically fund checking.</p>
+              {ledgerRisks.map(({ account, day }) => <p key={account.id} role="status" className="lw-help"><strong>{account.name}</strong>: projected shortfall {MercuryLedger.money(day.endingCents)} on {day.date}, even when the combined balance is positive. Review this account’s plan.</p>)}
+              <p className="lw-help">Opening-account history before {ledgerState.ledger.cutoverDate} is your legacy plan, not confirmed bank activity. Legacy checkpoints are estimates until you verify them. New checkpoints mean start of day in {ledgerState.ledger.timeZone}; same-day transactions follow that balance.</p>
+              <button type="button" className="lw-text-button" onClick={() => setActiveView('accounts')}>Accounts, balances &amp; matching</button>
+            </section>}
+            {activeView === 'accounts'
+              ? ledgerState
+                ? <window.LedgerWorkspace ledger={ledgerState.ledger} plan={reconciliationPlan} year={dashboardYear} today={todayKey} onSave={saveLedger} onRefresh={refreshLedger} busy={ledgerBusy} error={ledgerError} />
+                : <section className="lw-card"><h2>Accounts &amp; actuals</h2><p role={ledgerError ? 'alert' : 'status'}>{ledgerError || 'Loading your reconciliation workspace…'}</p>{ledgerError && <button onClick={() => refreshLedger().catch(() => {})}>Retry loading</button>}</section>
+              : activeView === 'dashboard' ? renderDashboard() : activeView === 'cashflow' ? renderCashFlow() : activeView === 'debt' ? renderDebt() : renderCalendar()}
+          </main>
 
           {showPayrollForm && (
             <div style={styles.formOverlay} onClick={() => setShowPayrollForm(false)}>

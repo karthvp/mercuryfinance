@@ -5,6 +5,9 @@ const session = require('express-session');
 const connectPgSimple = require('connect-pg-simple');
 const client = require('openid-client');
 const logoutRouter = require('./routes/logout');
+const { createLedgerRouter, initLedgerTables, userTransaction, todayIn } = require('./routes/ledger');
+const ledgerModel = require('./ledger-model');
+const repairDocumentSequence = require('./document-sequence');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -61,6 +64,7 @@ async function initDatabase() {
       )
     `);
 
+    await repairDocumentSequence(dbClient);
     await dbClient.query(`ALTER TABLE mercury_data DROP CONSTRAINT IF EXISTS single_row`);
     // Legacy per-feature columns (kept for back-compat on existing DBs).
     await dbClient.query(`ALTER TABLE mercury_data ADD COLUMN IF NOT EXISTS one_off_incomes JSONB DEFAULT '[]'`);
@@ -91,6 +95,7 @@ async function initDatabase() {
     } catch (e) {
       console.error('app_data migration skipped:', e.message);
     }
+    await initLedgerTables(dbClient);
   } finally {
     dbClient.release();
   }
@@ -128,7 +133,7 @@ async function setupOIDC() {
   }
 }
 
-app.use(express.json());
+app.use(express.json({ limit: '2mb' }));
 app.use((req, res, next) => {
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
   next();
@@ -424,6 +429,25 @@ function buildDoc(data) {
   return out;
 }
 
+async function readPlan(db, userId) {
+  const { rows } = await db.query('SELECT * FROM mercury_data WHERE user_id=$1', [userId]);
+  return rows.length ? rowToDoc(rows[0]) : emptyDoc();
+}
+
+async function checkReconciledPlan(db, userId, plan) {
+  const { rows } = await db.query('SELECT ledger FROM mercury_reconciliation WHERE user_id=$1', [userId]);
+  if (!rows.length) return;
+  const ledger = rows[0].ledger;
+  try { ledgerModel.validate(ledger, plan, todayIn(ledger.timeZone || 'UTC'), ledger); }
+  catch (error) {
+    error.status = 409;
+    error.message = `This plan change affects a matched occurrence. Undo its matches in Accounts & actuals first. ${error.message}`;
+    throw error;
+  }
+}
+
+app.use('/api/ledger', createLedgerRouter({ pool, isAuthenticated, readPlan }));
+
 app.get('/api/data', isAuthenticated, async (req, res) => {
   try {
     const userId = req.session.userId;
@@ -450,7 +474,9 @@ app.post('/api/data', isAuthenticated, async (req, res) => {
     // Persist the whole document into the single app_data column (version kept as a
     // plain column too, since it's harmless and predates this change).
     const doc = buildDoc(data);
-    await pool.query(`
+    await userTransaction(pool, userId, async db => {
+    await checkReconciledPlan(db, userId, doc);
+    await db.query(`
       INSERT INTO mercury_data (user_id, version, app_data, updated_at)
       VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
       ON CONFLICT (user_id) DO UPDATE SET
@@ -458,11 +484,12 @@ app.post('/api/data', isAuthenticated, async (req, res) => {
         app_data = EXCLUDED.app_data,
         updated_at = CURRENT_TIMESTAMP
     `, [userId, doc.version, JSON.stringify(doc)]);
+    });
     
     res.json({ success: true, timestamp: new Date().toISOString() });
   } catch (error) {
     console.error('Error saving data:', error);
-    res.status(500).json({ error: 'Failed to save data' });
+    res.status(error.status || 500).json({ error: error.status ? error.message : 'Failed to save data' });
   }
 });
 
@@ -481,21 +508,30 @@ app.patch('/api/data/:field', isAuthenticated, async (req, res) => {
       return res.status(400).json({ error: 'Missing value in request body' });
     }
 
-    await pool.query(
+    await userTransaction(pool, userId, async db => {
+    const candidate = { ...await readPlan(db, userId), [field]: value };
+    const validation = validators.isValidFinancialData(candidate);
+    if (!validation.valid) { const error = new Error(validation.error); error.status = 400; throw error; }
+    await checkReconciledPlan(db, userId, candidate);
+    await db.query(
       `UPDATE mercury_data
          SET app_data = jsonb_set(COALESCE(app_data, '{}'::jsonb), ARRAY[$1], $2::jsonb, true),
              updated_at = CURRENT_TIMESTAMP
        WHERE user_id = $3`,
       [field, JSON.stringify(value), userId]
     );
+    });
 
     res.json({ success: true, timestamp: new Date().toISOString() });
   } catch (error) {
     console.error('Error updating field:', error);
-    res.status(500).json({ error: 'Failed to update field' });
+    res.status(error.status || 500).json({ error: error.status ? error.message : 'Failed to update field' });
   }
 });
 
+app.get('/ledger-workspace.jsx', (req, res) => {
+  res.type('application/javascript').sendFile(path.join(__dirname, 'ledger-workspace.jsx'));
+});
 app.use(express.static(__dirname));
 
 app.get('/', (req, res) => {
