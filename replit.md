@@ -41,7 +41,7 @@ Preferred communication style: Simple, everyday language.
 - **Auth endpoints**:
   - `GET /api/login` - Initiates login flow
   - `GET /api/callback` - Handles OAuth callback
-  - `GET /api/logout` - Destroys session and redirects to home
+  - `POST /api/logout` - Requires `X-Mercury-CSRF: 1`, destroys session and clears its cookie; cross-origin access must remain disabled
   - `GET /api/auth/user` - Returns current user or null
 
 ### Backend Architecture

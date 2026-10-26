@@ -4,6 +4,7 @@ const { Pool } = require('pg');
 const session = require('express-session');
 const connectPgSimple = require('connect-pg-simple');
 const client = require('openid-client');
+const logoutRouter = require('./routes/logout');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -270,12 +271,7 @@ app.get('/api/callback', async (req, res) => {
   }
 });
 
-app.get('/api/logout', (req, res) => {
-  req.session.destroy((err) => {
-    if (err) console.error('Logout error:', err);
-    res.redirect('/');
-  });
-});
+app.use('/api/logout', logoutRouter);
 
 app.get('/api/auth/user', (req, res) => {
   res.json({ user: req.session?.user || null });
