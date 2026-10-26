@@ -1,5 +1,5 @@
 window.LedgerWorkspace = function LedgerWorkspace({ ledger, plan, year, today, onSave, onRefresh, busy, error }) {
-  const { useState, useMemo, useEffect } = React;
+  const { useState, useMemo, useEffect, useRef } = React;
   const h = React.createElement;
   const [panel, setPanel] = useState("");
   const [editing, setEditing] = useState(null);
@@ -13,6 +13,11 @@ window.LedgerWorkspace = function LedgerWorkspace({ ledger, plan, year, today, o
   const [checkpointForm, setCheckpointForm] = useState({ accountId: "", date: today || "", balance: "" });
   const [transactionForm, setTransactionForm] = useState({ accountId: "", date: today || "", direction: "expense", amount: "", description: "" });
   const [allocationForm, setAllocationForm] = useState({});
+  const [planLimit, setPlanLimit] = useState(12);
+  const [actualLimit, setActualLimit] = useState(12);
+  const [overdueLimit, setOverdueLimit] = useState(5);
+  const [checkpointLimit, setCheckpointLimit] = useState(5);
+  const forecastListRef = useRef(null);
 
   const api = window.MercuryLedger;
   const data = ledger || { schema: 1, cutoverDate: today, accounts: [], checkpoints: [], transactions: [], assignments: {}, allocations: [], settlements: [] };
@@ -22,7 +27,7 @@ window.LedgerWorkspace = function LedgerWorkspace({ ledger, plan, year, today, o
   const calculation = useMemo(() => {
     try {
       if (!api || !plan) throw new Error("The forecast engine is unavailable. Reload before making changes.");
-      const all = api.occurrences(plan, Math.min(Number(year) - 1, ...(data.checkpoints || []).map(c => Number(c.date.slice(0, 4)))), Number(year) + 1, today || "");
+      const all = api.occurrences(plan, api.forecastStartYear(data, plan, Number(year)), Number(year) + 1, today || "");
       return {
         decorated: all.map(o => api.decorate(o, data)),
         forecast: api.forecast(data, all, Number(year), today || "", chosenAccount),
@@ -165,17 +170,17 @@ window.LedgerWorkspace = function LedgerWorkspace({ ledger, plan, year, today, o
     if (!window.confirm("Remove this starting-balance checkpoint? Forecasts after it may change.")) return;
     await update("checkpoints", data.checkpoints.filter(x => x.id !== c.id));
   };
-  const filteredOccurrences = yearsOccurrences.filter(o => {
+  const filteredOccurrences = api.nearToday(yearsOccurrences.filter(o => {
     const text = `${o.name || ""} ${o.origin || ""} ${o.kind || ""}`.toLowerCase();
     return (!search || text.includes(search.toLowerCase())) &&
       (!dateFilter || o.date === dateFilter) &&
       (accountFilter === "all" || (o.accountId || data.assignments?.[ruleKey(o)] || "legacy-opening") === accountFilter);
-  });
+  }), today);
   const linkedTo = key => (data.allocations || []).filter(a => a.occurrenceKey === key);
   const txAllocated = id => (data.allocations || []).filter(a => a.transactionId === id).reduce((s, a) => s + a.amountCents, 0);
-  const transactions = (data.transactions || []).filter(t => accountFilter === "all" || t.accountId === accountFilter);
-  const overdue = decorated.filter(o => o.date < today && o.date >= (data.cutoverDate || "0000-01-01") && o.remainingCents > 0 && !o.closed && !o.skipped)
-    .filter(o => accountFilter === "all" || (o.accountId || data.assignments?.[ruleKey(o)] || "legacy-opening") === accountFilter);
+  const transactions = (data.transactions || []).filter(t => accountFilter === "all" || t.accountId === accountFilter).reverse().sort((a, b) => b.date.localeCompare(a.date));
+  const overdue = api.nearToday(decorated.filter(o => o.date < today && o.date >= (data.cutoverDate || "0000-01-01") && o.remainingCents > 0 && !o.closed && !o.skipped)
+    .filter(o => accountFilter === "all" || (o.accountId || data.assignments?.[ruleKey(o)] || "legacy-opening") === accountFilter), today);
   const unallocated = transactions.filter(t => t.amountCents - txAllocated(t.id) > 0);
   const openPanel = (name) => { setEditing(null); setPanel(name); };
 
@@ -187,6 +192,18 @@ window.LedgerWorkspace = function LedgerWorkspace({ ledger, plan, year, today, o
   const action = (label, fn, secondary = false) => h("button", { type: "button", className: secondary ? "lw-button lw-button-quiet" : "lw-button", onClick: fn }, label);
   const panelTitle = { account: editing ? "Edit account" : "Add an account", checkpoint: editing ? "Edit checkpoint" : "Add starting balance", transaction: editing ? "Edit transaction" : "Add actual transaction" }[panel];
   const closePanel = () => setPanel("");
+  useEffect(() => {
+    setPlanLimit(12); setActualLimit(12); setOverdueLimit(5);
+  }, [accountFilter, search, dateFilter, year]);
+  const focusForecastToday = () => {
+    const container = forecastListRef.current;
+    const target = container?.querySelector(`[data-date="${api.dateInYear(year, today)}"]`);
+    if (target) container.scrollTop += target.getBoundingClientRect().top - container.getBoundingClientRect().top;
+  };
+  useEffect(() => {
+    const frame = requestAnimationFrame(focusForecastToday);
+    return () => cancelAnimationFrame(frame);
+  }, [year, today]);
   useEffect(() => {
     if (!panel) return;
     const previousFocus = document.activeElement;
@@ -241,17 +258,19 @@ window.LedgerWorkspace = function LedgerWorkspace({ ledger, plan, year, today, o
         accounts.some(a => a.archived) && h("button", { className: "lw-text-button", onClick: () => setShowArchived(!showArchived) }, showArchived ? "Hide archived accounts" : "Show archived accounts"),
         h("div", { className: "lw-subsection" }, h("div", { className: "lw-section-head" }, h("div", null, h("p", { className: "lw-eyebrow" }, "START OF DAY"), h("h3", null, "Balance checkpoints")), action("＋ Checkpoint", () => startCheckpoint(), true)),
           h("p", { className: "lw-help" }, "A checkpoint is the actual balance at the start of that local date. Transactions dated the same day come after it."),
-          !(data.checkpoints || []).length ? h("p", { className: "lw-muted" }, "No checkpoints yet.") : h("div", { className: "lw-simple-list" }, [...data.checkpoints].sort((a,b) => b.date.localeCompare(a.date)).map(c => h("div", { className: "lw-simple-row", key: c.id },
+          !(data.checkpoints || []).length ? h("p", { className: "lw-muted" }, "No checkpoints yet.") : h("div", { className: "lw-simple-list" }, [...data.checkpoints].sort((a,b) => b.date.localeCompare(a.date)).slice(0, checkpointLimit).map(c => h("div", { className: "lw-simple-row", key: c.id },
             h("span", null, h("strong", null, accountName(c.accountId)), h("small", null, `${dateText(c.date)} · start of day${c.source === "legacy" ? " · imported" : ""}`)),
             h("b", null, money(c.balanceCents)),
             h("span", { className: "lw-row-actions" }, action("Edit", () => startCheckpoint(c), true), action("Remove", () => deleteCheckpoint(c), true))
-          )))
+          ))),
+          data.checkpoints.length > checkpointLimit && action(`Show earlier checkpoints (${data.checkpoints.length - checkpointLimit} more)`, () => setCheckpointLimit(checkpointLimit + 10), true)
         )
       ),
       h("section", { className: "lw-card lw-forecast" },
+        action("Jump to today", focusForecastToday, true),
         h("div", { className: "lw-section-head" }, h("div", null, h("p", { className: "lw-eyebrow" }, "DATED OUTLOOK"), h("h2", null, "Your forecast"), h("p", { className: "lw-help" }, accountFilter === "all" ? "A combined view only—not a transfer between accounts. Choose one account to inspect its provisional balance." : "A provisional path from this account’s latest checkpoint. Planned amounts remain estimates until matched."))),
         !forecast.length ? h("div", { className: "lw-empty lw-empty-small" }, h("strong", null, "A forecast will take shape here"), h("p", null, "Add a starting balance checkpoint and your dated plan will show up day by day.")) :
-        h("div", { className: "lw-forecast-list" }, forecast.map((f, i) => h("div", { className: `lw-forecast-row ${f.checkpoint ? "is-checkpoint" : ""}`, key: `${f.date}-${i}` },
+        h("div", { className: "lw-forecast-list", ref: forecastListRef }, forecast.map((f, i) => h("div", { className: `lw-forecast-row ${f.checkpoint ? "is-checkpoint" : ""}`, "data-date": f.date, key: `${f.date}-${i}` },
           h("div", { className: "lw-date-marker" }, h("strong", null, new Date(f.date + "T12:00:00").toLocaleDateString(undefined, { day: "2-digit" })), h("small", null, new Date(f.date + "T12:00:00").toLocaleDateString(undefined, { month: "short" }))),
           h("div", { className: "lw-forecast-detail" }, h("strong", null, dateText(f.date)), h("small", null, `${f.checkpoint ? `Start checkpoint ${money(f.startingCents)} · ` : ""}${f.actualCents ? `Actual ${money(f.actualCents)}` : "No actuals"} · planned ${money(f.plannedCents)}`)),
           h("div", { className: "lw-forecast-balance" }, h("small", null, "Projected end"), h("strong", null, money(f.endingCents)))
@@ -264,12 +283,13 @@ window.LedgerWorkspace = function LedgerWorkspace({ ledger, plan, year, today, o
           h("label", { className: "lw-field" }, h("span", null, "Exact date"), h("input", { type: "date", value: dateFilter, onChange: e => setDateFilter(e.target.value) }))),
       ),
       h("div", { className: "lw-overdue-callout" }, h("strong", null, `${overdue.length} overdue ${overdue.length === 1 ? "item" : "items"} to review`), h("span", null, nextShortfall ? `This provisional forecast dips below zero around ${dateText(nextShortfall.date)}. It’s a prompt to review—not a safe-to-spend number.` : "Remaining plan amount is not proof that a payment was missed. Review actuals and matches below.")),
-      overdue.length > 0 && h("div", { className: "lw-overdue-list" }, overdue.map(o => h("div", { className: "lw-overdue-item", key: o.key },
+      overdue.length > 0 && h("div", { className: "lw-overdue-list" }, overdue.slice(0, overdueLimit).map(o => h("div", { className: "lw-overdue-item", key: o.key },
         h("span", null, h("strong", null, o.name || o.origin || "Planned item"), h("small", null, `${dateText(o.date)} · ${accountName(o.accountId || data.assignments?.[ruleKey(o)] || "legacy-opening")}`)),
         h("b", null, `${money(o.remainingCents)} remaining`)
       ))),
+      overdue.length > overdueLimit && action(`Show earlier overdue items (${overdue.length - overdueLimit} more)`, () => setOverdueLimit(overdueLimit + 10), true),
       !filteredOccurrences.length ? h("div", { className: "lw-empty lw-empty-small" }, h("strong", null, "Nothing on these dates"), h("p", null, "Try another search, date, or account.")) :
-      h("div", { className: "lw-occurrence-list" }, filteredOccurrences.map(o => {
+      h("div", { className: "lw-occurrence-list" }, filteredOccurrences.slice(0, planLimit).map(o => {
         const assigned = o.accountId || data.assignments?.[ruleKey(o)] || "legacy-opening";
         const linked = linkedTo(o.key);
         const candidates = transactions.filter(t => t.accountId === assigned && t.direction === o.direction && t.amountCents - txAllocated(t.id) > 0)
@@ -302,12 +322,14 @@ window.LedgerWorkspace = function LedgerWorkspace({ ledger, plan, year, today, o
             h("button", { type: "button", className: "lw-button lw-match-button", disabled: !allocState.transactionId, onClick: () => allocate(o, allocState.transactionId, allocState.amount) }, "Add match")
           )
         );
-      }))
+      })),
+      filteredOccurrences.length > planLimit && action(`Show more plans (${filteredOccurrences.length - planLimit} remaining)`, () => setPlanLimit(planLimit + 12), true)
     ),
     h("section", { className: "lw-card lw-actuals" },
+      h("p", { className: "lw-help" }, "Most recent transactions first. Earlier records remain below."),
       h("div", { className: "lw-section-head" }, h("div", null, h("p", { className: "lw-eyebrow" }, "REAL TRANSACTIONS"), h("h2", null, "Your actuals"), h("p", { className: "lw-help" }, "Unallocated amounts stay visible here. Nothing changes your plan.")), action("＋ Add actual", () => startTransaction())),
       !transactions.length ? h("div", { className: "lw-empty lw-empty-small" }, h("strong", null, "Add an actual when you’re ready"), h("p", null, "Transactions can be entered for today or a past date, and matched in part or in full.")) :
-        h("div", { className: "lw-transaction-list" }, transactions.map(t => {
+        h("div", { className: "lw-transaction-list" }, transactions.slice(0, actualLimit).map(t => {
           const remaining = t.amountCents - txAllocated(t.id);
           const matches = (data.allocations || []).filter(a => a.transactionId === t.id);
           return h("article", { className: "lw-transaction", key: t.id },
@@ -316,7 +338,8 @@ window.LedgerWorkspace = function LedgerWorkspace({ ledger, plan, year, today, o
             h("div", { className: "lw-row-actions" }, action("Edit", () => startTransaction(t), true), action("Delete", () => deleteTransaction(t), true)),
             matches.length > 0 && h("div", { className: "lw-tx-matches" }, matches.map(a => h("div", { key: a.id }, h("span", null, `Matched ${money(a.amountCents)} · ${decorated.find(o => o.key === a.occurrenceKey)?.name || "Plan item"}`), action("Undo", () => unmatch(a), true))))
           );
-        }))
+        })),
+      transactions.length > actualLimit && action(`Show earlier actuals (${transactions.length - actualLimit} more)`, () => setActualLimit(actualLimit + 12), true)
     ),
     panel && h("div", { className: "lw-modal-backdrop", onMouseDown: e => { if (e.target === e.currentTarget) closePanel(); } },
       h("section", { className: "lw-modal", role: "dialog", "aria-modal": "true", "aria-labelledby": "lw-modal-title" },

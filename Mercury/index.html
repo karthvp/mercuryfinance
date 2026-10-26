@@ -2134,29 +2134,29 @@
 
       const saveTimeoutRef = useRef(null);
       const monthRefs = useRef({});
-      const todayRowRef = useRef(null);
-      const hasScrolledToToday = useRef(false);
+      const calendarBodyRef = useRef(null);
+      const focusCalendarDate = date => {
+        const container = calendarBodyRef.current;
+        const row = container?.querySelector(`[data-date="${date}"]`);
+        if (row) container.scrollTop += row.getBoundingClientRect().top - container.getBoundingClientRect().top;
+      };
       const ytdChartRef = useRef(null);
       const ytdChartInstance = useRef(null);
       const balanceChartRef = useRef(null);
       const balanceChartInstance = useRef(null);
       const debtChartRef = useRef(null);
       const debtChartInstance = useRef(null);
+      useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }); }, [activeView]);
 
       useEffect(() => {
-        if (monthRefs.current[scrollToMonth]) {
-          monthRefs.current[scrollToMonth].scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }, [scrollToMonth]);
-
-      useEffect(() => {
-        if (activeView === 'calendar' && todayRowRef.current && !hasScrolledToToday.current) {
-          setTimeout(() => {
-            todayRowRef.current.scrollIntoView({ behavior: 'auto', block: 'center' });
-            hasScrolledToToday.current = true;
-          }, 100);
-        }
-      }, [activeView, isLoading]);
+        if (activeView !== 'calendar' || isLoading) return;
+        const target = MercuryLedger.dateInYear(activeYear, MercuryLedger.dateKey(new Date()));
+        const frame = requestAnimationFrame(() => {
+          focusCalendarDate(target);
+          setScrollToMonth(Number(target.slice(5, 7)) - 1);
+        });
+        return () => cancelAnimationFrame(frame);
+      }, [activeView, isLoading, activeYear]);
 
       useEffect(() => {
         api.loadData()
@@ -2169,8 +2169,8 @@
             setDebts(Array.isArray(data.debts) ? data.debts : []);
             if (data.balanceOverrides) setBalanceOverrides(data.balanceOverrides);
             if (data.currentYear) {
-              setActiveYear(data.currentYear);
-              setDashboardYear(data.currentYear);
+              setActiveYear(Math.min(data.currentYear, realCurrentYear));
+              setDashboardYear(realCurrentYear);
             }
             if (data.archivedYears) setArchivedYears(data.archivedYears);
             setIsLoading(false);
@@ -2224,7 +2224,7 @@
       }, [initialBalances, payrolls, recurringExpenses, oneOffExpenses, oneOffIncomes, debts, balanceOverrides, activeYear, archivedYears]);
 
       const datesForYear = useMemo(() => generateDatesForYear(activeYear), [activeYear]);
-      const availableYears = useMemo(() => Array.from(new Set([activeYear, ...archivedYears])).sort((a, b) => b - a), [activeYear, archivedYears]);
+      const availableYears = useMemo(() => Array.from(new Set([realCurrentYear, dashboardYear, activeYear, ...archivedYears, ...Object.keys(initialBalances).map(Number)])).sort((a, b) => b - a), [activeYear, dashboardYear, realCurrentYear, archivedYears, initialBalances]);
 
       const todayKey = toDateKey(today);
 
@@ -2277,7 +2277,7 @@
       const reconciledSeries = useCallback((year, base) => {
         if (!ledgerState) return base;
         const ledger = ledgerState.ledger;
-        const firstYear = Math.min(year - 1, ...ledger.checkpoints.map(c => Number(c.date.slice(0, 4))));
+        const firstYear = MercuryLedger.forecastStartYear(ledger, reconciliationPlan, year);
         const all = MercuryLedger.occurrences(reconciliationPlan, firstYear, year + 1, todayKey);
         const projected = MercuryLedger.forecast(ledger, all, year, todayKey, ledgerAccount === 'all' ? undefined : ledgerAccount);
         return base.map((day, i) => ({
@@ -2286,7 +2286,7 @@
           isOverridden: projected[i].checkpoint,
         }));
       }, [ledgerState, reconciliationPlan, todayKey, ledgerAccount]);
-      const ledgerOccurrences = useMemo(() => ledgerState ? MercuryLedger.occurrences(reconciliationPlan, Math.min(activeYear - 1, dashboardYear - 1, ...ledgerState.ledger.checkpoints.map(c => Number(c.date.slice(0, 4)))), Math.max(activeYear, dashboardYear) + 1, todayKey).map(o => MercuryLedger.decorate(o, ledgerState.ledger)) : [], [ledgerState, reconciliationPlan, activeYear, dashboardYear, todayKey]);
+      const ledgerOccurrences = useMemo(() => ledgerState ? MercuryLedger.occurrences(reconciliationPlan, MercuryLedger.forecastStartYear(ledgerState.ledger, reconciliationPlan, Math.min(activeYear, dashboardYear)), Math.max(activeYear, dashboardYear) + 1, todayKey).map(o => MercuryLedger.decorate(o, ledgerState.ledger)) : [], [ledgerState, reconciliationPlan, activeYear, dashboardYear, todayKey]);
       const visibleLedgerOccurrences = ledgerOccurrences.filter(o => ledgerAccount === 'all' || o.accountId === ledgerAccount);
       const ledgerRisks = useMemo(() => ledgerState ? ledgerState.ledger.accounts.map(account => ({
         account, day: MercuryLedger.forecast(ledgerState.ledger, ledgerOccurrences, activeView === 'calendar' ? activeYear : dashboardYear, todayKey, account.id).find(d => d.date >= todayKey && d.endingCents < 0)
@@ -3265,7 +3265,7 @@ const { theme, isDark, toggleTheme } = useTheme();
         const legendDot = (color, filled) => ({ width: '10px', height: '10px', borderRadius: '50%', background: filled ? color : 'transparent', border: `2px solid ${color}`, display: 'inline-block' });
         const legendItem = { display: 'inline-flex', alignItems: 'center', gap: '0.4rem' };
         const editBtn = { padding: '0.375rem', background: 'var(--accent-bg)', border: '1px solid var(--accent-border)', borderRadius: '6px', color: 'var(--accent)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' };
-        const yearOneOffIncomes = oneOffIncomes.filter(e => e.date.startsWith(String(dashboardYear))).sort((a, b) => a.date.localeCompare(b.date));
+        const yearOneOffIncomes = MercuryLedger.nearToday(oneOffIncomes.filter(e => e.date.startsWith(String(dashboardYear))), todayKey);
 
         return (
         <div>
@@ -3410,7 +3410,7 @@ const { theme, isDark, toggleTheme } = useTheme();
                 <div style={styles.panelTitle}><Icons.OneTime /> One-Off Expenses</div>
                 <button style={styles.addButton} onClick={() => setShowOneOffExpenseForm(true)}><Icons.Plus /> Add</button>
               </div>
-              {oneOffExpenses.filter(e => e.date.startsWith(String(dashboardYear))).length === 0 ? <div style={styles.emptyState}>No one-off expenses for {dashboardYear}</div> : oneOffExpenses.filter(e => e.date.startsWith(String(dashboardYear))).sort((a, b) => a.date.localeCompare(b.date)).map(expense => (
+              {oneOffExpenses.filter(e => e.date.startsWith(String(dashboardYear))).length === 0 ? <div style={styles.emptyState}>No one-off expenses for {dashboardYear}</div> : MercuryLedger.nearToday(oneOffExpenses.filter(e => e.date.startsWith(String(dashboardYear))), todayKey).map(expense => (
                 <div key={expense.id} className="app-item-row" style={styles.itemRow}>
                   <div><div style={styles.itemName}>{expense.name}</div><div style={styles.itemMeta}>{formatFullDate(parseDateKey(expense.date))}</div></div>
                   <div className="app-item-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><span style={styles.itemAmount()}>-{formatCurrency(expense.amount)}</span><button className="icon-btn" aria-label={`Edit one-off expense ${expense.name}`} style={editBtn} onClick={() => editOneOffExpense(expense)}><Icons.Edit /></button><button className="icon-btn" aria-label={`Delete one-off expense ${expense.name}`} style={styles.deleteBtn} onClick={() => deleteOneOffExpense(expense.id)}><Icons.Trash /></button></div>
@@ -3601,7 +3601,7 @@ const { theme, isDark, toggleTheme } = useTheme();
                       const details = sankeyData.expenseDetails[selectedCategory] || [];
                       const total = details.reduce((sum, d) => sum + d.amount, 0);
                       const recurringItems = recurringExpenses.filter(e => e.name === selectedCategory);
-                      const oneOffItems = oneOffExpenses.filter(e => e.name === selectedCategory && e.date.startsWith(dashboardYear.toString()));
+                      const oneOffItems = MercuryLedger.nearToday(oneOffExpenses.filter(e => e.name === selectedCategory && e.date.startsWith(dashboardYear.toString())), todayKey);
 
                       if (details.length === 0) return <div style={{ color: 'var(--text-muted)', padding: '1rem' }}>No details available</div>;
 
@@ -3774,7 +3774,15 @@ const { theme, isDark, toggleTheme } = useTheme();
         return (
           <div className="app-table-container" style={styles.tableContainer}>
             <div className="app-month-selector" style={styles.monthSelector}>
-              {months.map((month, idx) => (<button key={month} style={styles.monthBtn(scrollToMonth === idx)} onClick={() => setScrollToMonth(idx)}>{month.slice(0, 3)}</button>))}
+              <button type="button" style={styles.monthBtn(false)} onClick={() => {
+                setActiveYear(realCurrentYear); setScrollToMonth(today.getMonth());
+                requestAnimationFrame(() => focusCalendarDate(todayKey));
+              }}>Today</button>
+              {months.map((month, idx) => (<button key={month} style={styles.monthBtn(scrollToMonth === idx)} onClick={() => {
+                setScrollToMonth(idx);
+                const target = monthRefs.current[idx], container = calendarBodyRef.current;
+                if (target && container) container.scrollTop += target.getBoundingClientRect().top - container.getBoundingClientRect().top;
+              }}>{month.slice(0, 3)}</button>))}
             </div>
             <div className="app-table-header" style={styles.tableHeader}>
               <div className="app-table-header-cell" style={styles.tableHeaderCell}>Date</div>
@@ -3785,7 +3793,7 @@ const { theme, isDark, toggleTheme } = useTheme();
               <div className="app-table-header-cell" style={styles.tableHeaderCell}>Ending</div>
               <div className="app-table-header-cell app-hide-mobile" style={styles.tableHeaderCell}></div>
             </div>
-            <div style={styles.tableBody}>
+            <div ref={calendarBodyRef} data-testid="calendar-scroll" style={styles.tableBody}>
               {financialData.map((day, idx) => {
                 const isMonthStart = day.dayOfMonth === 1;
                 const prevMonth = idx > 0 ? financialData[idx - 1].month : -1;
@@ -3794,7 +3802,7 @@ const { theme, isDark, toggleTheme } = useTheme();
                 return (
                   <Fragment key={day.dateKey}>
                     {showMonthDivider && (<div style={styles.monthDivider} ref={el => monthRefs.current[day.month] = el}><span style={styles.monthLabel}>{months[day.month]} {day.year}</span></div>)}
-                    <div ref={day.isToday ? todayRowRef : null} className="app-table-row" style={styles.tableRow(day.isToday, day.isPast, isMonthStart)} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, day.dateKey)}>
+                    <div data-date={day.dateKey} className="app-table-row" style={styles.tableRow(day.isToday, day.isPast, isMonthStart)} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, day.dateKey)}>
                       <div className="app-table-cell" style={styles.tableCell}>{formatDate(day.date)}</div>
                       <div className="app-table-cell app-hide-xs" style={styles.tableCell}>{day.dayOfWeek}</div>
                       <div className="app-table-cell" style={{ ...styles.tableCell, flexWrap: 'wrap' }}>

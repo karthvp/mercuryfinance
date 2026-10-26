@@ -14,3 +14,9 @@ Signing in should automatically take users to their dashboard, not back to the h
 **Why:** The user explicitly requested this sign-in behavior.
 
 **How to apply:** Keep the dashboard as the successful sign-in destination when changing authentication or app navigation.
+
+The calendar and other parts of the app should open near the current date so users do not need to scroll through old information. Apply that principle throughout the app.
+
+**Why:** The user explicitly requested this as an app-wide behavior.
+
+**How to apply:** Default dated views to today, upcoming plans, or recent actuals as appropriate. Keep older records accessible and respect deliberate month/date selections instead of repeatedly jumping users back to today.

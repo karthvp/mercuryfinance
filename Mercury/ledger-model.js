@@ -91,6 +91,34 @@
     }
     return out.sort((a, b) => a.date.localeCompare(b.date) || a.key.localeCompare(b.key));
   }
+  // All forecast consumers need the same history, including uncheckpointed accounts.
+  // Adoption anchors undated recurring rules; explicit older history can extend it.
+  function forecastStartYear(ledger, plan, viewedYear) {
+    let first = viewedYear;
+    const consider = value => {
+      const year = Number(String(value || '').slice(0, 4));
+      if (Number.isInteger(year) && year >= 2000 && year <= 2100) first = Math.min(first, year);
+    };
+    consider(ledger.cutoverDate);
+    [...ledger.checkpoints, ...ledger.transactions].forEach(item => consider(item.date));
+    Object.keys(plan.initialBalances || {}).forEach(consider);
+    Object.keys(plan.balanceOverrides || {}).forEach(consider);
+    [...(plan.payrolls || []), ...(plan.recurringExpenses || []), ...(plan.oneOffIncomes || []), ...(plan.oneOffExpenses || [])].forEach(rule => {
+      consider(rule.startYear); consider(rule.date);
+      Object.entries(rule.exceptions || {}).forEach(([origin, exception]) => { consider(origin); consider(exception.moveTo); });
+    });
+    return first;
+  }
+  function nearToday(items, today) {
+    return [...items].sort((a, b) => {
+      const aPast = a.date < today, bPast = b.date < today;
+      if (aPast !== bPast) return aPast ? 1 : -1;
+      return aPast ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date);
+    });
+  }
+  function dateInYear(year, today) {
+    return today < `${year}-01-01` ? `${year}-01-01` : today > `${year}-12-31` ? `${year}-12-31` : today;
+  }
   function initialLedger(plan, today) {
     const checkpoints = Object.entries(plan.initialBalances || {}).map(([year, amount]) => ({
       id: `opening-${year}`, accountId: OPENING, date: `${year}-01-01`, balanceCents: legacyCents(amount), timing: 'start', source: 'legacy',
@@ -240,5 +268,5 @@
     });
     return true;
   }
-  return { OPENING, cents, money, validDate, dateKey, ruleKey, occurrenceKey, occurrences, initialLedger, decorate, activity, forecast, validate };
+  return { OPENING, cents, money, validDate, dateKey, ruleKey, occurrenceKey, occurrences, forecastStartYear, nearToday, dateInYear, initialLedger, decorate, activity, forecast, validate };
 });

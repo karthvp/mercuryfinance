@@ -36,6 +36,7 @@ function initialData() {
 const test = base.extend({
   finance: async ({ context, page }, use) => {
     let data = initialData();
+    let ledger = null;
     const writes = [];
     const unexpected = [];
     const errors = [];
@@ -60,6 +61,10 @@ const test = base.extend({
       }
       if (url.origin === ORIGIN) {
         const method = request.method();
+        const assets = { '/ledger-model.js': 'application/javascript', '/ledger-workspace.jsx': 'application/javascript', '/ledger-workspace.css': 'text/css' };
+        if (method === 'GET' && assets[url.pathname]) {
+          return route.fulfill({ contentType: assets[url.pathname], path: path.join(ROOT, 'Mercury', url.pathname.slice(1)) });
+        }
         if (url.pathname.startsWith('/api/')) apiRequests.push(`${method} ${url.pathname}`);
         if (method === 'GET' && url.pathname === '/') {
           return route.fulfill({ contentType: 'text/html', body: HTML });
@@ -76,6 +81,13 @@ const test = base.extend({
           writes.push(structuredClone(data));
           return reply({ success: true });
         }
+        if (url.pathname === '/api/ledger' && method === 'GET') return reply(ledger || { error: 'Ledger intentionally unavailable in legacy-only fixture' }, ledger ? 200 : 503);
+        if (url.pathname === '/api/ledger' && method === 'PUT' && ledger) {
+          const body = request.postDataJSON();
+          if (body.revision !== ledger.revision) return reply({ error: 'Stale fixture revision' }, 409);
+          ledger = { revision: ledger.revision + 1, ledger: body.ledger };
+          return reply(ledger);
+        }
       }
       // Never continue/fallback: an unknown API or external request must fail closed.
       unexpected.push(`${request.method()} ${url.href}`);
@@ -84,6 +96,7 @@ const test = base.extend({
     await use({
       auth, writes, apiRequests,
       get data() { return data; },
+      enableLedger(value) { ledger = { revision: 0, ledger: structuredClone(value) }; },
       async open(view = 'dashboard') {
         await page.goto(`${ORIGIN}/#app/${view}`);
         await expect(page.getByRole('button', { name: 'Dashboard', exact: true })).toBeVisible();

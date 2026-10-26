@@ -8,7 +8,7 @@ test('navigation renders each view and preserves deep links on reload', async ({
   for (const [label, view, content] of [
     ['Cash Flow', 'cashflow', 'Cash Flow'],
     ['Debt', 'debt', 'Debt Payoff Planner'],
-    ['Calendar', 'calendar', 'January 2026'],
+    ['Calendar', 'calendar', 'Date'],
     ['Dashboard', 'dashboard', 'Income & Expenses'],
   ]) {
     await page.getByRole('button', { name: label, exact: true }).click();
@@ -92,9 +92,9 @@ test('calendar check-ins save, survive reload, cancel, and can be removed', asyn
   await expect(row).toContainText('$4,321.09');
   await expect(row.getByRole('spinbutton')).toHaveCount(0);
   await page.getByRole('button', { name: 'Dashboard', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Remove check-in on 2026-06-15' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Remove legacy check-in on 2026-06-15' })).toBeVisible();
   await page.getByRole('button', { name: 'Calendar', exact: true }).click();
-  await row.getByTitle('Click to remove this check-in', { exact: true }).click();
+  await row.getByTitle('Remove this legacy check-in', { exact: true }).click();
   await expect(row.getByText('Check-in', { exact: true })).toHaveCount(0);
   await expect.poll(() => finance.data.balanceOverrides).toEqual({});
   await page.reload();
@@ -131,6 +131,6 @@ test('expired session while loading finance data redirects to sign-in without sa
   finance.auth.dataStatus = 401;
   await page.goto(`${ORIGIN}/#app/dashboard`);
   await expect(page).toHaveURL(`${ORIGIN}/api/login`);
-  expect(finance.apiRequests).toEqual(['GET /api/auth/user', 'GET /api/data', 'GET /api/login']);
+  expect(finance.apiRequests).toEqual(['GET /api/auth/user', 'GET /api/ledger', 'GET /api/data', 'GET /api/login']);
   expect(finance.writes).toEqual([]);
 });

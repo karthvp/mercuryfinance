@@ -14,3 +14,9 @@ A bank's current balance is not automatically a start-of-day checkpoint.
 **Why:** A current bank balance can already include some same-day transactions. Applying all those transactions after that balance would count them twice.
 
 **How to apply:** When adding bank synchronization, define a balance/transaction cutoff explicitly. Either derive a genuine opening balance or introduce precise snapshot timing; do not silently map an intraday bank balance into the manual date-only checkpoint convention.
+
+A forecast's visible period must not truncate the accounting history used to calculate its opening balance.
+
+**Why:** Accounts can legitimately have transactions and assigned recurring plans without a balance checkpoint. Starting their calculation at the selected year, or only one year earlier, loses prior cash flows and misstates later balances.
+
+**How to apply:** Determine the full relevant history before expanding planned occurrences, consistently across every forecast consumer. Current-date positioning and date filters are presentation choices, not permission to discard earlier accounting activity.
